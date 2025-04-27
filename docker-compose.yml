@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  medical-mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: nbuDBpass
+      MYSQL_DATABASE: medical_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - medical-mysql-data:/var/lib/mysql
+volumes:
+  medical-mysql-data:
