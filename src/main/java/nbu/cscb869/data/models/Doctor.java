@@ -26,10 +26,13 @@ public class Doctor extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
-    @ElementCollection
-    @CollectionTable(name = "doctor_specialties", joinColumns = @JoinColumn(name = "doctor_id"))
-    @Column(name = "specialty")
-    private Set<String> specialties = new HashSet<>();
+    @ManyToMany
+    @JoinTable(
+            name = "doctor_specialties",
+            joinColumns = @JoinColumn(name = "doctor_id"),
+            inverseJoinColumns = @JoinColumn(name = "specialty_id")
+    )
+    private Set<Specialty> specialties = new HashSet<>();
 
     @NotNull
     @Column(nullable = false)

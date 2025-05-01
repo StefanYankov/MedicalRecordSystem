@@ -21,6 +21,6 @@ public class Diagnosis extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
-    @OneToMany(mappedBy = "diagnosis")
+    @OneToMany(mappedBy = "diagnosis", fetch = FetchType.LAZY)
     private Set<Visit> visits = new HashSet<>();
 }

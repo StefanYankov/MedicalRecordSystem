@@ -26,7 +26,7 @@ public class SickLeave extends BaseEntity {
     private Integer durationDays;
 
     @NotNull
-    @OneToOne
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "visit_id", nullable = false)
     private Visit visit;
 }

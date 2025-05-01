@@ -13,6 +13,9 @@ import java.util.Optional;
 public interface DoctorRepository extends JpaRepository<Doctor, Long> {
     Optional<Doctor> findByUniqueIdNumber(String uniqueIdNumber);
 
+    @Query("SELECT d FROM Doctor d WHERE d.id = :id AND d.isDeleted = false")
+    Optional<Doctor> findById(Long id);
+
     @Query("SELECT d FROM Doctor d WHERE d.id = :id")
     Optional<Doctor> findByIdIncludingDeleted(Long id);
 }

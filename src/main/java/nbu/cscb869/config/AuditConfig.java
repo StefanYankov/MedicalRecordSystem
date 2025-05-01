@@ -18,6 +18,7 @@ public class AuditConfig {
     public AuditorAware<String> auditorProvider() {
         return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                 .map(authentication -> authentication.getName())
-                .orElse("system");
+                .filter(name -> name != null && !name.isEmpty())
+                .or(() -> Optional.of("system"));
     }
 }

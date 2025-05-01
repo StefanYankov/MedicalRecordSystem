@@ -1,5 +1,4 @@
 package nbu.cscb869.data.models;
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -19,9 +18,6 @@ public class Visit extends BaseEntity {
     @NotNull
     @Column(nullable = false)
     private LocalDate visitDate;
-
-    @Column
-    private String treatment;
 
     @NotNull
     @Column(nullable = false)
@@ -44,4 +40,7 @@ public class Visit extends BaseEntity {
 
     @OneToOne(mappedBy = "visit")
     private SickLeave sickLeave;
+
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Treatment treatment;
 }

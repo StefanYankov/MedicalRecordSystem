@@ -48,6 +48,9 @@ public abstract class BaseEntity {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 
+    @Column(name = "deleted_on")
+    private LocalDateTime deletedOn;
+
     @Version
     private Long version;
 
