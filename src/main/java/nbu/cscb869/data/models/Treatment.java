@@ -1,27 +1,27 @@
 package nbu.cscb869.data.models;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-/**
- * Represents a treatment prescribed during a patient visit, including optional instructions and medications.
- */
 @Getter
 @Setter
 @Entity
-@Table(name = "treatments")
+@Table(name = "treatment")
+@SQLDelete(sql = "UPDATE treatment SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 public class Treatment extends BaseEntity {
-    @Column
     private String instructions;
 
-    @OneToMany(mappedBy = "treatment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Medicine> medicines = new HashSet<>();
-
     @OneToOne
-    @JoinColumn(name = "visit_id", nullable = false)
+    @JoinColumn(name = "visit_id")
     private Visit visit;
+
+    @OneToMany(mappedBy = "treatment", cascade = CascadeType.ALL)
+    private List<Medicine> medicines;
 }

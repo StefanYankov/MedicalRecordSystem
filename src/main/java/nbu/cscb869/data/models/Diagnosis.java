@@ -1,26 +1,24 @@
 package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
-/**
- * Represents a medical diagnosis in the medical record system.
- */
 @Getter
 @Setter
 @Entity
-@Table(name = "diagnoses")
+@Table(name = "diagnosis")
+@SQLDelete(sql = "UPDATE diagnosis SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 public class Diagnosis extends BaseEntity {
-    @NotBlank
-    @Column(nullable = false)
     private String name;
+    private String description;
 
-    @OneToMany(mappedBy = "diagnosis", fetch = FetchType.LAZY)
-    private Set<Visit> visits = new HashSet<>();
+    @OneToMany(mappedBy = "diagnosis", cascade = CascadeType.ALL)
+    private List<Visit> visits;
 }

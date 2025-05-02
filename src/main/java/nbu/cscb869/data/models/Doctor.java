@@ -1,46 +1,37 @@
 package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
-import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-/**
- * Represents a doctor in the medical record system.
- */
 @Getter
 @Setter
 @Entity
-@Table(name = "doctors")
+@Table(name = "doctor")
+@SQLDelete(sql = "UPDATE doctor SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 public class Doctor extends BaseEntity {
-    @NotBlank
-    @Column(unique = true, nullable = false)
-    private String uniqueIdNumber;
-
-    @NotBlank
-    @Column(nullable = false)
     private String name;
+    private String uniqueIdNumber;
+    private boolean isGeneralPractitioner;
 
     @ManyToMany
     @JoinTable(
-            name = "doctor_specialties",
+            name = "doctor_specialty",
             joinColumns = @JoinColumn(name = "doctor_id"),
             inverseJoinColumns = @JoinColumn(name = "specialty_id")
     )
-    private Set<Specialty> specialties = new HashSet<>();
+    private Set<Specialty> specialties;
 
-    @NotNull
-    @Column(nullable = false)
-    private Boolean isGeneralPractitioner = false;
+    @OneToMany(mappedBy = "generalPractitioner", cascade = CascadeType.ALL)
+    private List<Patient> patients;
 
-    @OneToMany(mappedBy = "generalPractitioner")
-    private Set<Patient> patients = new HashSet<>();
-
-    @OneToMany(mappedBy = "doctor")
-    private Set<Visit> visits = new HashSet<>();
+    @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL)
+    private List<Visit> visits;
 }

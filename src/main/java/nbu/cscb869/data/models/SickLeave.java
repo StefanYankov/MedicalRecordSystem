@@ -1,32 +1,25 @@
 package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDate;
 
-/**
- * Represents a sick leave issued during a patient visit.
- */
 @Getter
 @Setter
 @Entity
-@Table(name = "sick_leaves")
+@Table(name = "sick_leave")
+@SQLDelete(sql = "UPDATE sick_leave SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 public class SickLeave extends BaseEntity {
-    @NotNull
-    @Column(nullable = false)
     private LocalDate startDate;
+    private int durationDays;
 
-    @Positive
-    @Column(nullable = false)
-    private Integer durationDays;
-
-    @NotNull
-    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "visit_id", nullable = false)
+    @OneToOne
+    @JoinColumn(name = "visit_id")
     private Visit visit;
 }

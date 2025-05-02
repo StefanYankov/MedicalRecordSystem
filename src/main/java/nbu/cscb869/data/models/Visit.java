@@ -1,46 +1,39 @@
 package nbu.cscb869.data.models;
+
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDate;
 
-/**
- * Represents a patient visit to a doctor in the medical record system.
- */
 @Getter
 @Setter
 @Entity
-@Table(name = "visits")
+@Table(name = "visit")
+@SQLDelete(sql = "UPDATE visit SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
+@Where(clause = "is_deleted = false")
 public class Visit extends BaseEntity {
-    @NotNull
-    @Column(nullable = false)
     private LocalDate visitDate;
+    private boolean sickLeaveIssued;
 
-    @NotNull
-    @Column(nullable = false)
-    private Boolean sickLeaveIssued = false;
-
-    @NotNull
     @ManyToOne
-    @JoinColumn(name = "patient_id", nullable = false)
+    @JoinColumn(name = "patient_id")
     private Patient patient;
 
-    @NotNull
     @ManyToOne
-    @JoinColumn(name = "doctor_id", nullable = false)
+    @JoinColumn(name = "doctor_id")
     private Doctor doctor;
 
-    @NotNull
     @ManyToOne
-    @JoinColumn(name = "diagnosis_id", nullable = false)
+    @JoinColumn(name = "diagnosis_id")
     private Diagnosis diagnosis;
 
-    @OneToOne(mappedBy = "visit")
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL)
     private SickLeave sickLeave;
 
-    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL)
     private Treatment treatment;
 }

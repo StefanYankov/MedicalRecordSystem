@@ -26,7 +26,7 @@ public class DataInitializer {
     @PostConstruct
     public void init() {
         // Specialty
-        Specialty cardiology = specialtyRepository.findByName("Cardiology")
+        Specialty cardiology = specialtyRepository.findByNameAndIsDeletedFalse("Cardiology")
                 .orElseGet(() -> {
                     Specialty newSpecialty = new Specialty();
                     newSpecialty.setName("Cardiology");
@@ -40,7 +40,7 @@ public class DataInitializer {
                     newDoctor.setUniqueIdNumber("DOC123");
                     newDoctor.setName("Dr. Smith");
                     newDoctor.setSpecialties(Set.of(cardiology));
-                    newDoctor.setIsGeneralPractitioner(true);
+                    newDoctor.setGeneralPractitioner(true);
                     return doctorRepository.save(newDoctor);
                 });
 
