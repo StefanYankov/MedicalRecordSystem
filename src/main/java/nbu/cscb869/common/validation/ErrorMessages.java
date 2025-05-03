@@ -2,6 +2,7 @@ package nbu.cscb869.common.validation;
 
 public class ErrorMessages {
     public static final String NAME_NOT_BLANK = "Name cannot be blank";
+    public static final String NAME_NOT_NULL = "Name must not be null";
     public static final String NAME_SIZE = "Name must be between %d and %d characters";
     public static final String UNIQUE_ID_NOT_BLANK = "Unique ID number cannot be blank";
     public static final String UNIQUE_ID_PATTERN = "Unique ID number must be %d-%d alphanumeric characters";
@@ -16,6 +17,7 @@ public class ErrorMessages {
     public static final String ID_NOT_NULL = "ID cannot be null";
     public static final String DIAGNOSIS_NAME_NOT_BLANK = "Diagnosis name cannot be blank";
     public static final String DESCRIPTION_SIZE = "Description cannot exceed %d characters";
+    public static final String DESCRIPTION_NOT_BLANK = "Description cannot be blank";
     public static final String PATIENT_EGN_NOT_BLANK = "Patient EGN cannot be blank";
     public static final String DOCTOR_ID_NOT_BLANK = "Doctor unique ID number cannot be blank";
     public static final String SICK_LEAVE_NOT_NULL = "Sick leave issued status cannot be null";

@@ -1,16 +1,18 @@
 package nbu.cscb869.services.data.dtos;
 
-import lombok.Getter;
-import lombok.Setter;
-
-import java.util.Set;
+import lombok.*;
+import java.util.List;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DoctorViewDTO {
     private Long id;
     private String name;
     private String uniqueIdNumber;
-    private boolean isGeneralPractitioner;
-    private Set<String> specialtyNames;
+    private Boolean isGeneralPractitioner;
+    private List<String> specialtyNames;
+    private String imageUrl;
 }

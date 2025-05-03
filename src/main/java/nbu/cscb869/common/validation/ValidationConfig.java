@@ -26,6 +26,10 @@ public class ValidationConfig {
     public static final int DURATION_MIN_DAYS = 1;
     public static final int DURATION_MAX_DAYS = 30;
 
+    // EGN
+    public static final int EGN_LENGTH = 10;
+    public static final String EGN_REGEX = "^\\d{" + EGN_LENGTH + "}$";
+
     private ValidationConfig() {
         throw new IllegalStateException("Utility class");
     }

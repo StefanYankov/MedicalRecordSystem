@@ -1,15 +1,16 @@
 package nbu.cscb869.services.data.dtos;
 
-import lombok.Getter;
-import lombok.Setter;
-
+import lombok.*;
 import java.time.LocalDate;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SickLeaveViewDTO {
     private Long id;
     private LocalDate startDate;
-    private int durationDays;
-    private String visitDetails;
+    private Integer durationDays;
+    private Long visitId;
 }
