@@ -1,16 +1,17 @@
 package nbu.cscb869.config;
 
-import nbu.cscb869.data.models.*;
-import nbu.cscb869.services.data.dtos.*;
-import org.modelmapper.Converter;
+import nbu.cscb869.data.models.Doctor;
+import nbu.cscb869.data.models.Patient;
+import nbu.cscb869.data.models.Specialty;
+import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.services.data.dtos.DoctorViewDTO;
+import nbu.cscb869.services.data.dtos.PatientViewDTO;
+import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.PropertyMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -18,102 +19,43 @@ public class ModelMapperConfig {
 
     @Bean
     public ModelMapper modelMapper() {
-        ModelMapper mapper = new ModelMapper();
-        mapper.getConfiguration()
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration()
                 .setFieldMatchingEnabled(true)
                 .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE);
 
-        // Doctor: Map specialties to specialtyNames
-        mapper.typeMap(Doctor.class, DoctorViewDTO.class)
-                .addMappings(mapping -> mapping.using(toSpecialtyNamesConverter())
-                        .map(Doctor::getSpecialties, DoctorViewDTO::setSpecialtyNames));
-
-        // Patient: Map generalPractitioner to generalPractitionerName
-        mapper.typeMap(Patient.class, PatientViewDTO.class)
-                .addMappings(mapping -> mapping.using(toGeneralPractitionerNameConverter())
-                        .map(Patient::getGeneralPractitioner, PatientViewDTO::setGeneralPractitionerName));
-
-        // SickLeave: Map visit to visitDetails
-        mapper.typeMap(SickLeave.class, SickLeaveViewDTO.class)
-                .addMappings(mapping -> mapping.using(toVisitDetailsConverter())
-                        .map(SickLeave::getVisit, SickLeaveViewDTO::setVisitDetails));
-
-        // Treatment: Map visit to visitDetails, medicines to medicineNames
-        mapper.typeMap(Treatment.class, TreatmentViewDTO.class)
-                .addMappings(mapping -> {
-                    mapping.using(toVisitDetailsConverter())
-                            .map(Treatment::getVisit, TreatmentViewDTO::setVisitDetails);
-                    mapping.using(toMedicineNamesConverter())
-                            .map(Treatment::getMedicines, TreatmentViewDTO::setMedicineNames);
-                });
-
-        // Medicine: Map treatment to treatmentDetails
-        mapper.typeMap(Medicine.class, MedicineViewDTO.class)
-                .addMappings(mapping -> mapping.using(toTreatmentDetailsConverter())
-                        .map(Medicine::getTreatment, MedicineViewDTO::setTreatmentDetails));
-
-        return mapper;
-    }
-
-    // Converters
-    private Converter<Set<Specialty>, Set<String>> toSpecialtyNamesConverter() {
-        return context -> {
-            Set<Specialty> specialties = context.getSource();
-            if (specialties == null) {
-                return new HashSet<>();
+        // Doctor to DoctorViewDTO: Map specialties to specialtyNames
+        modelMapper.addMappings(new PropertyMap<Doctor, DoctorViewDTO>() {
+            @Override
+            protected void configure() {
+                map().setSpecialtyNames(source.getSpecialties().stream()
+                        .map(Specialty::getName)
+                        .collect(Collectors.toList()));
             }
-            Set<String> specialtyNames = specialties.stream()
-                    .map(Specialty::getName)
-                    .collect(Collectors.toSet());
-            return specialtyNames;
-        };
-    }
+        });
 
-    private Converter<Doctor, String> toGeneralPractitionerNameConverter() {
-        return context -> {
-            Doctor doctor = context.getSource();
-            if (doctor == null) {
-                return null;
+        // Patient to PatientViewDTO: Map generalPractitioner to name and ID
+        modelMapper.addMappings(new PropertyMap<Patient, PatientViewDTO>() {
+            @Override
+            protected void configure() {
+                map().setGeneralPractitionerName(source.getGeneralPractitioner().getName());
+                map().setGeneralPractitionerId(source.getGeneralPractitioner().getId());
             }
-            String doctorName = doctor.getName();
-            return doctorName;
-        };
-    }
+        });
 
-    private Converter<Visit, String> toVisitDetailsConverter() {
-        return context -> {
-            Visit visit = context.getSource();
-            if (visit == null) {
-                return null;
+        // Visit to VisitViewDTO: Map patient, doctor, diagnosis to names and IDs
+        modelMapper.addMappings(new PropertyMap<Visit, VisitViewDTO>() {
+            @Override
+            protected void configure() {
+                map().setPatientName(source.getPatient().getName());
+                map().setPatientId(source.getPatient().getId());
+                map().setDoctorName(source.getDoctor().getName());
+                map().setDoctorId(source.getDoctor().getId());
+                map().setDiagnosisName(source.getDiagnosis().getName());
+                map().setDiagnosisId(source.getDiagnosis().getId());
             }
-            String visitDetails = String.format("Visit on %s with %s",
-                    visit.getVisitDate(), visit.getDoctor().getName());
-            return visitDetails;
-        };
-    }
+        });
 
-    private Converter<List<Medicine>, List<String>> toMedicineNamesConverter() {
-        return context -> {
-            List<Medicine> medicines = context.getSource();
-            if (medicines == null) {
-                return new ArrayList<>();
-            }
-            List<String> medicineNames = medicines.stream()
-                    .map(Medicine::getName)
-                    .collect(Collectors.toList());
-            return medicineNames;
-        };
-    }
-
-    private Converter<Treatment, String> toTreatmentDetailsConverter() {
-        return context -> {
-            Treatment treatment = context.getSource();
-            if (treatment == null) {
-                return null;
-            }
-            String treatmentDetails = String.format("Treatment for Visit on %s",
-                    treatment.getVisit().getVisitDate());
-            return treatmentDetails;
-        };
+        return modelMapper;
     }
 }
