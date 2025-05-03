@@ -1,13 +1,58 @@
-version: '3.8'
+# Docker Compose configuration for the medical record application
+# Version is optional since Docker Compose 3.9+ infers it, but kept for clarity
+# version: '3.8'
+
 services:
-  medical-mysql:
-    image: mysql:latest
+  # Spring Boot application service
+  app:
+    # Build from local Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Map port 8080 for external access
+    ports:
+      - "8080:8080"
+    # Ensure DB is healthy before starting app
+    depends_on:
+      db:
+        condition: service_healthy
+    # Environment variables for Spring configuration
     environment:
-      MYSQL_ROOT_PASSWORD: nbuDBpass
-      MYSQL_DATABASE: medical_db
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/medical_record_db?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=nbuDBpass
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    # Connect to the app network
+    networks:
+      - app-network
+
+  # MySQL database service
+  db:
+    image: mysql:8.0
+    # Database configuration
+    environment:
+      - MYSQL_ROOT_PASSWORD=nbuDBpass
+      - MYSQL_DATABASE=medical_record_db
+    # Expose MySQL port
     ports:
       - "3306:3306"
+    # Persist data in a volume
     volumes:
-      - medical-mysql-data:/var/lib/mysql
+      - db-data:/var/lib/mysql
+    # Healthcheck to ensure DB is ready
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+# Persistent volume for MySQL data
 volumes:
-  medical-mysql-data:
+  db-data:
+
+# Network for service communication
+networks:
+  app-network:
+    driver: bridge

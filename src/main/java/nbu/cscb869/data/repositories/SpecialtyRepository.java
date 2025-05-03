@@ -1,12 +1,24 @@
 package nbu.cscb869.data.repositories;
 
 import nbu.cscb869.data.models.Specialty;
-import org.springframework.stereotype.Repository;
+import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-@Repository
+/**
+ * Repository for managing {@link Specialty} entities with soft delete support.
+ */
 public interface SpecialtyRepository extends SoftDeleteRepository<Specialty, Long> {
+    /**
+     * Finds a specialty by name, respecting soft delete.
+     * @param name the specialty name
+     * @return an optional containing the specialty if found and not deleted
+     */
     Optional<Specialty> findByName(String name);
-    Optional<Specialty> findByNameAndIsDeletedFalse(String name);
+
+    @Query("SELECT s FROM Specialty s WHERE s.isDeleted = false")
+    Page<Specialty> findAllActive(Pageable pageable);
 }

@@ -2,11 +2,11 @@ package nbu.cscb869.data.dto;
 
 import lombok.Builder;
 import lombok.Getter;
-import nbu.cscb869.data.models.Diagnosis;
+import nbu.cscb869.data.models.Doctor;
 
 @Getter
 @Builder
-public class DiagnosisVisitCountDTO {
-    private final Diagnosis diagnosis;
+public class DoctorVisitCountDTO {
+    private final Doctor doctor;
     private final long visitCount;
 }

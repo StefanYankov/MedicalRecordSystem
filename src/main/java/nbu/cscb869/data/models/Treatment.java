@@ -5,23 +5,20 @@ import lombok.Getter;
 import lombok.Setter;
 import nbu.cscb869.data.models.base.BaseEntity;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "treatment")
-@SQLDelete(sql = "UPDATE treatment SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
-@Where(clause = "is_deleted = false")
+@Table(name = "treatments", indexes = @Index(columnList = "is_deleted"))
+@SQLDelete(sql = "UPDATE treatments SET is_deleted = true WHERE id = ?")
 public class Treatment extends BaseEntity {
-    private String instructions;
-
     @OneToOne
-    @JoinColumn(name = "visit_id")
+    @JoinColumn(name = "visit_id", nullable = false)
     private Visit visit;
 
-    @OneToMany(mappedBy = "treatment", cascade = CascadeType.ALL)
-    private List<Medicine> medicines;
+    @OneToMany(mappedBy = "treatment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Medicine> medicines = new ArrayList<>();
 }

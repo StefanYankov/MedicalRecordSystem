@@ -1,9 +1,0 @@
-spring:
-  jpa:
-    show-sql: true
-logging:
-  level:
-    org.hibernate: DEBUG
-    org.springframework: DEBUG
-    org.testcontainers: DEBUG
-    com.github.dockerjava: DEBUG

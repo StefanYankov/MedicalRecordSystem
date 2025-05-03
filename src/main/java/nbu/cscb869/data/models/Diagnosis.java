@@ -1,24 +1,36 @@
 package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import nbu.cscb869.common.validation.ErrorMessages;
+import nbu.cscb869.common.validation.ValidationConfig;
 import nbu.cscb869.data.models.base.BaseEntity;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "diagnosis")
-@SQLDelete(sql = "UPDATE diagnosis SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ? AND version = ?")
-@Where(clause = "is_deleted = false")
+@Table(name = "diagnoses", indexes = {
+        @Index(columnList = "name"),
+        @Index(columnList = "is_deleted")
+})
+@SQLDelete(sql = "UPDATE diagnoses SET is_deleted = true WHERE id = ?")
 public class Diagnosis extends BaseEntity {
+    @NotBlank(message = ErrorMessages.DIAGNOSIS_NAME_NOT_BLANK)
+    @Size(max = ValidationConfig.DIAGNOSIS_NAME_MAX_LENGTH)
+    @Column(nullable = false)
     private String name;
+
+    @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @OneToMany(mappedBy = "diagnosis", cascade = CascadeType.ALL)
-    private List<Visit> visits;
+    @OneToMany(mappedBy = "diagnosis")
+    private Set<Visit> visits = new HashSet<>();
 }
