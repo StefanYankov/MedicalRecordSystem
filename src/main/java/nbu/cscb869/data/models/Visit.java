@@ -13,8 +13,13 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Entity
-@Table(name = "visits", indexes = @Index(columnList = "is_deleted"))
-@SQLDelete(sql = "UPDATE visits SET is_deleted = true WHERE id = ?")
+@Table(name = "visits", indexes = {
+        @Index(columnList = "patient_id"),
+        @Index(columnList = "doctor_id"),
+        @Index(columnList = "diagnosis_id"),
+        @Index(columnList = "is_deleted")
+})
+@SQLDelete(sql = "UPDATE visits SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 public class Visit extends BaseEntity {
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     @Column(name = "visit_date", nullable = false)

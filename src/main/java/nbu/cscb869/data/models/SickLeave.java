@@ -15,8 +15,11 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Entity
-@Table(name = "sick_leaves", indexes = @Index(columnList = "is_deleted"))
-@SQLDelete(sql = "UPDATE sick_leaves SET is_deleted = true WHERE id = ?")
+@Table(name = "sick_leaves", indexes = {
+        @Index(columnList = "visit_id"),
+        @Index(columnList = "is_deleted")
+})
+@SQLDelete(sql = "UPDATE sick_leaves SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 public class SickLeave extends BaseEntity {
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     @Column(name = "start_date", nullable = false)

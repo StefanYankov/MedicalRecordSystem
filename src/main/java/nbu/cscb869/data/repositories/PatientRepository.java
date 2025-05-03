@@ -1,5 +1,6 @@
 package nbu.cscb869.data.repositories;
 
+import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
@@ -7,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -14,18 +16,30 @@ import java.util.Optional;
  */
 public interface PatientRepository extends SoftDeleteRepository<Patient, Long> {
     /**
-     * Finds a patient by EGN, respecting soft delete.
-     * @param egn the patient's EGN
-     * @return an optional containing the patient if found and not deleted
+     * Retrieves a patient by their EGN (Bulgarian personal ID).
+     *
+     * @param egn the EGN to search for
+     * @return an optional patient entity
      */
     Optional<Patient> findByEgn(String egn);
 
     /**
-     * Finds patients assigned to a specific general practitioner.
-     * @param generalPractitioner the general practitioner
-     * @param pageable pagination information
-     * @return a page of patients where {@code isDeleted = false}
+     * Retrieves a page of non-deleted patients assigned to a specific general practitioner.
+     *
+     * @param generalPractitioner the general practitioner to filter by
+     * @param pageable            pagination information
+     * @return a page of patient entities where {@code isDeleted = false}
      */
     @Query("SELECT p FROM Patient p WHERE p.generalPractitioner = :generalPractitioner AND p.isDeleted = false")
     Page<Patient> findByGeneralPractitioner(Doctor generalPractitioner, Pageable pageable);
+
+    /**
+     * Retrieves a list of general practitioners with their patient counts.
+     *
+     * @return a list of DTOs with doctor and patient count
+     */
+    @Query("SELECT new nbu.cscb869.data.dto.DoctorPatientCountDTO(p.generalPractitioner, COUNT(p)) " +
+            "FROM Patient p WHERE p.isDeleted = false " +
+            "GROUP BY p.generalPractitioner")
+    List<DoctorPatientCountDTO> countPatientsByGeneralPractitioner();
 }

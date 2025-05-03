@@ -4,6 +4,7 @@ import nbu.cscb869.data.models.base.BaseEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.NoRepositoryBean;
 
@@ -40,6 +41,7 @@ public interface SoftDeleteRepository<T extends BaseEntity, ID> extends JpaRepos
      * Permanently deletes an entity by ID, bypassing soft delete.
      * @param id the ID of the entity to delete
      */
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM #{#entityName} e WHERE e.id = :id")
     void hardDeleteById(ID id);
 }

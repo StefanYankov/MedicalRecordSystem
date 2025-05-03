@@ -26,7 +26,7 @@ import java.util.Set;
         @Index(columnList = "uniqueIdNumber"),
         @Index(columnList = "is_deleted")
 })
-@SQLDelete(sql = "UPDATE doctors SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE doctors SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 public class Doctor extends BaseEntity {
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
     @Size(min = ValidationConfig.NAME_MIN_LENGTH, max = ValidationConfig.NAME_MAX_LENGTH)

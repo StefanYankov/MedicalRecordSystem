@@ -20,6 +20,7 @@ public interface DiagnosisRepository extends SoftDeleteRepository<Diagnosis, Lon
      * @param name the diagnosis name
      * @return an optional containing the diagnosis if found and not deleted
      */
+    @Query("SELECT d FROM Diagnosis d WHERE d.name = :name AND d.isDeleted = false")
     Optional<Diagnosis> findByName(String name);
 
     /**

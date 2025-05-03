@@ -1,5 +1,6 @@
 package nbu.cscb869.data.repositories;
 
+import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.YearMonthSickLeaveCountDTO;
 import nbu.cscb869.data.models.SickLeave;
 import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
@@ -15,6 +16,7 @@ import java.util.List;
 public interface SickLeaveRepository extends SoftDeleteRepository<SickLeave, Long> {
     /**
      * Retrieves a page of non-deleted sick leave records.
+     *
      * @param pageable pagination information
      * @return a page of sick leave entities where {@code isDeleted = false}
      */
@@ -23,10 +25,21 @@ public interface SickLeaveRepository extends SoftDeleteRepository<SickLeave, Lon
 
     /**
      * Identifies the year and month with the highest number of sick leaves.
+     *
      * @return a list of DTOs with year, month, and sick leave counts, sorted by count descending
      */
     @Query("SELECT new nbu.cscb869.data.dto.YearMonthSickLeaveCountDTO(YEAR(s.startDate), MONTH(s.startDate), COUNT(s)) " +
             "FROM SickLeave s WHERE s.isDeleted = false " +
             "GROUP BY YEAR(s.startDate), MONTH(s.startDate) ORDER BY COUNT(s) DESC")
     List<YearMonthSickLeaveCountDTO> findYearMonthWithMostSickLeaves();
+
+    /**
+     * Retrieves a list of doctors with their sick leave counts, sorted by count descending.
+     *
+     * @return a list of DTOs with doctor and sick leave count
+     */
+    @Query("SELECT new nbu.cscb869.data.dto.DoctorSickLeaveCountDTO(v.doctor, COUNT(s)) " +
+            "FROM SickLeave s JOIN s.visit v WHERE s.isDeleted = false " +
+            "GROUP BY v.doctor ORDER BY COUNT(s) DESC")
+    List<DoctorSickLeaveCountDTO> findDoctorsWithMostSickLeaves();
 }

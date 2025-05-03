@@ -21,6 +21,7 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
      * @param uniqueIdNumber the doctor's unique ID number
      * @return an optional containing the doctor if found and not deleted
      */
+    @Query("SELECT d FROM Doctor d WHERE d.uniqueIdNumber = :uniqueIdNumber AND d.isDeleted = false")
     Optional<Doctor> findByUniqueIdNumber(String uniqueIdNumber);
 
     /**

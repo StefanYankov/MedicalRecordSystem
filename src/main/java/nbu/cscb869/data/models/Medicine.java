@@ -14,7 +14,7 @@ import org.hibernate.annotations.SQLDelete;
 @Setter
 @Entity
 @Table(name = "medicines", indexes = @Index(columnList = "is_deleted"))
-@SQLDelete(sql = "UPDATE medicines SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE medicines SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
 public class Medicine extends BaseEntity {
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
     @Size(max = ValidationConfig.NAME_MAX_LENGTH)
