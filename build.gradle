@@ -48,7 +48,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // ModelMapper
-    implementation 'org.modelmapper:modelmapper:3.2.1'
+    implementation 'org.modelmapper:modelmapper:3.2.2'
 
     // Configuration processor
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
