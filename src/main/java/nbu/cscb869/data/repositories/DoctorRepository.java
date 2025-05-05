@@ -7,7 +7,9 @@ import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,23 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
      */
     @Query("SELECT d FROM Doctor d WHERE d.isDeleted = false")
     Page<Doctor> findAllActive(Pageable pageable);
+
+    /**
+     * Retrieves a page of non-deleted doctors by name or unique ID number containing the filter.
+     * @param filter the filter string to match against name or uniqueIdNumber
+     * @param pageable pagination information
+     * @return a page of doctor entities where {@code isDeleted = false}
+     */
+    @Query("SELECT d FROM Doctor d WHERE d.isDeleted = false AND (LOWER(d.name) LIKE LOWER(:filter) OR LOWER(d.uniqueIdNumber) LIKE LOWER(:filter))")
+    Page<Doctor> findByNameOrUniqueIdNumberContaining(@Param("filter") String filter, Pageable pageable);
+
+    /**
+     * Finds doctors matching the given specification.
+     * @param spec the specification defining the criteria
+     * @param pageable pagination information
+     * @return a page of doctor entities matching the criteria
+     */
+    Page<Doctor> findAll(Specification<Doctor> spec, Pageable pageable);
 
     /**
      * Counts patients per general practitioner, including those with zero patients.
@@ -61,4 +80,12 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
             "WHERE d.isDeleted = false AND v.isDeleted = false AND sl.isDeleted = false " +
             "GROUP BY d ORDER BY COUNT(sl) DESC")
     List<DoctorSickLeaveCountDTO> findDoctorsWithMostSickLeaves();
+
+    /**
+     * Finds a doctor by ID, including soft-deleted entities, for debugging purposes.
+     * @param id the doctor's ID
+     * @return an optional containing the doctor if found
+     */
+    @Query("SELECT d FROM Doctor d WHERE d.id = :id")
+    Optional<Doctor> findByIdIncludingDeleted(@Param("id") Long id);
 }

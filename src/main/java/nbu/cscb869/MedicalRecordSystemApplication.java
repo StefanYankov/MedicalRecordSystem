@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = "nbu.cscb869.data.repositories")
+@EnableJpaRepositories
 @EnableJpaAuditing
 public class MedicalRecordSystemApplication {
 

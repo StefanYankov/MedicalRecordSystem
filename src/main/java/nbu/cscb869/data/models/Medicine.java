@@ -18,7 +18,7 @@ import org.hibernate.annotations.SQLDelete;
 public class Medicine extends BaseEntity {
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
     @Size(max = ValidationConfig.NAME_MAX_LENGTH)
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
     @NotBlank(message = ErrorMessages.DOSAGE_NOT_BLANK)

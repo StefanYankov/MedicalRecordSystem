@@ -27,7 +27,6 @@ public class MedicineUpdateDTO {
     @Size(max = ValidationConfig.FREQUENCY_MAX_LENGTH)
     private String frequency;
 
-
     @NotNull(message = ErrorMessages.TREATMENT_ID_NOT_NULL)
     private Long treatmentId;
 }

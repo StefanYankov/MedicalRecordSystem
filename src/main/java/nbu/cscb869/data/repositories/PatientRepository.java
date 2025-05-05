@@ -7,6 +7,7 @@ import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,4 +43,14 @@ public interface PatientRepository extends SoftDeleteRepository<Patient, Long> {
             "FROM Patient p WHERE p.isDeleted = false " +
             "GROUP BY p.generalPractitioner")
     List<DoctorPatientCountDTO> countPatientsByGeneralPractitioner();
+
+    /**
+     * Retrieves a page of non-deleted patients whose name or EGN contains the specified filter string (case-insensitive).
+     *
+     * @param filter   the string to match against patient name or EGN (wrapped with % for partial matching)
+     * @param pageable pagination and sorting information
+     * @return a page of {@link Patient} entities where {@code isDeleted = false} and name or EGN matches the filter
+     */
+    @Query("SELECT p FROM Patient p WHERE p.isDeleted = false AND (LOWER(p.name) LIKE LOWER(:filter) OR LOWER(p.egn) LIKE LOWER(:filter))")
+    Page<Patient> findByNameOrEgnContaining(@Param("filter") String filter, Pageable pageable);
 }

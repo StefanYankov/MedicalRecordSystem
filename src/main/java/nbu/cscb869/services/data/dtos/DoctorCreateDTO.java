@@ -1,6 +1,7 @@
 package nbu.cscb869.services.data.dtos;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
@@ -19,7 +20,8 @@ public class DoctorCreateDTO {
     private String name;
 
     @NotBlank(message = ErrorMessages.UNIQUE_ID_NOT_BLANK)
-    @Size(max = ValidationConfig.UNIQUE_ID_MAX_LENGTH)
+    @Size(min = ValidationConfig.UNIQUE_ID_MIN_LENGTH, max = ValidationConfig.UNIQUE_ID_MAX_LENGTH, message = ErrorMessages.UNIQUE_ID_PATTERN)
+    @Pattern(regexp = ValidationConfig.UNIQUE_ID_REGEX, message = ErrorMessages.UNIQUE_ID_PATTERN)
     private String uniqueIdNumber;
 
     private boolean isGeneralPractitioner;
@@ -28,6 +30,3 @@ public class DoctorCreateDTO {
 
     private Set<Long> specialtyIds;
 }
-
-
-
