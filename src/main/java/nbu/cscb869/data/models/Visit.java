@@ -9,6 +9,7 @@ import nbu.cscb869.data.models.base.BaseEntity;
 import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -24,6 +25,10 @@ public class Visit extends BaseEntity {
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     @Column(name = "visit_date", nullable = false)
     private LocalDate visitDate;
+
+    @NotNull(message = ErrorMessages.TIME_NOT_NULL )
+    @Column(name = "visit_time")
+    private LocalTime visitTime;
 
     @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
     @Column(name = "sick_leave_issued", nullable = false)

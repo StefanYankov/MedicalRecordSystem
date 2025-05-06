@@ -7,16 +7,11 @@ import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.models.SickLeave;
 import nbu.cscb869.data.models.Visit;
-import nbu.cscb869.data.repositories.DiagnosisRepository;
 import nbu.cscb869.data.repositories.DoctorRepository;
-import nbu.cscb869.data.repositories.PatientRepository;
-import nbu.cscb869.data.repositories.SickLeaveRepository;
-import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -24,12 +19,13 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,18 +34,6 @@ class DoctorRepositoryUnitTests {
     @Mock
     private DoctorRepository doctorRepository;
 
-    @Mock
-    private PatientRepository patientRepository;
-
-    @Mock
-    private VisitRepository visitRepository;
-
-    @Mock
-    private SickLeaveRepository sickLeaveRepository;
-
-    @Mock
-    private DiagnosisRepository diagnosisRepository;
-
     private Doctor doctor;
     private Patient patient;
     private Visit visit;
@@ -57,7 +41,6 @@ class DoctorRepositoryUnitTests {
 
     @BeforeEach
     void setUp() {
-        // Setup test data (not persisted, just for mocking)
         doctor = new Doctor();
         doctor.setId(1L);
         doctor.setName("Dr. Smith");
@@ -76,6 +59,7 @@ class DoctorRepositoryUnitTests {
         visit.setPatient(patient);
         visit.setDoctor(doctor);
         visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(LocalTime.of(10, 30));
         visit.setSickLeaveIssued(true);
 
         sickLeave = new SickLeave();

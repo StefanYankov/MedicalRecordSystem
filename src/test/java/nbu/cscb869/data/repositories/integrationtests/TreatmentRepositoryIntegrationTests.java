@@ -1,8 +1,10 @@
 package nbu.cscb869.data.repositories.integrationtests;
 
 import jakarta.persistence.EntityManager;
+import nbu.cscb869.common.validation.ValidationConfig;
 import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.*;
+import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +18,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -50,10 +51,10 @@ class TreatmentRepositoryIntegrationTests {
     private DiagnosisRepository diagnosisRepository;
 
     @Autowired
-    private EntityManager entityManager;
+    private MedicineRepository medicineRepository;
 
-    private static final int[] EGN_WEIGHTS = {2, 4, 8, 5, 10, 9, 7, 3, 6};
-    private static final Random RANDOM = new Random();
+    @Autowired
+    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +63,8 @@ class TreatmentRepositoryIntegrationTests {
         patientRepository.deleteAll();
         doctorRepository.deleteAll();
         diagnosisRepository.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private Doctor createDoctor(String name, String uniqueIdNumber, boolean isGeneralPractitioner) {
@@ -88,12 +91,13 @@ class TreatmentRepositoryIntegrationTests {
         return diagnosis;
     }
 
-    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate) {
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime) {
         Visit visit = new Visit();
         visit.setPatient(patient);
         visit.setDoctor(doctor);
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(visitDate);
+        visit.setVisitTime(visitTime);
         visit.setSickLeaveIssued(false);
         return visit;
     }
@@ -105,51 +109,33 @@ class TreatmentRepositoryIntegrationTests {
         return treatment;
     }
 
-    private String generateUniqueIdNumber() {
-        int length = 5 + (int) (Math.random() * 6); // 5-10 chars
-        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, length);
-    }
-
-    private String generateValidEgn() {
-        int year = 2000 + RANDOM.nextInt(26); // 2000–2025
-        int month = 1 + RANDOM.nextInt(12); // 1–12
-        int day = 1 + RANDOM.nextInt(28); // 1–28 to avoid invalid days
-        LocalDate date = LocalDate.of(year, month, day);
-
-        int egnMonth = month + 40;
-        String yy = String.format("%02d", year % 100);
-        String mm = String.format("%02d", egnMonth);
-        String dd = String.format("%02d", day);
-
-        String region = String.format("%03d", RANDOM.nextInt(1000));
-
-        String baseEgn = yy + mm + dd + region;
-        int[] digits = baseEgn.chars().map(c -> c - '0').toArray();
-        int sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += digits[i] * EGN_WEIGHTS[i];
-        }
-        int checksum = sum % 11;
-        if (checksum == 10) {
-            checksum = 0;
-        }
-
-        return baseEgn + checksum;
+    private Medicine createMedicine(String name, String dosage, String frequency, Treatment treatment) {
+        Medicine medicine = new Medicine();
+        medicine.setName(name);
+        medicine.setDosage(dosage);
+        medicine.setFrequency(frequency);
+        medicine.setTreatment(treatment);
+        return medicine;
     }
 
     // Happy Path
     @Test
     void Save_WithValidTreatment_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. Smith", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Smith", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Jane Doe", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
+        entityManager.flush();
         Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now());
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
         visit = visitRepository.save(visit);
+        entityManager.flush();
         Treatment treatment = createTreatment("Antibiotic therapy", visit);
         Treatment savedTreatment = treatmentRepository.save(treatment);
+        entityManager.flush();
         Optional<Treatment> foundTreatment = treatmentRepository.findById(savedTreatment.getId());
 
         assertTrue(foundTreatment.isPresent());
@@ -160,45 +146,82 @@ class TreatmentRepositoryIntegrationTests {
     }
 
     @Test
-    void FindAllActive_WithMultipleTreatments_ReturnsAll() {
-        Doctor doctor = createDoctor("Dr. Brown", generateUniqueIdNumber(), true);
+    void Save_WithMedicines_SavesSuccessfully() {
+        Doctor doctor = createDoctor("Dr. Brown", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Bob White", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Bob White", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
+        entityManager.flush();
         Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit1 = createVisit(patient, doctor, diagnosis, LocalDate.now());
-        Visit visit2 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1));
-        visit1 = visitRepository.save(visit1);
-        visit2 = visitRepository.save(visit2);
-        Treatment treatment1 = createTreatment("Pain relief", visit1);
-        Treatment treatment2 = createTreatment("Cough syrup", visit2);
-        treatmentRepository.save(treatment1);
-        treatmentRepository.save(treatment2);
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
+        visit = visitRepository.save(visit);
+        entityManager.flush();
+        Treatment treatment = createTreatment("Pain relief", visit);
+        Medicine medicine = createMedicine("Paracetamol", "500mg", "Twice daily", treatment);
+        treatment.setMedicines(List.of(medicine));
+        Treatment savedTreatment = treatmentRepository.save(treatment);
+        entityManager.flush();
+        Optional<Treatment> foundTreatment = treatmentRepository.findById(savedTreatment.getId());
 
-        List<Treatment> activeTreatments = treatmentRepository.findAllActive();
-
-        assertEquals(2, activeTreatments.size());
-        assertTrue(activeTreatments.stream().anyMatch(t -> t.getDescription().equals("Pain relief")));
-        assertTrue(activeTreatments.stream().anyMatch(t -> t.getDescription().equals("Cough syrup")));
+        assertTrue(foundTreatment.isPresent());
+        assertEquals("Pain relief", foundTreatment.get().getDescription());
+        assertEquals(1, foundTreatment.get().getMedicines().size());
+        assertEquals("Paracetamol", foundTreatment.get().getMedicines().getFirst().getName());
     }
 
     @Test
-    void FindAllActivePaged_WithMultipleTreatments_ReturnsPaged() {
-        Doctor doctor = createDoctor("Dr. Green", generateUniqueIdNumber(), true);
+    void FindAllActive_WithMultipleTreatments_ReturnsAll() {
+        Doctor doctor = createDoctor("Dr. Green", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Alice Lee", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Alice Lee", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
+        entityManager.flush();
         Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit1 = createVisit(patient, doctor, diagnosis, LocalDate.now());
-        Visit visit2 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1));
+        entityManager.flush();
+        Visit visit1 = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
+        Visit visit2 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0));
         visit1 = visitRepository.save(visit1);
         visit2 = visitRepository.save(visit2);
+        entityManager.flush();
         Treatment treatment1 = createTreatment("Antibiotic course", visit1);
         Treatment treatment2 = createTreatment("Inhaler therapy", visit2);
         treatmentRepository.save(treatment1);
         treatmentRepository.save(treatment2);
+        entityManager.flush();
+
+        List<Treatment> activeTreatments = treatmentRepository.findAllActive();
+
+        assertEquals(2, activeTreatments.size());
+        assertTrue(activeTreatments.stream().anyMatch(t -> t.getDescription().equals("Antibiotic course")));
+        assertTrue(activeTreatments.stream().anyMatch(t -> t.getDescription().equals("Inhaler therapy")));
+    }
+
+    @Test
+    void FindAllActivePaged_WithMultipleTreatments_ReturnsPaged() {
+        Doctor doctor = createDoctor("Dr. Taylor", TestDataUtils.generateUniqueIdNumber(), true);
+        doctor = doctorRepository.save(doctor);
+        entityManager.flush();
+        Patient patient = createPatient("Tom Green", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        patient = patientRepository.save(patient);
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Hypertension", "High blood pressure");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
+        Visit visit1 = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
+        Visit visit2 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0));
+        visit1 = visitRepository.save(visit1);
+        visit2 = visitRepository.save(visit2);
+        entityManager.flush();
+        Treatment treatment1 = createTreatment("Hypertension management", visit1);
+        Treatment treatment2 = createTreatment("Dietary advice", visit2);
+        treatmentRepository.save(treatment1);
+        treatmentRepository.save(treatment2);
+        entityManager.flush();
 
         Page<Treatment> activeTreatments = treatmentRepository.findAllActive(PageRequest.of(0, 1));
 
@@ -207,17 +230,56 @@ class TreatmentRepositoryIntegrationTests {
     }
 
     @Test
-    void SoftDelete_WithExistingTreatment_SetsIsDeleted() {
-        Doctor doctor = createDoctor("Dr. Taylor", generateUniqueIdNumber(), true);
+    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
+        Doctor doctor = createDoctor("Dr. Wilson", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Tom Green", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Sarah Lee", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
-        Diagnosis diagnosis = createDiagnosis("Hypertension", "High blood pressure");
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Hyperlipidemia", "High cholesterol");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now());
+        entityManager.flush();
+        Visit visit1 = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
+        Visit visit2 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0));
+        Visit visit3 = createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(2), LocalTime.of(10, 30));
+        visit1 = visitRepository.save(visit1);
+        visit2 = visitRepository.save(visit2);
+        visit3 = visitRepository.save(visit3);
+        entityManager.flush();
+        Treatment treatment1 = createTreatment("Cholesterol management", visit1);
+        Treatment treatment2 = createTreatment("Statin therapy", visit2);
+        Treatment treatment3 = createTreatment("Lifestyle changes", visit3);
+        treatmentRepository.save(treatment1);
+        treatmentRepository.save(treatment2);
+        treatmentRepository.save(treatment3);
+        entityManager.flush();
+
+        Page<Treatment> activeTreatments = treatmentRepository.findAllActive(PageRequest.of(1, 2));
+
+        assertEquals(3, activeTreatments.getTotalElements());
+        assertEquals(1, activeTreatments.getContent().size());
+        assertEquals("Lifestyle changes", activeTreatments.getContent().getFirst().getDescription());
+        assertEquals(2, activeTreatments.getTotalPages());
+    }
+
+    @Test
+    void SoftDelete_WithExistingTreatment_SetsIsDeleted() {
+        Doctor doctor = createDoctor("Dr. Adams", TestDataUtils.generateUniqueIdNumber(), true);
+        doctor = doctorRepository.save(doctor);
+        entityManager.flush();
+        Patient patient = createPatient("Mike Brown", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        patient = patientRepository.save(patient);
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Migraine", "Severe headache");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
         visit = visitRepository.save(visit);
-        Treatment treatment = createTreatment("Hypertension management", visit);
+        entityManager.flush();
+        Treatment treatment = createTreatment("Pain management", visit);
         Treatment savedTreatment = treatmentRepository.save(treatment);
+        entityManager.flush();
 
         treatmentRepository.delete(savedTreatment);
         entityManager.flush();
@@ -234,15 +296,19 @@ class TreatmentRepositoryIntegrationTests {
 
     @Test
     void HardDelete_WithExistingTreatment_RemovesTreatment() {
-        Doctor doctor = createDoctor("Dr. Wilson", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Clark", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Sarah Lee", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Emma White", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
-        Diagnosis diagnosis = createDiagnosis("Hyperlipidemia", "High cholesterol");
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("GERD", "Acid reflux");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now());
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
         visit = visitRepository.save(visit);
-        Treatment treatment = createTreatment("Cholesterol management", visit);
+        entityManager.flush();
+        Treatment treatment = createTreatment("Antacid therapy", visit);
         Treatment savedTreatment = treatmentRepository.save(treatment);
         entityManager.flush();
 
@@ -254,6 +320,39 @@ class TreatmentRepositoryIntegrationTests {
 
     // Error Cases
     @Test
+    void Save_WithNullVisit_ThrowsException() {
+        Treatment treatment = createTreatment("Invalid therapy", null);
+
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> {
+            treatmentRepository.save(treatment);
+            entityManager.flush();
+        });
+    }
+
+    @Test
+    void Save_WithOverMaxDescription_ThrowsException() {
+        Doctor doctor = createDoctor("Dr. Evans", TestDataUtils.generateUniqueIdNumber(), true);
+        doctor = doctorRepository.save(doctor);
+        entityManager.flush();
+        Patient patient = createPatient("Olivia Green", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        patient = patientRepository.save(patient);
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Asthma", "Respiratory condition");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
+        visit = visitRepository.save(visit);
+        entityManager.flush();
+        String overMaxDescription = "D".repeat(ValidationConfig.DESCRIPTION_MAX_LENGTH + 1);
+        Treatment treatment = createTreatment(overMaxDescription, visit);
+
+        assertThrows(jakarta.validation.ConstraintViolationException.class, () -> {
+            treatmentRepository.save(treatment);
+            entityManager.flush();
+        });
+    }
+
+    @Test
     void HardDelete_WithNonExistentId_DoesNotThrow() {
         assertDoesNotThrow(() -> treatmentRepository.hardDeleteById(999L));
     }
@@ -261,35 +360,43 @@ class TreatmentRepositoryIntegrationTests {
     // Edge Cases
     @Test
     void Save_WithMaximumDescriptionLength_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. Adams", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Harris", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Mike Brown", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Liam Brown", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
-        Diagnosis diagnosis = createDiagnosis("Migraine", "Severe headache");
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Allergy", "Hypersensitivity");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now());
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
         visit = visitRepository.save(visit);
-        String maxDescription = "D".repeat(500); // DESCRIPTION_MAX_LENGTH = 500
+        entityManager.flush();
+        String maxDescription = "D".repeat(ValidationConfig.DESCRIPTION_MAX_LENGTH);
         Treatment treatment = createTreatment(maxDescription, visit);
-
         Treatment savedTreatment = treatmentRepository.save(treatment);
+        entityManager.flush();
 
         assertEquals(maxDescription, savedTreatment.getDescription());
     }
 
     @Test
     void Save_WithNullDescription_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. Clark", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Harris", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Emma White", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Liam Brown", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
-        Diagnosis diagnosis = createDiagnosis("GERD", "Acid reflux");
+        entityManager.flush();
+        Diagnosis diagnosis = createDiagnosis("Allergy", "Hypersensitivity");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now());
+        entityManager.flush();
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30));
         visit = visitRepository.save(visit);
+        entityManager.flush();
         Treatment treatment = createTreatment(null, visit);
-
         Treatment savedTreatment = treatmentRepository.save(treatment);
+        entityManager.flush();
 
         assertNull(savedTreatment.getDescription());
     }

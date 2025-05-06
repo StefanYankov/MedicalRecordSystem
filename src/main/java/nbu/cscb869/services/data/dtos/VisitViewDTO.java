@@ -3,6 +3,7 @@ package nbu.cscb869.services.data.dtos;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -13,6 +14,8 @@ public class VisitViewDTO {
     private Long id;
 
     private LocalDate visitDate;
+
+    private LocalTime visitTime;
 
     private boolean sickLeaveIssued;
 

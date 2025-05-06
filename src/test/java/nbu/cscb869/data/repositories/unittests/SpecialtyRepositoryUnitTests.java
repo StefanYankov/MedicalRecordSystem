@@ -1,16 +1,8 @@
 package nbu.cscb869.data.repositories.unittests;
 
+import jakarta.validation.ConstraintViolationException;
 import nbu.cscb869.data.models.Specialty;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Visit;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.Diagnosis;
 import nbu.cscb869.data.repositories.SpecialtyRepository;
-import nbu.cscb869.data.repositories.DoctorRepository;
-import nbu.cscb869.data.repositories.VisitRepository;
-import nbu.cscb869.data.repositories.PatientRepository;
-import nbu.cscb869.data.repositories.DiagnosisRepository;
-import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,13 +11,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -37,62 +26,39 @@ class SpecialtyRepositoryUnitTests {
     @Mock
     private SpecialtyRepository specialtyRepository;
 
-    @Mock
-    private DoctorRepository doctorRepository;
-
-    @Mock
-    private VisitRepository visitRepository;
-
-    @Mock
-    private PatientRepository patientRepository;
-
-    @Mock
-    private DiagnosisRepository diagnosisRepository;
-
     private Specialty specialty;
-    private Doctor doctor;
-    private Visit visit;
-    private Patient patient;
-    private Diagnosis diagnosis;
 
     @BeforeEach
     void setUp() {
-        // Setup test data (not persisted, just for mocking)
-        diagnosis = new Diagnosis();
-        diagnosis.setId(1L);
-        diagnosis.setName("Flu");
-        diagnosis.setDescription("Viral infection");
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setName("Jane Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-
-        patient.setGeneralPractitioner(doctor);
-
-        visit = new Visit();
-        visit.setId(1L);
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setDiagnosis(diagnosis);
-        visit.setVisitDate(LocalDate.now());
-        visit.setSickLeaveIssued(false);
-
         specialty = new Specialty();
         specialty.setId(1L);
         specialty.setName("Cardiology");
         specialty.setDescription("Heart-related specialties");
-        specialty.setDoctors(Set.of(doctor));
     }
 
     // Happy Path
+    @Test
+    void Save_WithValidSpecialty_ReturnsSaved() {
+        when(specialtyRepository.save(specialty)).thenReturn(specialty);
+
+        Specialty savedSpecialty = specialtyRepository.save(specialty);
+
+        assertEquals("Cardiology", savedSpecialty.getName());
+        assertEquals("Heart-related specialties", savedSpecialty.getDescription());
+        verify(specialtyRepository).save(specialty);
+    }
+
+    @Test
+    void FindById_WithValidId_ReturnsSpecialty() {
+        when(specialtyRepository.findById(1L)).thenReturn(Optional.of(specialty));
+
+        Optional<Specialty> foundSpecialty = specialtyRepository.findById(1L);
+
+        assertTrue(foundSpecialty.isPresent());
+        assertEquals("Cardiology", foundSpecialty.get().getName());
+        verify(specialtyRepository).findById(1L);
+    }
+
     @Test
     void FindByName_WithValidName_ReturnsSpecialty() {
         when(specialtyRepository.findByName("Cardiology")).thenReturn(Optional.of(specialty));
@@ -118,13 +84,46 @@ class SpecialtyRepositoryUnitTests {
     @Test
     void FindAllActivePaged_WithData_ReturnsPaged() {
         Page<Specialty> page = new PageImpl<>(Collections.singletonList(specialty));
-        when(specialtyRepository.findAllActive(any(Pageable.class))).thenReturn(page);
+        when(specialtyRepository.findAllActive(any(PageRequest.class))).thenReturn(page);
 
         Page<Specialty> result = specialtyRepository.findAllActive(PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals("Cardiology", result.getContent().getFirst().getName());
-        verify(specialtyRepository).findAllActive(any(Pageable.class));
+        verify(specialtyRepository).findAllActive(any(PageRequest.class));
+    }
+
+    @Test
+    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
+        Specialty specialty2 = new Specialty();
+        specialty2.setId(2L);
+        specialty2.setName("Neurology");
+        specialty2.setDescription("Brain-related specialties");
+
+        Specialty specialty3 = new Specialty();
+        specialty3.setId(3L);
+        specialty3.setName("Pediatrics");
+        specialty3.setDescription("Child-related specialties");
+
+        Page<Specialty> page = new PageImpl<>(Collections.singletonList(specialty3), PageRequest.of(1, 2), 3);
+        when(specialtyRepository.findAllActive(PageRequest.of(1, 2))).thenReturn(page);
+
+        Page<Specialty> result = specialtyRepository.findAllActive(PageRequest.of(1, 2));
+
+        assertEquals(3, result.getTotalElements());
+        assertEquals(1, result.getContent().size());
+        assertEquals("Pediatrics", result.getContent().getFirst().getName());
+        assertEquals(2, result.getTotalPages());
+        verify(specialtyRepository).findAllActive(PageRequest.of(1, 2));
+    }
+
+    @Test
+    void SoftDelete_WithValidSpecialty_SetsIsDeleted() {
+        doNothing().when(specialtyRepository).delete(specialty);
+
+        specialtyRepository.delete(specialty);
+
+        verify(specialtyRepository).delete(specialty);
     }
 
     @Test
@@ -137,6 +136,28 @@ class SpecialtyRepositoryUnitTests {
     }
 
     // Error Cases
+    @Test
+    void Save_WithNullName_ThrowsException() {
+        Specialty invalidSpecialty = new Specialty();
+        invalidSpecialty.setName(null);
+        invalidSpecialty.setDescription("Description");
+
+        when(specialtyRepository.save(invalidSpecialty)).thenThrow(ConstraintViolationException.class);
+
+        assertThrows(ConstraintViolationException.class, () -> specialtyRepository.save(invalidSpecialty));
+        verify(specialtyRepository).save(invalidSpecialty);
+    }
+
+    @Test
+    void FindById_WithNonExistentId_ReturnsEmpty() {
+        when(specialtyRepository.findById(999L)).thenReturn(Optional.empty());
+
+        Optional<Specialty> foundSpecialty = specialtyRepository.findById(999L);
+
+        assertFalse(foundSpecialty.isPresent());
+        verify(specialtyRepository).findById(999L);
+    }
+
     @Test
     void FindByName_WithNonExistentName_ReturnsEmpty() {
         when(specialtyRepository.findByName("Neurology")).thenReturn(Optional.empty());
@@ -160,13 +181,13 @@ class SpecialtyRepositoryUnitTests {
     @Test
     void FindAllActivePaged_WithNoData_ReturnsEmpty() {
         Page<Specialty> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(specialtyRepository.findAllActive(any(Pageable.class))).thenReturn(emptyPage);
+        when(specialtyRepository.findAllActive(any(PageRequest.class))).thenReturn(emptyPage);
 
         Page<Specialty> result = specialtyRepository.findAllActive(PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(specialtyRepository).findAllActive(any(Pageable.class));
+        verify(specialtyRepository).findAllActive(any(PageRequest.class));
     }
 
     // Edge Cases
@@ -184,31 +205,5 @@ class SpecialtyRepositoryUnitTests {
 
         assertFalse(foundSpecialty.isPresent());
         verify(specialtyRepository).findByName("Deleted");
-    }
-
-    @Test
-    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
-        Specialty specialty2 = new Specialty();
-        specialty2.setId(2L);
-        specialty2.setName("Neurology");
-        specialty2.setDescription("Brain-related specialties");
-        specialty2.setDoctors(Set.of(doctor));
-
-        Specialty specialty3 = new Specialty();
-        specialty3.setId(3L);
-        specialty3.setName("Pediatrics");
-        specialty3.setDescription("Child-related specialties");
-        specialty3.setDoctors(Set.of(doctor));
-
-        Page<Specialty> page = new PageImpl<>(Collections.singletonList(specialty3), PageRequest.of(1, 2), 3);
-        when(specialtyRepository.findAllActive(PageRequest.of(1, 2))).thenReturn(page);
-
-        Page<Specialty> result = specialtyRepository.findAllActive(PageRequest.of(1, 2));
-
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals("Pediatrics", result.getContent().getFirst().getName());
-        assertEquals(2, result.getTotalPages());
-        verify(specialtyRepository).findAllActive(PageRequest.of(1, 2));
     }
 }

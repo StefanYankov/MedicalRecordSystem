@@ -11,6 +11,7 @@ import nbu.cscb869.data.repositories.DiagnosisRepository;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
 import nbu.cscb869.data.repositories.VisitRepository;
+import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +26,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,7 +41,9 @@ class DiagnosisRepositoryIntegrationTests {
     private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("test_db")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withExposedPorts(3306)
+            .withEnv("MYSQL_ROOT_PASSWORD", "test");
 
     @Autowired
     private DiagnosisRepository diagnosisRepository;
@@ -57,9 +59,6 @@ class DiagnosisRepositoryIntegrationTests {
 
     @Autowired
     private EntityManager entityManager;
-
-    private static final int[] EGN_WEIGHTS = {2, 4, 8, 5, 10, 9, 7, 3, 6};
-    private static final Random RANDOM = new Random();
 
     @BeforeEach
     void setUp() {
@@ -93,19 +92,15 @@ class DiagnosisRepositoryIntegrationTests {
         return patient;
     }
 
-    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, boolean sickLeaveIssued) {
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, boolean sickLeaveIssued) {
         Visit visit = new Visit();
         visit.setPatient(patient);
         visit.setDoctor(doctor);
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(visitDate);
+        visit.setVisitTime(visitTime);
         visit.setSickLeaveIssued(sickLeaveIssued);
         return visit;
-    }
-
-    private String generateUniqueIdNumber() {
-        int length = 5 + (int) (Math.random() * 6); // 5-10 chars
-        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, length);
     }
 
     private void softDeleteRelatedVisits(Diagnosis diagnosis) {
@@ -114,38 +109,12 @@ class DiagnosisRepositoryIntegrationTests {
         entityManager.flush();
     }
 
-    private String generateValidEgn() {
-        int year = 2000 + RANDOM.nextInt(26); // 2000–2025
-        int month = 1 + RANDOM.nextInt(12); // 1–12
-        int day = 1 + RANDOM.nextInt(28); // 1–28 to avoid invalid days
-        LocalDate date = LocalDate.of(year, month, day);
-
-        int egnMonth = month + 40;
-        String yy = String.format("%02d", year % 100);
-        String mm = String.format("%02d", egnMonth);
-        String dd = String.format("%02d", day);
-
-        String region = String.format("%03d", RANDOM.nextInt(1000));
-
-        String baseEgn = yy + mm + dd + region;
-        int[] digits = baseEgn.chars().map(c -> c - '0').toArray();
-        int sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += digits[i] * EGN_WEIGHTS[i];
-        }
-        int checksum = sum % 11;
-        if (checksum == 10) {
-            checksum = 0;
-        }
-
-        return baseEgn + checksum;
-    }
-
     // Happy Path
     @Test
     void Save_WithValidDiagnosis_SavesSuccessfully() {
         Diagnosis diagnosis = createDiagnosis("Flu", "Influenza infection");
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
         Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findById(savedDiagnosis.getId());
 
         assertTrue(foundDiagnosis.isPresent());
@@ -159,6 +128,7 @@ class DiagnosisRepositoryIntegrationTests {
     void FindByName_WithExistingName_ReturnsDiagnosis() {
         Diagnosis diagnosis = createDiagnosis("Hypertension", "High blood pressure");
         diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Hypertension");
 
@@ -168,18 +138,19 @@ class DiagnosisRepositoryIntegrationTests {
 
     @Test
     void FindPatientsByDiagnosis_WithMultipleVisits_ReturnsPaged() {
-        Doctor doctor = createDoctor("Dr. John Smith", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. John Smith", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient1 = createPatient("Jane Doe", generateValidEgn(), doctor, LocalDate.now());
-        Patient patient2 = createPatient("Bob White", generateValidEgn(), doctor, LocalDate.now());
-        patientRepository.save(patient1);
-        patientRepository.save(patient2);
+        Patient patient1 = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient2 = createPatient("Bob White", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        patient1 = patientRepository.save(patient1);
+        patient2 = patientRepository.save(patient2);
         Diagnosis diagnosis = createDiagnosis("Diabetes", "Type 2 diabetes");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit1 = createVisit(patient1, doctor, diagnosis, LocalDate.now(), false);
-        Visit visit2 = createVisit(patient2, doctor, diagnosis, LocalDate.now(), false);
+        Visit visit1 = createVisit(patient1, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), false);
+        Visit visit2 = createVisit(patient2, doctor, diagnosis, LocalDate.now(), LocalTime.of(11, 0), false);
         visitRepository.save(visit1);
         visitRepository.save(visit2);
+        entityManager.flush();
 
         Page<PatientDiagnosisDTO> patients = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
@@ -190,20 +161,21 @@ class DiagnosisRepositoryIntegrationTests {
 
     @Test
     void FindMostFrequentDiagnoses_WithMultipleVisits_ReturnsSorted() {
-        Doctor doctor = createDoctor("Dr. Alice Brown", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Alice Brown", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Tom Green", generateValidEgn(), doctor, LocalDate.now());
+        Patient patient = createPatient("Tom Green", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient = patientRepository.save(patient);
         Diagnosis diagnosis1 = createDiagnosis("Asthma", "Chronic respiratory condition");
         Diagnosis diagnosis2 = createDiagnosis("Flu", "Influenza infection");
         diagnosis1 = diagnosisRepository.save(diagnosis1);
         diagnosis2 = diagnosisRepository.save(diagnosis2);
-        Visit visit1 = createVisit(patient, doctor, diagnosis1, LocalDate.now(), false);
-        Visit visit2 = createVisit(patient, doctor, diagnosis1, LocalDate.now().minusDays(1), false);
-        Visit visit3 = createVisit(patient, doctor, diagnosis2, LocalDate.now().minusDays(2), false);
+        Visit visit1 = createVisit(patient, doctor, diagnosis1, LocalDate.now(), LocalTime.of(10, 30), false);
+        Visit visit2 = createVisit(patient, doctor, diagnosis1, LocalDate.now().minusDays(1), LocalTime.of(11, 0), false);
+        Visit visit3 = createVisit(patient, doctor, diagnosis2, LocalDate.now().minusDays(2), LocalTime.of(12, 0), false);
         visitRepository.save(visit1);
         visitRepository.save(visit2);
         visitRepository.save(visit3);
+        entityManager.flush();
 
         List<DiagnosisVisitCountDTO> frequentDiagnoses = diagnosisRepository.findMostFrequentDiagnoses();
 
@@ -220,6 +192,7 @@ class DiagnosisRepositoryIntegrationTests {
         Diagnosis diagnosis2 = createDiagnosis("Bronchitis", "Inflammation of bronchi");
         diagnosisRepository.save(diagnosis1);
         diagnosisRepository.save(diagnosis2);
+        entityManager.flush();
 
         List<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive();
 
@@ -234,6 +207,7 @@ class DiagnosisRepositoryIntegrationTests {
         Diagnosis diagnosis2 = createDiagnosis("Allergy", "Immune response");
         diagnosisRepository.save(diagnosis1);
         diagnosisRepository.save(diagnosis2);
+        entityManager.flush();
 
         Page<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive(PageRequest.of(0, 1));
 
@@ -245,6 +219,7 @@ class DiagnosisRepositoryIntegrationTests {
     void SoftDelete_WithExistingDiagnosis_SetsIsDeleted() {
         Diagnosis diagnosis = createDiagnosis("Arthritis", "Joint inflammation");
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         diagnosisRepository.delete(savedDiagnosis);
         entityManager.flush();
@@ -265,7 +240,6 @@ class DiagnosisRepositoryIntegrationTests {
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
         entityManager.flush();
 
-        // Soft-delete related visits
         softDeleteRelatedVisits(savedDiagnosis);
         diagnosisRepository.hardDeleteById(savedDiagnosis.getId());
         entityManager.flush();
@@ -279,7 +253,11 @@ class DiagnosisRepositoryIntegrationTests {
         Diagnosis diagnosis1 = createDiagnosis("Flu", "Influenza infection");
         Diagnosis diagnosis2 = createDiagnosis("Flu", "Another description");
         diagnosisRepository.save(diagnosis1);
-        assertThrows(DataIntegrityViolationException.class, () -> diagnosisRepository.saveAndFlush(diagnosis2));
+        entityManager.flush();
+        assertThrows(DataIntegrityViolationException.class, () -> {
+            diagnosisRepository.save(diagnosis2);
+            entityManager.flush();
+        });
     }
 
     @Test
@@ -293,6 +271,7 @@ class DiagnosisRepositoryIntegrationTests {
     void FindPatientsByDiagnosis_WithNoVisits_ReturnsEmpty() {
         Diagnosis diagnosis = createDiagnosis("Cancer", "Malignant growth");
         diagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         Page<PatientDiagnosisDTO> patients = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
@@ -304,6 +283,7 @@ class DiagnosisRepositoryIntegrationTests {
     void FindMostFrequentDiagnoses_WithNoVisits_ReturnsEmpty() {
         Diagnosis diagnosis = createDiagnosis("Hepatitis", "Liver inflammation");
         diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         List<DiagnosisVisitCountDTO> frequentDiagnoses = diagnosisRepository.findMostFrequentDiagnoses();
 
@@ -320,8 +300,8 @@ class DiagnosisRepositoryIntegrationTests {
     void Save_WithMaximumNameLength_SavesSuccessfully() {
         String maxName = "A".repeat(100); // DIAGNOSIS_NAME_MAX_LENGTH = 100
         Diagnosis diagnosis = createDiagnosis(maxName, "Description");
-
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         assertEquals(maxName, savedDiagnosis.getName());
     }
@@ -330,8 +310,8 @@ class DiagnosisRepositoryIntegrationTests {
     void Save_WithMaximumDescriptionLength_SavesSuccessfully() {
         String maxDescription = "D".repeat(500); // DESCRIPTION_MAX_LENGTH = 500
         Diagnosis diagnosis = createDiagnosis("Cold", maxDescription);
-
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
+        entityManager.flush();
 
         assertEquals(maxDescription, savedDiagnosis.getDescription());
     }
@@ -364,6 +344,7 @@ class DiagnosisRepositoryIntegrationTests {
         Diagnosis diagnosis = createDiagnosis("Tuberculosis", "Bacterial infection");
         Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
         diagnosisRepository.delete(savedDiagnosis);
+        entityManager.flush();
 
         Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Tuberculosis");
 

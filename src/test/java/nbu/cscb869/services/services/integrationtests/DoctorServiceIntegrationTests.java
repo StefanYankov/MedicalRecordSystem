@@ -197,9 +197,7 @@ class DoctorServiceIntegrationTests {
 
     @Test
     void GetAll_ValidParameters_ReturnsPaginatedDoctors() throws InterruptedException {
-        Thread.sleep(25000);
         Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, null).join();
-        Thread.sleep(25000);
         assertNotNull(result);
         assertEquals(1, result.getContent().size());
         assertEquals("Dr. Smith", result.getContent().get(0).getName());

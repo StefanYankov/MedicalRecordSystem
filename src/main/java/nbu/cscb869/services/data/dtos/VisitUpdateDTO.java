@@ -5,6 +5,7 @@ import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -16,6 +17,9 @@ public class VisitUpdateDTO {
 
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     private LocalDate visitDate;
+
+    @NotNull(message = ErrorMessages.TIME_NOT_NULL)
+    private LocalTime visitTime;
 
     @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
     private boolean sickLeaveIssued;

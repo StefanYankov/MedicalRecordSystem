@@ -9,6 +9,7 @@ public class ErrorMessages {
     public static final String EGN_NOT_BLANK = "EGN cannot be blank";
     public static final String EGN_INVALID = "Invalid EGN format or checksum";
     public static final String DATE_NOT_NULL = "%s cannot be null";
+    public static final String TIME_NOT_NULL = "Time cannot be null";
     public static final String DATE_PAST_OR_PRESENT = "%s must be in the past or present";
     public static final String DATE_FUTURE_OR_PRESENT = "%s must be today or in the future";
     public static final String SPECIALTIES_NOT_EMPTY = "Specialties cannot be empty";

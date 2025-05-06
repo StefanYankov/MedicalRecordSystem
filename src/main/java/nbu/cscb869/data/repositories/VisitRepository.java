@@ -10,9 +10,12 @@ import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository for managing {@link Visit} entities with soft delete support.
@@ -91,4 +94,23 @@ public interface VisitRepository extends SoftDeleteRepository<Visit, Long> {
             "FROM Visit v WHERE v.isDeleted = false " +
             "GROUP BY v.doctor ORDER BY COUNT(v) DESC")
     List<DoctorVisitCountDTO> countVisitsByDoctor();
+
+    /**
+     * Retrieves a page of non-deleted visits filtered by patient name, EGN, doctor name, or unique ID number.
+     *
+     * @param filter   the string to match against patient name, EGN, doctor name, or unique ID number
+     * @param pageable pagination information
+     * @return a page of visit entities where {@code isDeleted = false}
+     */
+    @Query("SELECT v FROM Visit v JOIN v.patient p JOIN v.doctor d " +
+            "WHERE v.isDeleted = false " +
+            "AND (LOWER(p.name) LIKE LOWER(:filter) OR LOWER(p.egn) LIKE LOWER(:filter) " +
+            "OR LOWER(d.name) LIKE LOWER(:filter) OR LOWER(d.uniqueIdNumber) LIKE LOWER(:filter))")
+    Page<Visit> findByPatientOrDoctorFilter(@Param("filter") String filter, Pageable pageable);
+
+    @Query("SELECT v FROM Visit v WHERE v.doctor = :doctor AND v.visitDate = :visitDate " +
+            "AND v.visitTime = :visitTime AND v.isDeleted = false")
+    Optional<Visit> findByDoctorAndDateTime(@Param("doctor") Doctor doctor,
+                                            @Param("visitDate") LocalDate visitDate,
+                                            @Param("visitTime") LocalTime visitTime);
 }

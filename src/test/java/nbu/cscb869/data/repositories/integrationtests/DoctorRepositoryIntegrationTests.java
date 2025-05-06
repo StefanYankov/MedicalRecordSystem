@@ -2,10 +2,11 @@ package nbu.cscb869.data.repositories.integrationtests;
 
 import jakarta.persistence.EntityManager;
 import nbu.cscb869.data.dto.DoctorPatientCountDTO;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.repositories.DoctorRepository;
-import nbu.cscb869.data.repositories.PatientRepository;
+import nbu.cscb869.data.dto.DoctorVisitCountDTO;
+import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
+import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.repositories.*;
+import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +20,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,7 +35,9 @@ class DoctorRepositoryIntegrationTests {
     private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("test_db")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withExposedPorts(3306)
+            .withEnv("MYSQL_ROOT_PASSWORD", "test");
 
     @Autowired
     private DoctorRepository doctorRepository;
@@ -44,17 +46,26 @@ class DoctorRepositoryIntegrationTests {
     private PatientRepository patientRepository;
 
     @Autowired
-    private EntityManager entityManager;
+    private VisitRepository visitRepository;
 
-    private static final int[] EGN_WEIGHTS = {2, 4, 8, 5, 10, 9, 7, 3, 6};
-    private static final Random RANDOM = new Random();
+    @Autowired
+    private DiagnosisRepository diagnosisRepository;
+
+    @Autowired
+    private SickLeaveRepository sickLeaveRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
+        sickLeaveRepository.deleteAll();
+        visitRepository.deleteAll();
         patientRepository.deleteAll();
         doctorRepository.deleteAll();
+        diagnosisRepository.deleteAll();
         entityManager.flush();
-        entityManager.clear(); // Clear persistence context to avoid cached entities
+        entityManager.clear();
     }
 
     private Doctor createDoctor(String name, String uniqueIdNumber, boolean isGeneralPractitioner) {
@@ -74,42 +85,38 @@ class DoctorRepositoryIntegrationTests {
         return patient;
     }
 
-    private String generateUniqueIdNumber() {
-        return "DOC" + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5); // 8 chars
+    private Diagnosis createDiagnosis(String name, String description) {
+        Diagnosis diagnosis = new Diagnosis();
+        diagnosis.setName(name);
+        diagnosis.setDescription(description);
+        return diagnosis;
     }
 
-    private String generateValidEgn() {
-        int year = 2000 + RANDOM.nextInt(26);
-        int month = 1 + RANDOM.nextInt(12);
-        int day = 1 + RANDOM.nextInt(28);
-        LocalDate date = LocalDate.of(year, month, day);
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, boolean sickLeaveIssued) {
+        Visit visit = new Visit();
+        visit.setPatient(patient);
+        visit.setDoctor(doctor);
+        visit.setDiagnosis(diagnosis);
+        visit.setVisitDate(visitDate);
+        visit.setVisitTime(visitTime);
+        visit.setSickLeaveIssued(sickLeaveIssued);
+        return visit;
+    }
 
-        int egnMonth = month + 40;
-        String yy = String.format("%02d", year % 100);
-        String mm = String.format("%02d", egnMonth);
-        String dd = String.format("%02d", day);
-
-        String region = String.format("%03d", RANDOM.nextInt(1000));
-
-        String baseEgn = yy + mm + dd + region;
-        int[] digits = baseEgn.chars().map(c -> c - '0').toArray();
-        int sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += digits[i] * EGN_WEIGHTS[i];
-        }
-        int checksum = sum % 11;
-        if (checksum == 10) {
-            checksum = 0;
-        }
-
-        return baseEgn + checksum;
+    private SickLeave createSickLeave(Visit visit, LocalDate startDate, int durationDays) {
+        SickLeave sickLeave = new SickLeave();
+        sickLeave.setVisit(visit);
+        sickLeave.setStartDate(startDate);
+        sickLeave.setDurationDays(durationDays);
+        return sickLeave;
     }
 
     // Happy Path
     @Test
     void Save_WithValidDoctor_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. John Smith", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. John Smith", TestDataUtils.generateUniqueIdNumber(), true);
         Doctor savedDoctor = doctorRepository.save(doctor);
+        entityManager.flush();
         Optional<Doctor> foundDoctor = doctorRepository.findById(savedDoctor.getId());
 
         assertTrue(foundDoctor.isPresent());
@@ -122,9 +129,10 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void FindByUniqueIdNumber_WithExistingId_ReturnsDoctor() {
-        String uniqueId = generateUniqueIdNumber();
+        String uniqueId = TestDataUtils.generateUniqueIdNumber();
         Doctor doctor = createDoctor("Dr. Jane Doe", uniqueId, false);
         doctorRepository.save(doctor);
+        entityManager.flush();
 
         Optional<Doctor> foundDoctor = doctorRepository.findByUniqueIdNumber(uniqueId);
 
@@ -135,12 +143,11 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void FindAllActive_WithMultipleDoctors_ReturnsAll() {
-        Doctor doctor1 = createDoctor("Dr. Alice Brown", generateUniqueIdNumber(), true);
-        Doctor doctor2 = createDoctor("Dr. Bob White", generateUniqueIdNumber(), false);
+        Doctor doctor1 = createDoctor("Dr. Alice Brown", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Bob White", TestDataUtils.generateUniqueIdNumber(), false);
         doctorRepository.save(doctor1);
         doctorRepository.save(doctor2);
         entityManager.flush();
-        entityManager.clear();
 
         List<Doctor> activeDoctors = doctorRepository.findAllActive();
 
@@ -151,12 +158,11 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void FindAllActivePaged_WithMultipleDoctors_ReturnsPaged() {
-        Doctor doctor1 = createDoctor("Dr. Alice Brown", generateUniqueIdNumber(), true);
-        Doctor doctor2 = createDoctor("Dr. Bob White", generateUniqueIdNumber(), false);
+        Doctor doctor1 = createDoctor("Dr. Alice Brown", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Bob White", TestDataUtils.generateUniqueIdNumber(), false);
         doctorRepository.save(doctor1);
         doctorRepository.save(doctor2);
         entityManager.flush();
-        entityManager.clear();
 
         Page<Doctor> activeDoctors = doctorRepository.findAllActive(PageRequest.of(0, 1));
 
@@ -166,16 +172,17 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void SoftDelete_WithExistingDoctor_SetsIsDeleted() {
-        Doctor doctor = createDoctor("Dr. Tom Green", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Tom Green", TestDataUtils.generateUniqueIdNumber(), true);
         Doctor savedDoctor = doctorRepository.save(doctor);
         entityManager.flush();
-        entityManager.clear();
 
         doctorRepository.delete(savedDoctor);
         entityManager.flush();
-        entityManager.clear();
-
         Optional<Doctor> deletedDoctor = doctorRepository.findById(savedDoctor.getId());
+        if (deletedDoctor.isPresent()) {
+            entityManager.refresh(deletedDoctor.get());
+        }
+
         assertTrue(deletedDoctor.isPresent());
         assertTrue(deletedDoctor.get().getIsDeleted());
         assertNotNull(deletedDoctor.get().getDeletedOn());
@@ -184,46 +191,109 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void HardDelete_WithExistingDoctor_RemovesDoctor() {
-        Doctor doctor = createDoctor("Dr. Sarah Lee", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Sarah Lee", TestDataUtils.generateUniqueIdNumber(), true);
         Doctor savedDoctor = doctorRepository.save(doctor);
         entityManager.flush();
-        entityManager.clear();
 
         doctorRepository.hardDeleteById(savedDoctor.getId());
+        entityManager.flush();
+
         assertTrue(doctorRepository.findById(savedDoctor.getId()).isEmpty());
     }
 
     @Test
     void FindPatientCountByGeneralPractitioner_WithSoftDeletedPatients_ExcludesDeleted() {
-        Doctor sharedDoctor = createDoctor("Dr. Shared", generateUniqueIdNumber(), true);
+        Doctor sharedDoctor = createDoctor("Dr. Shared", TestDataUtils.generateUniqueIdNumber(), true);
         sharedDoctor = doctorRepository.save(sharedDoctor);
-        Patient patient1 = createPatient("Patient 1", generateValidEgn(), sharedDoctor, LocalDate.now());
-        Patient patient2 = createPatient("Patient 2", generateValidEgn(), sharedDoctor, LocalDate.now());
+        Patient patient1 = createPatient("Patient 1", TestDataUtils.generateValidEgn(), sharedDoctor, LocalDate.now());
+        Patient patient2 = createPatient("Patient 2", TestDataUtils.generateValidEgn(), sharedDoctor, LocalDate.now());
         patient1 = patientRepository.save(patient1);
         patient2 = patientRepository.save(patient2);
         entityManager.flush();
-        entityManager.clear();
 
         patientRepository.delete(patient1);
         entityManager.flush();
-        entityManager.clear();
 
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
 
-        assertEquals(1, result.size(), "Should return one doctor with active patients");
-        assertEquals(sharedDoctor.getId(), result.getFirst().getDoctor().getId(), "Doctor ID should match");
-        assertEquals(1, result.getFirst().getPatientCount(), "Only one active patient should be counted");
+        assertEquals(1, result.size());
+        assertEquals(sharedDoctor.getId(), result.getFirst().getDoctor().getId());
+        assertEquals(1, result.getFirst().getPatientCount());
+    }
+
+    @Test
+    void FindVisitCountByDoctor_WithMultipleVisits_ReturnsList() {
+        Doctor doctor1 = createDoctor("Dr. Green", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Adams", TestDataUtils.generateUniqueIdNumber(), false);
+        doctor1 = doctorRepository.save(doctor1);
+        doctor2 = doctorRepository.save(doctor2);
+        Patient patient = createPatient("Alice Lee", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        patient = patientRepository.save(patient);
+        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        Visit visit1 = createVisit(patient, doctor1, diagnosis, LocalDate.now(), LocalTime.of(10, 30), false);
+        Visit visit2 = createVisit(patient, doctor1, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), false);
+        Visit visit3 = createVisit(patient, doctor2, diagnosis, LocalDate.now(), LocalTime.of(12, 0), false);
+        visitRepository.save(visit1);
+        visitRepository.save(visit2);
+        visitRepository.save(visit3);
+        entityManager.flush();
+
+        List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
+
+        assertEquals(2, result.size());
+        assertEquals("Dr. Green", result.getFirst().getDoctor().getName());
+        assertEquals(2L, result.getFirst().getVisitCount());
+        assertEquals("Dr. Adams", result.get(1).getDoctor().getName());
+        assertEquals(1L, result.get(1).getVisitCount());
+    }
+
+    @Test
+    void FindDoctorsWithMostSickLeaves_WithMultipleSickLeaves_ReturnsList() {
+        Doctor doctor1 = createDoctor("Dr. Lee", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Brown", TestDataUtils.generateUniqueIdNumber(), false);
+        doctor1 = doctorRepository.save(doctor1);
+        doctor2 = doctorRepository.save(doctor2);
+        Patient patient = createPatient("Bob White", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        patient = patientRepository.save(patient);
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        Visit visit1 = createVisit(patient, doctor1, diagnosis, LocalDate.now(), LocalTime.of(10, 30), true);
+        Visit visit2 = createVisit(patient, doctor1, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), true);
+        Visit visit3 = createVisit(patient, doctor2, diagnosis, LocalDate.now(), LocalTime.of(12, 0), true);
+        visit1 = visitRepository.save(visit1);
+        visit2 = visitRepository.save(visit2);
+        visit3 = visitRepository.save(visit3);
+        SickLeave sickLeave1 = createSickLeave(visit1, LocalDate.now(), 5);
+        SickLeave sickLeave2 = createSickLeave(visit2, LocalDate.now().minusDays(1), 3);
+        SickLeave sickLeave3 = createSickLeave(visit3, LocalDate.now(), 7);
+        sickLeaveRepository.save(sickLeave1);
+        sickLeaveRepository.save(sickLeave2);
+        sickLeaveRepository.save(sickLeave3);
+        entityManager.flush();
+
+        List<DoctorSickLeaveCountDTO> result = doctorRepository.findDoctorsWithMostSickLeaves();
+
+        assertEquals(2, result.size());
+        assertEquals("Dr. Lee", result.getFirst().getDoctor().getName());
+        assertEquals(2L, result.getFirst().getSickLeaveCount());
+        assertEquals("Dr. Brown", result.get(1).getDoctor().getName());
+        assertEquals(1L, result.get(1).getSickLeaveCount());
     }
 
     // Error Cases
     @Test
     void Save_WithDuplicateUniqueIdNumber_ThrowsException() {
-        String uniqueId = generateUniqueIdNumber();
+        String uniqueId = TestDataUtils.generateUniqueIdNumber();
         Doctor doctor1 = createDoctor("Dr. John Smith", uniqueId, true);
         Doctor doctor2 = createDoctor("Dr. Jane Doe", uniqueId, false);
         doctorRepository.save(doctor1);
+        entityManager.flush();
 
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> doctorRepository.saveAndFlush(doctor2));
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> {
+            doctorRepository.save(doctor2);
+            entityManager.flush();
+        });
     }
 
     @Test
@@ -238,12 +308,49 @@ class DoctorRepositoryIntegrationTests {
         assertDoesNotThrow(() -> doctorRepository.hardDeleteById(999L));
     }
 
+    @Test
+    void FindPatientCountByGeneralPractitioner_WithNoPatients_ReturnsZeroCount() {
+        Doctor doctor = createDoctor("Dr. Smith", TestDataUtils.generateUniqueIdNumber(), true);
+        doctorRepository.save(doctor);
+        entityManager.flush();
+
+        List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
+
+        assertEquals(1, result.size());
+        assertEquals(doctor.getName(), result.getFirst().getDoctor().getName());
+        assertEquals(0, result.getFirst().getPatientCount());
+    }
+
+    @Test
+    void FindVisitCountByDoctor_WithNoVisits_ReturnsZeroCount() {
+        Doctor doctor = createDoctor("Dr. Green", TestDataUtils.generateUniqueIdNumber(), true);
+        doctorRepository.save(doctor);
+        entityManager.flush();
+
+        List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
+
+        assertEquals(1, result.size());
+        assertEquals(doctor.getName(), result.getFirst().getDoctor().getName());
+        assertEquals(0, result.getFirst().getVisitCount());
+    }
+
+    @Test
+    void FindDoctorsWithMostSickLeaves_WithNoSickLeaves_ReturnsEmpty() {
+        Doctor doctor = createDoctor("Dr. Lee", TestDataUtils.generateUniqueIdNumber(), true);
+        doctorRepository.save(doctor);
+        entityManager.flush();
+
+        List<DoctorSickLeaveCountDTO> result = doctorRepository.findDoctorsWithMostSickLeaves();
+
+        assertTrue(result.isEmpty());
+    }
+
     // Edge Cases
     @Test
     void Save_WithMinimumNameLength_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. AB", generateUniqueIdNumber(), true);
-
+        Doctor doctor = createDoctor("Dr. AB", TestDataUtils.generateUniqueIdNumber(), true);
         Doctor savedDoctor = doctorRepository.save(doctor);
+        entityManager.flush();
 
         assertEquals("Dr. AB", savedDoctor.getName());
     }
@@ -251,9 +358,9 @@ class DoctorRepositoryIntegrationTests {
     @Test
     void Save_WithMaximumNameLength_SavesSuccessfully() {
         String maxName = "Dr. " + "A".repeat(46);
-        Doctor doctor = createDoctor(maxName, generateUniqueIdNumber(), true);
-
+        Doctor doctor = createDoctor(maxName, TestDataUtils.generateUniqueIdNumber(), true);
         Doctor savedDoctor = doctorRepository.save(doctor);
+        entityManager.flush();
 
         assertEquals(maxName, savedDoctor.getName());
     }
@@ -283,15 +390,13 @@ class DoctorRepositoryIntegrationTests {
 
     @Test
     void FindByUniqueIdNumber_WithSoftDeletedDoctor_ReturnsEmpty() {
-        String uniqueId = generateUniqueIdNumber();
+        String uniqueId = TestDataUtils.generateUniqueIdNumber();
         Doctor doctor = createDoctor("Dr. Tom Green", uniqueId, true);
         Doctor savedDoctor = doctorRepository.save(doctor);
         entityManager.flush();
-        entityManager.clear();
 
         doctorRepository.delete(savedDoctor);
         entityManager.flush();
-        entityManager.clear();
 
         Optional<Doctor> foundDoctor = doctorRepository.findByUniqueIdNumber(uniqueId);
 

@@ -6,12 +6,7 @@ import nbu.cscb869.data.models.Medicine;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.models.Treatment;
 import nbu.cscb869.data.models.Visit;
-import nbu.cscb869.data.repositories.DiagnosisRepository;
-import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.MedicineRepository;
-import nbu.cscb869.data.repositories.PatientRepository;
-import nbu.cscb869.data.repositories.TreatmentRepository;
-import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,9 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,21 +32,6 @@ class MedicineRepositoryUnitTests {
     @Mock
     private MedicineRepository medicineRepository;
 
-    @Mock
-    private TreatmentRepository treatmentRepository;
-
-    @Mock
-    private VisitRepository visitRepository;
-
-    @Mock
-    private DiagnosisRepository diagnosisRepository;
-
-    @Mock
-    private DoctorRepository doctorRepository;
-
-    @Mock
-    private PatientRepository patientRepository;
-
     private Medicine medicine;
     private Treatment treatment;
     private Visit visit;
@@ -61,7 +41,6 @@ class MedicineRepositoryUnitTests {
 
     @BeforeEach
     void setUp() {
-        // Setup test data (not persisted, just for mocking)
         diagnosis = new Diagnosis();
         diagnosis.setId(1L);
         diagnosis.setName("Flu");
@@ -86,6 +65,7 @@ class MedicineRepositoryUnitTests {
         visit.setDoctor(doctor);
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(LocalTime.of(10, 30));
         visit.setSickLeaveIssued(false);
 
         treatment = new Treatment();
@@ -116,13 +96,13 @@ class MedicineRepositoryUnitTests {
     @Test
     void FindAllActivePaged_WithData_ReturnsPaged() {
         Page<Medicine> page = new PageImpl<>(Collections.singletonList(medicine));
-        when(medicineRepository.findAllActive(any(Pageable.class))).thenReturn(page);
+        when(medicineRepository.findAllActive(any(PageRequest.class))).thenReturn(page);
 
         Page<Medicine> result = medicineRepository.findAllActive(PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals("Aspirin", result.getContent().getFirst().getName());
-        verify(medicineRepository).findAllActive(any(Pageable.class));
+        verify(medicineRepository).findAllActive(any(PageRequest.class));
     }
 
     @Test
@@ -132,6 +112,15 @@ class MedicineRepositoryUnitTests {
         medicineRepository.hardDeleteById(1L);
 
         verify(medicineRepository).hardDeleteById(1L);
+    }
+
+    @Test
+    void SoftDelete_WithValidMedicine_SetsIsDeleted() {
+        doNothing().when(medicineRepository).delete(medicine);
+
+        medicineRepository.delete(medicine);
+
+        verify(medicineRepository).delete(medicine);
     }
 
     // Error Cases
@@ -148,23 +137,23 @@ class MedicineRepositoryUnitTests {
     @Test
     void FindAllActivePaged_WithNoData_ReturnsEmpty() {
         Page<Medicine> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(medicineRepository.findAllActive(any(Pageable.class))).thenReturn(emptyPage);
+        when(medicineRepository.findAllActive(any(PageRequest.class))).thenReturn(emptyPage);
 
         Page<Medicine> result = medicineRepository.findAllActive(PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(medicineRepository).findAllActive(any(Pageable.class));
+        verify(medicineRepository).findAllActive(any(PageRequest.class));
     }
 
     // Edge Cases
     @Test
-    void FindAllActive_WithSoftDeletedMedicine_ReturnsEmpty() {
+    void FindAllActive_WithSoftDeletedMedicine_ExcludesDeleted() {
         Medicine deletedMedicine = new Medicine();
         deletedMedicine.setId(2L);
-        deletedMedicine.setName("Deleted");
-        deletedMedicine.setDosage("100mg");
-        deletedMedicine.setFrequency("Twice daily");
+        deletedMedicine.setName("Paracetamol");
+        deletedMedicine.setDosage("500mg");
+        deletedMedicine.setFrequency("As needed");
         deletedMedicine.setTreatment(treatment);
         deletedMedicine.setIsDeleted(true);
 

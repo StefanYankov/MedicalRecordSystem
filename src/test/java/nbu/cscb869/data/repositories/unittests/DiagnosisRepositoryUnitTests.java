@@ -7,9 +7,6 @@ import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.models.Visit;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
-import nbu.cscb869.data.repositories.DoctorRepository;
-import nbu.cscb869.data.repositories.PatientRepository;
-import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -36,15 +34,6 @@ class DiagnosisRepositoryUnitTests {
     @Mock
     private DiagnosisRepository diagnosisRepository;
 
-    @Mock
-    private DoctorRepository doctorRepository;
-
-    @Mock
-    private PatientRepository patientRepository;
-
-    @Mock
-    private VisitRepository visitRepository;
-
     private Diagnosis diagnosis;
     private Doctor doctor;
     private Patient patient;
@@ -52,7 +41,6 @@ class DiagnosisRepositoryUnitTests {
 
     @BeforeEach
     void setUp() {
-        // Setup test data (not persisted, just for mocking)
         diagnosis = new Diagnosis();
         diagnosis.setId(1L);
         diagnosis.setName("Flu");
@@ -77,6 +65,7 @@ class DiagnosisRepositoryUnitTests {
         visit.setDoctor(doctor);
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(LocalTime.of(10, 30));
         visit.setSickLeaveIssued(false);
     }
 

@@ -6,6 +6,7 @@ import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
+import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +22,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -46,13 +45,12 @@ class PatientRepositoryIntegrationTests {
     @Autowired
     private EntityManager entityManager;
 
-    private static final int[] EGN_WEIGHTS = {2, 4, 8, 5, 10, 9, 7, 3, 6};
-    private static final Random RANDOM = new Random();
-
     @BeforeEach
     void setUp() {
         patientRepository.deleteAll();
         doctorRepository.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private Doctor createDoctor(String name, String uniqueIdNumber, boolean isGeneralPractitioner) {
@@ -72,45 +70,15 @@ class PatientRepositoryIntegrationTests {
         return patient;
     }
 
-    private String generateUniqueIdNumber() {
-        int length = 5 + (int) (Math.random() * 6); // 5-10 chars
-        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, length);
-    }
-
-    private String generateValidEgn() {
-        int year = 2000 + RANDOM.nextInt(26); // 2000–2025
-        int month = 1 + RANDOM.nextInt(12); // 1–12
-        int day = 1 + RANDOM.nextInt(28); // 1–28 to avoid invalid days
-        LocalDate date = LocalDate.of(year, month, day);
-
-        int egnMonth = month + 40;
-        String yy = String.format("%02d", year % 100);
-        String mm = String.format("%02d", egnMonth);
-        String dd = String.format("%02d", day);
-
-        String region = String.format("%03d", RANDOM.nextInt(1000));
-
-        String baseEgn = yy + mm + dd + region;
-        int[] digits = baseEgn.chars().map(c -> c - '0').toArray();
-        int sum = 0;
-        for (int i = 0; i < 9; i++) {
-            sum += digits[i] * EGN_WEIGHTS[i];
-        }
-        int checksum = sum % 11;
-        if (checksum == 10) {
-            checksum = 0;
-        }
-
-        return baseEgn + checksum;
-    }
-
     // Happy Path
     @Test
     void Save_WithValidPatient_SavesSuccessfully() {
-        Doctor doctor = createDoctor("Dr. Smith", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Smith", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Jane Doe", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         Patient savedPatient = patientRepository.save(patient);
+        entityManager.flush();
         Optional<Patient> foundPatient = patientRepository.findById(savedPatient.getId());
 
         assertTrue(foundPatient.isPresent());
@@ -123,11 +91,13 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void FindByEgn_WithValidEgn_ReturnsPatient() {
-        Doctor doctor = createDoctor("Dr. Brown", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Brown", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        String egn = generateValidEgn();
+        entityManager.flush();
+        String egn = TestDataUtils.generateValidEgn();
         Patient patient = createPatient("Bob White", egn, doctor, LocalDate.now());
         patientRepository.save(patient);
+        entityManager.flush();
 
         Optional<Patient> foundPatient = patientRepository.findByEgn(egn);
 
@@ -137,16 +107,18 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void FindByGeneralPractitioner_WithMultiplePatients_ReturnsPaged() {
-        Doctor doctor1 = createDoctor("Dr. Green", generateUniqueIdNumber(), true);
-        Doctor doctor2 = createDoctor("Dr. Taylor", generateUniqueIdNumber(), true);
+        Doctor doctor1 = createDoctor("Dr. Green", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Taylor", TestDataUtils.generateUniqueIdNumber(), true);
         doctor1 = doctorRepository.save(doctor1);
         doctor2 = doctorRepository.save(doctor2);
-        Patient patient1 = createPatient("Alice Lee", generateValidEgn(), doctor1, LocalDate.now());
-        Patient patient2 = createPatient("Tom Green", generateValidEgn(), doctor1, LocalDate.now());
-        Patient patient3 = createPatient("Sarah Lee", generateValidEgn(), doctor2, LocalDate.now());
+        entityManager.flush();
+        Patient patient1 = createPatient("Alice Lee", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        Patient patient2 = createPatient("Tom Green", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        Patient patient3 = createPatient("Sarah Lee", TestDataUtils.generateValidEgn(), doctor2, LocalDate.now());
         patientRepository.save(patient1);
         patientRepository.save(patient2);
         patientRepository.save(patient3);
+        entityManager.flush();
 
         Page<Patient> gpPatients = patientRepository.findByGeneralPractitioner(doctor1, PageRequest.of(0, 1));
 
@@ -156,16 +128,18 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void CountPatientsByGeneralPractitioner_WithMultiplePatients_ReturnsSorted() {
-        Doctor doctor1 = createDoctor("Dr. Wilson", generateUniqueIdNumber(), true);
-        Doctor doctor2 = createDoctor("Dr. Adams", generateUniqueIdNumber(), true);
+        Doctor doctor1 = createDoctor("Dr. Wilson", TestDataUtils.generateUniqueIdNumber(), true);
+        Doctor doctor2 = createDoctor("Dr. Adams", TestDataUtils.generateUniqueIdNumber(), true);
         doctor1 = doctorRepository.save(doctor1);
         doctor2 = doctorRepository.save(doctor2);
-        Patient patient1 = createPatient("Mike Brown", generateValidEgn(), doctor1, LocalDate.now());
-        Patient patient2 = createPatient("Emma White", generateValidEgn(), doctor1, LocalDate.now());
-        Patient patient3 = createPatient("Olivia Green", generateValidEgn(), doctor2, LocalDate.now());
+        entityManager.flush();
+        Patient patient1 = createPatient("Mike Brown", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        Patient patient2 = createPatient("Emma White", TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
+        Patient patient3 = createPatient("Olivia Green", TestDataUtils.generateValidEgn(), doctor2, LocalDate.now());
         patientRepository.save(patient1);
         patientRepository.save(patient2);
         patientRepository.save(patient3);
+        entityManager.flush();
 
         List<DoctorPatientCountDTO> result = patientRepository.countPatientsByGeneralPractitioner();
 
@@ -178,10 +152,12 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void SoftDelete_WithExistingPatient_SetsIsDeleted() {
-        Doctor doctor = createDoctor("Dr. Clark", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Clark", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Jane Doe", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         Patient savedPatient = patientRepository.save(patient);
+        entityManager.flush();
 
         patientRepository.delete(savedPatient);
         entityManager.flush();
@@ -198,9 +174,10 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void HardDelete_WithExistingPatient_RemovesPatient() {
-        Doctor doctor = createDoctor("Dr. Evans", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Evans", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Bob White", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Bob White", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         Patient savedPatient = patientRepository.save(patient);
         entityManager.flush();
 
@@ -225,8 +202,9 @@ class PatientRepositoryIntegrationTests {
 
     @Test
     void FindByGeneralPractitioner_WithNoPatients_ReturnsEmpty() {
-        Doctor doctor = createDoctor("Dr. Lee", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Lee", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
+        entityManager.flush();
 
         Page<Patient> gpPatients = patientRepository.findByGeneralPractitioner(doctor, PageRequest.of(0, 1));
 
@@ -244,11 +222,14 @@ class PatientRepositoryIntegrationTests {
     // Edge Cases
     @Test
     void FindByGeneralPractitioner_WithSoftDeletedPatient_ReturnsEmpty() {
-        Doctor doctor = createDoctor("Dr. Smith", generateUniqueIdNumber(), true);
+        Doctor doctor = createDoctor("Dr. Smith", TestDataUtils.generateUniqueIdNumber(), true);
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Jane Doe", generateValidEgn(), doctor, LocalDate.now());
+        entityManager.flush();
+        Patient patient = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         Patient savedPatient = patientRepository.save(patient);
+        entityManager.flush();
         patientRepository.delete(savedPatient);
+        entityManager.flush();
 
         Page<Patient> gpPatients = patientRepository.findByGeneralPractitioner(doctor, PageRequest.of(0, 1));
 

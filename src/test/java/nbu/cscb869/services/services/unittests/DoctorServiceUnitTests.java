@@ -28,6 +28,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.text.MessageFormat;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -115,7 +116,7 @@ public class DoctorServiceUnitTests {
         visit.setId(1L);
         visit.setVisitDate(LocalDate.now());
 
-        visitViewDTO = new VisitViewDTO(1L, LocalDate.now(), false, patientViewDTO, viewDTO, null, null, null);
+        visitViewDTO = new VisitViewDTO(1L, LocalDate.now(), LocalTime.now(), false, patientViewDTO, viewDTO, null, null, null);
     }
 
     // Happy Path
