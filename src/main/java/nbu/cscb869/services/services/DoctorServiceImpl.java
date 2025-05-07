@@ -21,6 +21,7 @@ import nbu.cscb869.services.data.dtos.DoctorViewDTO;
 import nbu.cscb869.services.data.dtos.PatientViewDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import nbu.cscb869.services.services.contracts.DoctorService;
+import nbu.cscb869.services.services.utility.CloudinaryService;
 import nbu.cscb869.services.services.utility.DoctorCriteria;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -31,6 +32,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.text.MessageFormat;
 import java.time.LocalDate;
@@ -51,6 +54,7 @@ public class DoctorServiceImpl implements DoctorService {
     private final SpecialtyRepository specialtyRepository;
     private final PatientRepository patientRepository;
     private final VisitRepository visitRepository;
+    private final CloudinaryService cloudinaryService;
     private final ModelMapper modelMapper;
 
     /**
@@ -60,23 +64,27 @@ public class DoctorServiceImpl implements DoctorService {
      * @param specialtyRepository repository for specialty-related database operations
      * @param patientRepository   repository for patient-related database operations
      * @param visitRepository     repository for visit-related database operations
+     * @param cloudinaryService   service for handling image uploads and deletions to Cloudinary
      * @param modelMapper         utility for mapping Doctor entities to DTOs and vice versa
      */
     public DoctorServiceImpl(DoctorRepository doctorRepository,
                              SpecialtyRepository specialtyRepository,
                              PatientRepository patientRepository,
                              VisitRepository visitRepository,
+                             CloudinaryService cloudinaryService,
                              ModelMapper modelMapper) {
         this.doctorRepository = doctorRepository;
         this.specialtyRepository = specialtyRepository;
         this.patientRepository = patientRepository;
         this.visitRepository = visitRepository;
+        this.cloudinaryService = cloudinaryService;
         this.modelMapper = modelMapper;
     }
 
     /** {@inheritDoc} */
     @Override
-    public DoctorViewDTO create(DoctorCreateDTO dto) {
+    @Transactional
+    public DoctorViewDTO create(DoctorCreateDTO dto, MultipartFile image) {
         if (dto == null) {
             logger.error("Cannot create {}: DTO is null", ENTITY_NAME);
             throw new InvalidDTOException(ExceptionMessages.formatInvalidDTONull("DoctorCreateDTO"));
@@ -95,6 +103,15 @@ public class DoctorServiceImpl implements DoctorService {
         try {
             Doctor doctor = modelMapper.map(dto, Doctor.class);
             doctor.setSpecialties(specialties);
+
+            // Handle image upload
+            if (image != null && !image.isEmpty()) {
+                String imageUrl = cloudinaryService.uploadImage(image);
+                doctor.setImageUrl(imageUrl);
+            } else if (dto.getImageUrl() != null) {
+                doctor.setImageUrl(dto.getImageUrl());
+            }
+
             Doctor created = doctorRepository.save(doctor);
             logger.info("{} created with ID: {}", ENTITY_NAME, created.getId());
             return modelMapper.map(created, DoctorViewDTO.class);
@@ -106,7 +123,8 @@ public class DoctorServiceImpl implements DoctorService {
 
     /** {@inheritDoc} */
     @Override
-    public DoctorViewDTO update(DoctorUpdateDTO dto) {
+    @Transactional
+    public DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image) {
         if (dto == null) {
             logger.error("Cannot update {}: DTO is null", ENTITY_NAME);
             throw new InvalidDTOException(ExceptionMessages.formatInvalidDTONull("DoctorUpdateDTO"));
@@ -130,6 +148,22 @@ public class DoctorServiceImpl implements DoctorService {
         try {
             modelMapper.map(dto, existing);
             existing.setSpecialties(specialties);
+
+            // Handle image update
+            if (image != null && !image.isEmpty()) {
+                // Delete existing image if present
+                if (existing.getImageUrl() != null) {
+                    String publicId = cloudinaryService.getPublicIdFromUrl(existing.getImageUrl());
+                    if (publicId != null) {
+                        cloudinaryService.deleteImage(publicId);
+                    }
+                }
+                String imageUrl = cloudinaryService.uploadImage(image);
+                existing.setImageUrl(imageUrl);
+            } else if (dto.getImageUrl() != null) {
+                existing.setImageUrl(dto.getImageUrl());
+            }
+
             Doctor updated = doctorRepository.save(existing);
             logger.info("{} updated with ID: {}", ENTITY_NAME, updated.getId());
             return modelMapper.map(updated, DoctorViewDTO.class);
@@ -141,6 +175,7 @@ public class DoctorServiceImpl implements DoctorService {
 
     /** {@inheritDoc} */
     @Override
+    @Transactional
     public void delete(Long id) {
         if (id == null) {
             logger.error("Cannot delete {}: ID is null", ENTITY_NAME);

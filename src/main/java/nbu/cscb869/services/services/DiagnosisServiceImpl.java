@@ -15,13 +15,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Implementation of {@link DiagnosisService} for managing diagnosis-related operations.
- */
 @Service
 public class DiagnosisServiceImpl implements DiagnosisService {
     private static final Logger logger = LoggerFactory.getLogger(DiagnosisServiceImpl.class);
@@ -36,7 +34,6 @@ public class DiagnosisServiceImpl implements DiagnosisService {
         this.modelMapper = modelMapper;
     }
 
-    /** {@inheritDoc} */
     @Override
     @Transactional
     public DiagnosisViewDTO create(DiagnosisCreateDTO dto) {
@@ -52,7 +49,6 @@ public class DiagnosisServiceImpl implements DiagnosisService {
         return modelMapper.map(diagnosis, DiagnosisViewDTO.class);
     }
 
-    /** {@inheritDoc} */
     @Override
     @Transactional
     public DiagnosisViewDTO update(DiagnosisUpdateDTO dto) {
@@ -78,7 +74,6 @@ public class DiagnosisServiceImpl implements DiagnosisService {
         return modelMapper.map(diagnosis, DiagnosisViewDTO.class);
     }
 
-    /** {@inheritDoc} */
     @Override
     @Transactional
     public void delete(Long id) {
@@ -94,11 +89,10 @@ public class DiagnosisServiceImpl implements DiagnosisService {
                     return new EntityNotFoundException("Diagnosis not found with ID: " + id);
                 });
 
-        diagnosisRepository.delete(diagnosis); // Soft delete
+        diagnosisRepository.delete(diagnosis);
         logger.info("Deleted {} with ID: {}", ENTITY_NAME, id);
     }
 
-    /** {@inheritDoc} */
     @Override
     public DiagnosisViewDTO getById(Long id) {
         if (id == null) {
@@ -116,8 +110,8 @@ public class DiagnosisServiceImpl implements DiagnosisService {
         return modelMapper.map(diagnosis, DiagnosisViewDTO.class);
     }
 
-    /** {@inheritDoc} */
     @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     @Async
     public CompletableFuture<Page<DiagnosisViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter) {
         if (page < 0) {
@@ -132,9 +126,14 @@ public class DiagnosisServiceImpl implements DiagnosisService {
 
         Sort sort = Sort.by(ascending ? Sort.Direction.ASC : Sort.Direction.DESC, orderBy);
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Diagnosis> diagnoses = filter == null || filter.trim().isEmpty()
-                ? diagnosisRepository.findAllActive(pageable)
-                : diagnosisRepository.findByNameContainingIgnoreCase(filter.trim(), pageable);
+        Page<Diagnosis> diagnoses;
+        if (filter == null || filter.trim().isEmpty()) {
+            logger.debug("Fetching all active diagnoses");
+            diagnoses = diagnosisRepository.findAllActive(pageable);
+        } else {
+            logger.debug("Fetching diagnoses with name containing: {}", filter.trim());
+            diagnoses = diagnosisRepository.findByNameContainingIgnoreCase(filter.trim(), pageable);
+        }
         Page<DiagnosisViewDTO> result = diagnoses.map(d -> modelMapper.map(d, DiagnosisViewDTO.class));
 
         logger.info("Retrieved {} {} for page {}, size {}", result.getTotalElements(), ENTITY_NAME, page, size);

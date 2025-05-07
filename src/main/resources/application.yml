@@ -1,6 +1,8 @@
 spring:
   profiles:
     active: dev
+  security:
+    enabled: false
   jpa:
     show-sql: true
     properties:
@@ -16,6 +18,12 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+cloudinary:
+  cloud_name: duntro9y8
+  api_key: '258169897437321'
+  api_secret: sBXRhPipV3MS0xsQQMyLicXP4a4
+  enhance_image_tag: true
+  static_file_support: true
 logging:
   level:
     org.hibernate: INFO

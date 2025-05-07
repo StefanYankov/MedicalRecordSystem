@@ -13,6 +13,7 @@ import nbu.cscb869.services.data.dtos.DoctorViewDTO;
 import nbu.cscb869.services.data.dtos.PatientViewDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,29 +27,29 @@ import java.util.concurrent.CompletableFuture;
 public interface DoctorService {
 
     /**
-     * Creates a new doctor based on the provided DTO.
+     * Creates a new doctor based on the provided DTO and optional image.
      *
-     * @param dto the DTO containing doctor creation data (name, unique ID, specialties, etc.)
+     * @param dto   the DTO containing doctor creation data (name, unique ID, specialties, etc.)
+     * @param image the optional image file to upload to Cloudinary
      * @return the created doctor's view DTO
-     * @throws InvalidDoctorException if the unique ID already exists or specialties are invalid
+     * @throws InvalidDoctorException if the unique ID already exists, specialties are invalid, or image upload fails
      * @throws InvalidDTOException if the DTO is null or contains invalid data
      * @throws InvalidInputException if an unexpected error occurs during creation
      */
-    // TODO: Restrict to ROLE_ADMIN once Spring Security is configured
-    DoctorViewDTO create(DoctorCreateDTO dto);
+    DoctorViewDTO create(DoctorCreateDTO dto, MultipartFile image);
 
     /**
-     * Updates an existing doctor based on the provided DTO.
+     * Updates an existing doctor based on the provided DTO and optional image.
      *
-     * @param dto the DTO containing updated doctor data (ID, name, specialties, etc.)
+     * @param dto   the DTO containing updated doctor data (ID, name, specialties, etc.)
+     * @param image the optional image file to upload to Cloudinary
      * @return the updated doctor's view DTO
      * @throws EntityNotFoundException if the doctor is not found
-     * @throws InvalidDoctorException if specialties are invalid
+     * @throws InvalidDoctorException if specialties are invalid or image upload fails
      * @throws InvalidDTOException if the DTO or ID is null
      * @throws InvalidInputException if an unexpected error occurs during update
      */
-    // TODO: Restrict to ROLE_ADMIN or doctor editing own data once Spring Security is configured
-    DoctorViewDTO update(DoctorUpdateDTO dto);
+    DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image);
 
     /**
      * Deletes a doctor by ID (soft delete).
@@ -59,7 +60,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the ID is null
      * @throws InvalidInputException if an unexpected error occurs during deletion
      */
-    // TODO: Restrict to ROLE_ADMIN once Spring Security is configured
     void delete(Long id);
 
     /**
@@ -71,7 +71,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the ID is null
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     DoctorViewDTO getById(Long id);
 
     /**
@@ -83,7 +82,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the unique ID number is null or empty
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     DoctorViewDTO getByUniqueIdNumber(String uniqueIdNumber);
 
     /**
@@ -97,7 +95,6 @@ public interface DoctorService {
      * @return a CompletableFuture containing a page of doctor view DTOs
      * @throws InvalidInputException if page or size is invalid or an unexpected error occurs
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     CompletableFuture<Page<DoctorViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter);
 
     /**
@@ -111,7 +108,6 @@ public interface DoctorService {
      * @return a page of doctor view DTOs matching the criteria
      * @throws InvalidInputException if page or size is invalid or an unexpected error occurs
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     Page<DoctorViewDTO> findByCriteria(Map<String, Object> conditions, int page, int size, String orderBy, boolean ascending);
 
     /**
@@ -123,7 +119,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the doctor ID is null
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     Page<PatientViewDTO> getPatientsByGeneralPractitioner(Long doctorId);
 
     /**
@@ -135,7 +130,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the doctor ID is null
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     DoctorPatientCountDTO getPatientCountByGeneralPractitioner(Long doctorId);
 
     /**
@@ -147,7 +141,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the doctor ID is null
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     DoctorVisitCountDTO getVisitCount(Long doctorId);
 
     /**
@@ -161,7 +154,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the doctor ID, start date, or end date is null, or if the date range is invalid
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     CompletableFuture<Page<VisitViewDTO>> getVisitsByPeriod(Long doctorId, LocalDate startDate, LocalDate endDate);
 
     /**
@@ -170,6 +162,5 @@ public interface DoctorService {
      * @return a list of DTOs with doctors and their sick leave counts, sorted by count descending
      * @throws InvalidInputException if an unexpected error occurs during retrieval
      */
-    // TODO: Restrict to ROLE_DOCTOR or ROLE_ADMIN once Spring Security is configured
     List<DoctorSickLeaveCountDTO> getDoctorsWithMostSickLeaves();
 }

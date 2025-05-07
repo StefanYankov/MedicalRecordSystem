@@ -31,11 +31,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // Security and Keycloak
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
-    implementation 'org.keycloak:keycloak-spring-boot-starter:25.0.3'
+//    // Security and Keycloak
+//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+//    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+//    implementation 'org.keycloak:keycloak-spring-boot-starter:25.0.3'
 
     // Swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
@@ -56,6 +56,9 @@ dependencies {
     // Development tools
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+
+    // Cloudinary
+    implementation 'com.cloudinary:cloudinary-http44:1.39.0'
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

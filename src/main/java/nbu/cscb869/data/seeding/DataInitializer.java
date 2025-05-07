@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 
@@ -27,6 +28,10 @@ public class DataInitializer {
     private final TreatmentRepository treatmentRepository;
     private final MedicineRepository medicineRepository;
 
+    /**
+     * Initializes sample data for specialties, doctors, patients, diagnoses, visits, treatments, and sick leaves.
+     * Runs only in the 'dev' profile after bean construction.
+     */
     @PostConstruct
     public void init() {
         // Specialties
@@ -52,6 +57,7 @@ public class DataInitializer {
                     doctor.setName("Dr. John Smith");
                     doctor.setSpecialties(Set.of(cardiology));
                     doctor.setGeneralPractitioner(true);
+                    doctor.setImageUrl("https://res.cloudinary.com/duntro9y8/image/upload/medical_record/doctors/doctor1.jpg");
                     return doctorRepository.save(doctor);
                 });
 
@@ -62,6 +68,7 @@ public class DataInitializer {
                     doctor.setName("Dr. Anna Brown");
                     doctor.setSpecialties(Set.of(neurology));
                     doctor.setGeneralPractitioner(true);
+                    doctor.setImageUrl("https://res.cloudinary.com/duntro9y8/image/upload/medical_record/doctors/doctor2.jpg");
                     return doctorRepository.save(doctor);
                 });
 
@@ -72,6 +79,7 @@ public class DataInitializer {
                     doctor.setName("Dr. Mark Wilson");
                     doctor.setSpecialties(Set.of(cardiology, neurology));
                     doctor.setGeneralPractitioner(false);
+                    doctor.setImageUrl("https://res.cloudinary.com/duntro9y8/image/upload/medical_record/doctors/doctor3.jpg");
                     return doctorRepository.save(doctor);
                 });
 
@@ -134,6 +142,7 @@ public class DataInitializer {
         // Visits
         Visit visit1 = new Visit();
         visit1.setVisitDate(LocalDate.now().minusDays(10));
+        visit1.setVisitTime(LocalTime.of(9, 0)); // Added visitTime
         visit1.setSickLeaveIssued(true);
         visit1.setPatient(patient1);
         visit1.setDoctor(gp1);
@@ -142,6 +151,7 @@ public class DataInitializer {
 
         Visit visit2 = new Visit();
         visit2.setVisitDate(LocalDate.now().minusDays(5));
+        visit2.setVisitTime(LocalTime.of(10, 0)); // Added visitTime
         visit2.setSickLeaveIssued(false);
         visit2.setPatient(patient1);
         visit2.setDoctor(specialist);
@@ -150,6 +160,7 @@ public class DataInitializer {
 
         Visit visit3 = new Visit();
         visit3.setVisitDate(LocalDate.now().minusMonths(1));
+        visit3.setVisitTime(LocalTime.of(11, 0)); // Added visitTime
         visit3.setSickLeaveIssued(true);
         visit3.setPatient(patient2);
         visit3.setDoctor(gp1);
@@ -158,6 +169,7 @@ public class DataInitializer {
 
         Visit visit4 = new Visit();
         visit4.setVisitDate(LocalDate.now().minusMonths(2));
+        visit4.setVisitTime(LocalTime.of(14, 0)); // Added visitTime
         visit4.setSickLeaveIssued(false);
         visit4.setPatient(patient3);
         visit4.setDoctor(gp2);

@@ -13,6 +13,10 @@ spring:
         schema_management:
           skip_missing_table_drops: true
     show-sql: true
+cloudinary:
+  cloud-name: duntro9y8
+  api-key: 258169897437321
+  api-secret: sBXRhPipV3MS0xsQQMyLicXP4a4
 logging:
   level:
     org.springframework: DEBUG

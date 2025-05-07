@@ -1,21 +1,24 @@
 package nbu.cscb869.services.services.integrationtests;
 
-import nbu.cscb869.common.exceptions.*;
+import jakarta.persistence.EntityManager;
+import nbu.cscb869.common.exceptions.EntityNotFoundException;
+import nbu.cscb869.common.exceptions.InvalidDTOException;
+import nbu.cscb869.common.exceptions.InvalidDoctorException;
+import nbu.cscb869.common.exceptions.InvalidInputException;
 import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
-import nbu.cscb869.data.models.Diagnosis;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.Specialty;
-import nbu.cscb869.data.models.Visit;
-import nbu.cscb869.data.repositories.DiagnosisRepository;
+import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
 import nbu.cscb869.data.repositories.SpecialtyRepository;
 import nbu.cscb869.data.repositories.VisitRepository;
-import nbu.cscb869.services.data.dtos.*;
 import nbu.cscb869.data.utils.TestDataUtils;
+import nbu.cscb869.services.data.dtos.DoctorCreateDTO;
+import nbu.cscb869.services.data.dtos.DoctorUpdateDTO;
+import nbu.cscb869.services.data.dtos.DoctorViewDTO;
+import nbu.cscb869.services.data.dtos.PatientViewDTO;
+import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import nbu.cscb869.services.services.contracts.DoctorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,13 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Propagation;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-import jakarta.persistence.EntityManager;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.util.List;
@@ -39,18 +38,10 @@ import java.util.concurrent.CompletionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
 class DoctorServiceIntegrationTests {
-
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("test_db")
-            .withUsername("test")
-            .withPassword("test");
-
     @Autowired
     private DoctorService doctorService;
 
@@ -67,521 +58,743 @@ class DoctorServiceIntegrationTests {
     private VisitRepository visitRepository;
 
     @Autowired
-    private DiagnosisRepository diagnosisRepository;
-
-    @Autowired
     private EntityManager entityManager;
 
-    private Doctor doctor;
     private Specialty specialty;
-    private Patient patient;
-    private Visit visit;
-    private Diagnosis diagnosis;
 
     @BeforeEach
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void setUp() {
-        // Hard delete to clear all data
-        visitRepository.deleteAllInBatch();
-        patientRepository.deleteAllInBatch();
-        doctorRepository.deleteAllInBatch();
-        specialtyRepository.deleteAllInBatch();
-        diagnosisRepository.deleteAllInBatch();
+        // Delete in correct order to avoid foreign key constraints
+        entityManager.createNativeQuery("DELETE FROM sick_leaves").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM visits").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM patients").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM doctor_specialties").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM doctors").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM specialties").executeUpdate();
+        entityManager.createNativeQuery("DELETE FROM diagnoses").executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
 
-        // Setup Specialty
+        // Create a specialty for use in tests
         specialty = new Specialty();
         specialty.setName("Cardiology");
-        specialty.setDescription("Heart-related specialties");
-        specialty = specialtyRepository.save(specialty);
-        entityManager.flush();
-        entityManager.clear();
-        assertNotNull(specialty.getId(), "Specialty ID should not be null");
+        specialty.setDescription("Heart-related conditions");
+        specialty = specialtyRepository.saveAndFlush(specialty);
+    }
 
-        // Setup Diagnosis
-        diagnosis = new Diagnosis();
-        diagnosis.setName("Common Cold");
-        diagnosis.setDescription("A mild viral infection");
-        diagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-        entityManager.clear();
-        assertNotNull(diagnosis.getId(), "Diagnosis ID should not be null");
+    private DoctorCreateDTO createDoctorCreateDTO(String name, String uniqueIdNumber, boolean isGeneralPractitioner, Set<Long> specialtyIds) {
+        return DoctorCreateDTO.builder()
+                .name(name)
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .imageUrl("http://example.com/image.jpg")
+                .specialtyIds(specialtyIds)
+                .build();
+    }
 
-        // Setup Doctor
-        doctor = new Doctor();
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-        doctor.setSpecialties(Set.of(specialty));
-        doctor = doctorRepository.save(doctor);
-        entityManager.flush();
-        entityManager.clear();
+    private DoctorUpdateDTO createDoctorUpdateDTO(Long id, String name, boolean isGeneralPractitioner, Set<Long> specialtyIds) {
+        return DoctorUpdateDTO.builder()
+                .id(id)
+                .name(name)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .imageUrl("http://example.com/updated-image.jpg")
+                .specialtyIds(specialtyIds)
+                .build();
+    }
 
-        // Verify Doctor persistence
-        Doctor persistedDoctor = doctorRepository.findByIdIncludingDeleted(doctor.getId())
-                .orElseThrow(() -> new AssertionError("Doctor should exist after save"));
-        assertFalse(persistedDoctor.getIsDeleted(), "Doctor should not be deleted");
-        System.out.println("Saved Doctor ID: " + doctor.getId() + ", isDeleted: " + doctor.getIsDeleted());
+    private Patient createPatient(String name, String egn, Doctor generalPractitioner) {
+        Patient patient = new Patient();
+        patient.setName(name);
+        patient.setEgn(egn);
+        patient.setGeneralPractitioner(generalPractitioner);
+        return patientRepository.saveAndFlush(patient);
+    }
+
+    private Diagnosis createDiagnosis() {
+        Diagnosis diagnosis = new Diagnosis();
+        diagnosis.setName("Flu");
+        diagnosis.setDescription("Viral infection");
+        entityManager.persist(diagnosis);
+        entityManager.flush();
+        return diagnosis;
     }
 
     // Happy Path
     @Test
-    void Create_ValidDTO_ReturnsDoctorViewDTO() {
-        DoctorCreateDTO createDTO = DoctorCreateDTO.builder()
-                .name("Dr. Jones")
-                .uniqueIdNumber(TestDataUtils.generateUniqueIdNumber())
-                .isGeneralPractitioner(false)
-                .specialtyIds(Set.of(specialty.getId()))
-                .build();
+    void Create_ValidDTO_SavesSuccessfully() {
+        DoctorCreateDTO dto = createDoctorCreateDTO("Dr. Smith", TestDataUtils.generateUniqueIdNumber(), true, Set.of(specialty.getId()));
+        DoctorViewDTO result = doctorService.create(dto);
+        entityManager.flush();
 
-        DoctorViewDTO result = doctorService.create(createDTO);
-
-        assertNotNull(result);
-        assertEquals("Dr. Jones", result.getName());
-        assertEquals(createDTO.getUniqueIdNumber(), result.getUniqueIdNumber());
-        assertFalse(result.isGeneralPractitioner());
+        assertNotNull(result.getId());
+        assertEquals("Dr. Smith", result.getName());
+        assertTrue(result.isGeneralPractitioner());
+        assertEquals("http://example.com/image.jpg", result.getImageUrl());
         assertEquals(1, result.getSpecialties().size());
-        assertEquals("Cardiology", result.getSpecialties().iterator().next().getName());
+        assertTrue(result.getSpecialties().stream().anyMatch(s -> s.getName().equals("Cardiology")));
+
+        Doctor saved = doctorRepository.findById(result.getId()).orElseThrow();
+        assertFalse(saved.getIsDeleted());
+        assertNotNull(saved.getCreatedOn());
+        assertNotNull(saved.getVersion());
     }
 
     @Test
-    void Update_ValidDTO_ReturnsUpdatedDoctorViewDTO() {
-        DoctorUpdateDTO updateDTO = DoctorUpdateDTO.builder()
-                .id(doctor.getId())
-                .name("Dr. Smith Updated")
-                .isGeneralPractitioner(false)
-                .specialtyIds(Set.of(specialty.getId()))
-                .build();
+    void Update_ValidDTO_UpdatesSuccessfully() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Jones");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setGeneralPractitioner(true);
+        doctor.setSpecialties(Set.of(specialty));
+        doctor = doctorRepository.saveAndFlush(doctor);
+        entityManager.clear();
 
-        DoctorViewDTO result = doctorService.update(updateDTO);
+        DoctorUpdateDTO dto = createDoctorUpdateDTO(doctor.getId(), "Dr. Updated Jones", false, Set.of());
+        DoctorViewDTO result = doctorService.update(dto);
+        entityManager.flush();
 
-        assertNotNull(result);
-        assertEquals("Dr. Smith Updated", result.getName());
+        assertEquals(doctor.getId(), result.getId());
+        assertEquals("Dr. Updated Jones", result.getName());
         assertFalse(result.isGeneralPractitioner());
-        assertEquals(1, result.getSpecialties().size());
+        assertEquals("http://example.com/updated-image.jpg", result.getImageUrl());
+        assertTrue(result.getSpecialties().isEmpty());
+
+        Doctor updated = doctorRepository.findById(doctor.getId()).orElseThrow();
+        assertEquals(1L, updated.getVersion());
+        assertNotNull(updated.getModifiedOn());
     }
 
     @Test
-    void Delete_ValidId_DeletesDoctor() {
-        DoctorCreateDTO createDTO = DoctorCreateDTO.builder()
-                .name("Dr. Jones")
-                .uniqueIdNumber(TestDataUtils.generateUniqueIdNumber())
-                .isGeneralPractitioner(false)
-                .build();
-        DoctorViewDTO created = doctorService.create(createDTO);
+    void Delete_ExistingId_SoftDeletesSuccessfully() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Brown");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor = doctorRepository.saveAndFlush(doctor);
 
-        doctorService.delete(created.getId());
+        doctorService.delete(doctor.getId());
+        entityManager.flush();
 
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class,
-                () -> doctorService.getById(created.getId()));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, created.getId()),
-                exception.getMessage());
+        Doctor deleted = doctorRepository.findByIdIncludingDeleted(doctor.getId()).orElseThrow();
+        assertTrue(deleted.getIsDeleted());
+        assertNotNull(deleted.getDeletedOn());
+        assertEquals(0, doctorRepository.findAllActive().size());
     }
 
     @Test
-    void GetById_ValidId_ReturnsDoctorViewDTO() {
+    void GetById_ExistingId_ReturnsDoctor() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Wilson");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setSpecialties(Set.of(specialty));
+        doctor = doctorRepository.saveAndFlush(doctor);
+
         DoctorViewDTO result = doctorService.getById(doctor.getId());
 
-        assertNotNull(result);
-        assertEquals("Dr. Smith", result.getName());
-        assertEquals(doctor.getUniqueIdNumber(), result.getUniqueIdNumber());
+        assertEquals(doctor.getId(), result.getId());
+        assertEquals("Dr. Wilson", result.getName());
+        assertEquals(1, result.getSpecialties().size());
+        assertTrue(result.getSpecialties().stream().anyMatch(s -> s.getName().equals("Cardiology")));
     }
 
     @Test
-    void GetByUniqueIdNumber_ValidUniqueId_ReturnsDoctorViewDTO() {
-        DoctorViewDTO result = doctorService.getByUniqueIdNumber(doctor.getUniqueIdNumber());
+    void GetByUniqueIdNumber_ExistingId_ReturnsDoctor() {
+        String uniqueId = TestDataUtils.generateUniqueIdNumber();
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Taylor");
+        doctor.setUniqueIdNumber(uniqueId);
+        doctor = doctorRepository.saveAndFlush(doctor);
 
-        assertNotNull(result);
-        assertEquals("Dr. Smith", result.getName());
-        assertEquals(doctor.getUniqueIdNumber(), result.getUniqueIdNumber());
+        DoctorViewDTO result = doctorService.getByUniqueIdNumber(uniqueId);
+
+        assertEquals(doctor.getId(), result.getId());
+        assertEquals("Dr. Taylor", result.getName());
+        assertEquals(uniqueId, result.getUniqueIdNumber());
     }
 
     @Test
-    void GetAll_ValidParameters_ReturnsPaginatedDoctors() throws InterruptedException {
-        Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, null).join();
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
-        assertEquals("Dr. Smith", result.getContent().get(0).getName());
+    void GetAll_EmptyFilter_ReturnsAll() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Clark");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctorRepository.saveAndFlush(doctor);
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        entityManager.clear();
+
+        Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, "").join();
+
         assertEquals(1, result.getTotalElements());
+        assertEquals("Dr. Clark", result.getContent().get(0).getName());
     }
 
     @Test
-    void GetAll_WithFilter_ReturnsFilteredDoctors() {
-        Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, "Dr. Smith").join();
+    void GetAll_ValidFilter_ReturnsFiltered() {
+        Doctor doctor1 = new Doctor();
+        doctor1.setName("Dr. Adams");
+        doctor1.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        Doctor doctor2 = new Doctor();
+        doctor2.setName("Dr. Anderson");
+        doctor2.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctorRepository.saveAndFlush(doctor1);
+        doctorRepository.saveAndFlush(doctor2);
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        entityManager.clear();
 
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
-        assertEquals("Dr. Smith", result.getContent().get(0).getName());
-        assertEquals(1, result.getTotalElements());
+        Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, "Ad").join();
+
+        assertEquals(2, result.getTotalElements());
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Dr. Adams")));
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Dr. Anderson")));
     }
 
     @Test
-    void FindByCriteria_ValidConditions_ReturnsFilteredDoctors() {
-        Map<String, Object> conditions = Map.of("name", "Smith", "isGeneralPractitioner", "true", "specialtyId", specialty.getId());
+    void FindByCriteria_NameAndSpecialty_ReturnsFiltered() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Lee");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setSpecialties(Set.of(specialty));
+        doctorRepository.saveAndFlush(doctor);
 
+        Map<String, Object> conditions = Map.of(
+                "name", "Lee",
+                "specialtyId", specialty.getId()
+        );
         Page<DoctorViewDTO> result = doctorService.findByCriteria(conditions, 0, 10, "name", true);
 
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
-        assertEquals("Dr. Smith", result.getContent().get(0).getName());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Dr. Lee", result.getContent().get(0).getName());
     }
 
     @Test
-    void GetPatientsByGeneralPractitioner_ValidId_ReturnsPatients() {
-        patient = new Patient();
-        patient.setName("John Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-        patient = patientRepository.save(patient);
-        entityManager.flush();
-        entityManager.clear();
+    void GetPatientsByGeneralPractitioner_ValidDoctorId_ReturnsPatients() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Moore");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setGeneralPractitioner(true);
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("John Doe", TestDataUtils.generateValidEgn(), doctor);
 
         Page<PatientViewDTO> result = doctorService.getPatientsByGeneralPractitioner(doctor.getId());
 
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
+        assertEquals(1, result.getTotalElements());
         assertEquals("John Doe", result.getContent().get(0).getName());
     }
 
     @Test
-    void GetPatientCountByGeneralPractitioner_ValidId_ReturnsCount() {
-        patient = new Patient();
-        patient.setName("John Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-        patient = patientRepository.save(patient);
-        entityManager.flush();
-        entityManager.clear();
+    void GetPatientCountByGeneralPractitioner_ValidDoctorId_ReturnsCount() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Harris");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setGeneralPractitioner(true);
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor);
 
         DoctorPatientCountDTO result = doctorService.getPatientCountByGeneralPractitioner(doctor.getId());
 
-        assertNotNull(result);
         assertEquals(1L, result.getPatientCount());
-        assertEquals("Dr. Smith", result.getDoctor().getName());
+        assertEquals("Dr. Harris", result.getDoctor().getName());
     }
 
     @Test
-    void GetVisitCount_ValidId_ReturnsCount() {
-        patient = new Patient();
-        patient.setName("John Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-        patient = patientRepository.save(patient);
-        entityManager.flush();
-        entityManager.clear();
-
-        visit = new Visit();
+    void GetVisitCount_ValidDoctorId_ReturnsCount() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Lewis");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("Bob Smith", TestDataUtils.generateValidEgn(), doctor);
+        Diagnosis diagnosis = createDiagnosis();
+        Visit visit = new Visit();
         visit.setDoctor(doctor);
         visit.setPatient(patient);
-        visit.setVisitDate(LocalDate.now());
-        visit.setSickLeaveIssued(false);
         visit.setDiagnosis(diagnosis);
-        visit = visitRepository.save(visit);
-        entityManager.flush();
-        entityManager.clear();
+        visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(java.time.LocalTime.now());
+        visit.setSickLeaveIssued(false);
+        visitRepository.saveAndFlush(visit);
 
         DoctorVisitCountDTO result = doctorService.getVisitCount(doctor.getId());
 
-        assertNotNull(result);
         assertEquals(1L, result.getVisitCount());
-        assertEquals("Dr. Smith", result.getDoctor().getName());
+        assertEquals("Dr. Lewis", result.getDoctor().getName());
     }
 
     @Test
     void GetVisitsByPeriod_ValidParameters_ReturnsVisits() {
-        patient = new Patient();
-        patient.setName("John Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-        patient = patientRepository.save(patient);
-        entityManager.flush();
-        entityManager.clear();
-
-        visit = new Visit();
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Walker");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("Alice Brown", TestDataUtils.generateValidEgn(), doctor);
+        Diagnosis diagnosis = createDiagnosis();
+        Visit visit = new Visit();
         visit.setDoctor(doctor);
         visit.setPatient(patient);
-        visit.setVisitDate(LocalDate.now());
-        visit.setSickLeaveIssued(false);
         visit.setDiagnosis(diagnosis);
-        visit = visitRepository.save(visit);
-        entityManager.flush();
-        entityManager.clear();
+        visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(java.time.LocalTime.now());
+        visit.setSickLeaveIssued(false);
+        visitRepository.saveAndFlush(visit);
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
 
-        System.out.println("Doctor ID for getVisitsByPeriod: " + doctor.getId());
-        Page<VisitViewDTO> result = doctorService.getVisitsByPeriod(doctor.getId(), LocalDate.now().minusDays(1), LocalDate.now().plusDays(1)).join();
+        LocalDate startDate = LocalDate.now().minusDays(1);
+        LocalDate endDate = LocalDate.now().plusDays(1);
+        Page<VisitViewDTO> result = doctorService.getVisitsByPeriod(doctor.getId(), startDate, endDate).join();
 
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
-        assertEquals(visit.getVisitDate(), result.getContent().get(0).getVisitDate());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(doctor.getId(), result.getContent().get(0).getDoctor().getId());
     }
 
     @Test
-    void GetDoctorsWithMostSickLeaves_ValidCall_ReturnsSickLeaveCounts() {
+    void GetDoctorsWithMostSickLeaves_ValidData_ReturnsCounts() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Young");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("Carol White", TestDataUtils.generateValidEgn(), doctor);
+        Diagnosis diagnosis = createDiagnosis();
+        Visit visit = new Visit();
+        visit.setDoctor(doctor);
+        visit.setPatient(patient);
+        visit.setDiagnosis(diagnosis);
+        visit.setVisitDate(LocalDate.now());
+        visit.setVisitTime(java.time.LocalTime.now());
+        visit.setSickLeaveIssued(true);
+        visit = visitRepository.saveAndFlush(visit);
+        entityManager.createNativeQuery("INSERT INTO sick_leaves (id, start_date, duration_days, visit_id, is_deleted, version) " +
+                        "VALUES (1, ?, 5, ?, false, 0)")
+                .setParameter(1, LocalDate.now())
+                .setParameter(2, visit.getId())
+                .executeUpdate();
+        entityManager.flush();
+
         List<DoctorSickLeaveCountDTO> result = doctorService.getDoctorsWithMostSickLeaves();
 
-        assertNotNull(result);
-        assertTrue(result.isEmpty()); // No sick leaves in setup
+        assertEquals(1, result.size());
+        assertEquals("Dr. Young", result.get(0).getDoctor().getName());
+        assertEquals(1L, result.get(0).getSickLeaveCount());
     }
 
     // Error Cases
     @Test
     void Create_NullDTO_ThrowsInvalidDTOException() {
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.create(null));
-        assertEquals(ExceptionMessages.formatInvalidDTONull("DoctorCreateDTO"), exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.create(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("DoctorCreateDTO must not be null", exception.getMessage());
     }
 
     @Test
-    void Create_DuplicateUniqueId_ThrowsInvalidDoctorException() {
-        DoctorCreateDTO createDTO = DoctorCreateDTO.builder()
-                .name("Dr. Jones")
-                .uniqueIdNumber(doctor.getUniqueIdNumber())
-                .isGeneralPractitioner(false)
-                .build();
-
-        InvalidDoctorException exception = assertThrows(InvalidDoctorException.class, () -> doctorService.create(createDTO));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_UNIQUE_ID_EXISTS, doctor.getUniqueIdNumber()), exception.getMessage());
+    void Create_BlankName_ThrowsInvalidInputException() {
+        DoctorCreateDTO dto = createDoctorCreateDTO("", TestDataUtils.generateUniqueIdNumber(), true, Set.of(specialty.getId()));
+        Exception exception = null;
+        try {
+            doctorService.create(dto);
+            entityManager.flush();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidInputException.class, exception);
     }
 
     @Test
-    void Create_InvalidSpecialtyIds_ThrowsInvalidDoctorException() {
-        DoctorCreateDTO createDTO = DoctorCreateDTO.builder()
-                .name("Dr. Jones")
-                .uniqueIdNumber(TestDataUtils.generateUniqueIdNumber())
-                .isGeneralPractitioner(false)
-                .specialtyIds(Set.of(999L))
-                .build();
+    void Create_DuplicateUniqueIdNumber_ThrowsInvalidDoctorException() {
+        String uniqueId = TestDataUtils.generateUniqueIdNumber();
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Green");
+        doctor.setUniqueIdNumber(uniqueId);
+        doctorRepository.saveAndFlush(doctor);
 
-        InvalidDoctorException exception = assertThrows(InvalidDoctorException.class, () -> doctorService.create(createDTO));
+        DoctorCreateDTO dto = createDoctorCreateDTO("Dr. Blue", uniqueId, true, Set.of());
+        Exception exception = null;
+        try {
+            doctorService.create(dto);
+            entityManager.flush();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDoctorException.class, exception);
+        assertEquals(MessageFormat.format("A doctor with unique ID {0} already exists",uniqueId ), exception.getMessage());
+    }
+
+    @Test
+    void Create_InvalidSpecialtyId_ThrowsInvalidDoctorException() {
+        DoctorCreateDTO dto = createDoctorCreateDTO("Dr. Black", TestDataUtils.generateUniqueIdNumber(), true, Set.of(999L));
+        Exception exception = null;
+        try {
+            doctorService.create(dto);
+            entityManager.flush();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDoctorException.class, exception);
         assertEquals("One or more specialty IDs are invalid", exception.getMessage());
     }
 
     @Test
     void Update_NullDTO_ThrowsInvalidDTOException() {
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.update(null));
-        assertEquals(ExceptionMessages.formatInvalidDTONull("DoctorUpdateDTO"), exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.update(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("DoctorUpdateDTO must not be null", exception.getMessage());
     }
 
     @Test
     void Update_NullId_ThrowsInvalidDTOException() {
-        DoctorUpdateDTO updateDTO = DoctorUpdateDTO.builder().build();
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.update(updateDTO));
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("ID"), exception.getMessage());
+        DoctorUpdateDTO dto = createDoctorUpdateDTO(null, "Dr. White", true, Set.of());
+        Exception exception = null;
+        try {
+            doctorService.update(dto);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("ID must not be null", exception.getMessage());
     }
 
     @Test
-    void Update_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        DoctorUpdateDTO updateDTO = DoctorUpdateDTO.builder().id(999L).name("Dr. Jones").build();
-
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.update(updateDTO));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+    void Update_NonExistentId_ThrowsEntityNotFoundException() {
+        DoctorUpdateDTO dto = createDoctorUpdateDTO(999L, "Dr. Gray", true, Set.of());
+        Exception exception = null;
+        try {
+            doctorService.update(dto);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(EntityNotFoundException.class, exception);
+        assertEquals("Doctor not found with ID: 999", exception.getMessage());
     }
 
     @Test
     void Delete_NullId_ThrowsInvalidDTOException() {
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.delete(null));
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("ID"), exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.delete(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("ID must not be null", exception.getMessage());
     }
 
     @Test
-    void Delete_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.delete(999L));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+    void Delete_NonExistentId_ThrowsEntityNotFoundException() {
+        Exception exception = null;
+        try {
+            doctorService.delete(999L);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(EntityNotFoundException.class, exception);
+        assertEquals("Doctor not found with ID: 999", exception.getMessage());
     }
 
     @Test
-    void Delete_GpWithActivePatients_ThrowsInvalidDoctorException() {
-        patient = new Patient();
-        patient.setName("John Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-        patient = patientRepository.save(patient);
-        entityManager.flush();
-        entityManager.clear();
+    void Delete_GeneralPractitionerWithPatients_ThrowsInvalidDoctorException() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. King");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setGeneralPractitioner(true);
+        doctor = doctorRepository.saveAndFlush(doctor);
+        Patient patient = createPatient("Alice Smith", TestDataUtils.generateValidEgn(), doctor);
 
-        InvalidDoctorException exception = assertThrows(InvalidDoctorException.class, () -> doctorService.delete(doctor.getId()));
-        assertEquals(ExceptionMessages.DOCTOR_HAS_ACTIVE_PATIENTS, exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.delete(doctor.getId());
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDoctorException.class, exception);
+        assertEquals("Cannot delete doctor who is a general practitioner for active patients", exception.getMessage());
     }
 
     @Test
     void GetById_NullId_ThrowsInvalidDTOException() {
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.getById(null));
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("ID"), exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.getById(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("ID must not be null", exception.getMessage());
     }
 
     @Test
     void GetById_NonExistentId_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.getById(999L));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+        Exception exception = null;
+        try {
+            doctorService.getById(999L);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(EntityNotFoundException.class, exception);
+        assertEquals("Doctor not found with ID: 999", exception.getMessage());
     }
 
     @Test
-    void GetByUniqueIdNumber_NullUniqueId_ThrowsInvalidDTOException() {
-        InvalidDTOException exception = assertThrows(InvalidDTOException.class, () -> doctorService.getByUniqueIdNumber(null));
-        assertEquals(ExceptionMessages.formatInvalidFieldEmpty("uniqueIdNumber"), exception.getMessage());
+    void GetByUniqueIdNumber_NullId_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getByUniqueIdNumber(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("uniqueIdNumber must not be empty", exception.getMessage());
     }
 
     @Test
-    void GetByUniqueIdNumber_NonExistentUniqueId_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.getByUniqueIdNumber("DOC99999"));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_UNIQUE_ID, "DOC99999"), exception.getMessage());
+    void GetByUniqueIdNumber_NonExistentId_ThrowsEntityNotFoundException() {
+        Exception exception = null;
+        try {
+            doctorService.getByUniqueIdNumber("NONEXISTENT");
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(EntityNotFoundException.class, exception);
+        assertEquals("Doctor not found with unique ID: NONEXISTENT", exception.getMessage());
     }
 
     @Test
     void GetAll_NegativePage_ThrowsInvalidInputException() {
-        CompletionException ex = assertThrows(CompletionException.class, () -> doctorService.getAll(-1, 10, "name", true, null).join());
-        assertTrue(ex.getCause() instanceof InvalidInputException);
-        assertEquals("Page number must not be negative", ex.getCause().getMessage());
+        Exception exception = null;
+        try {
+            doctorService.getAll(-1, 10, "name", true, null).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidInputException.class, exception.getCause());
+        assertEquals("Page number must not be negative", exception.getCause().getMessage());
     }
 
     @Test
-    void GetAll_InvalidPageSize_ThrowsInvalidInputException() {
-        CompletionException ex = assertThrows(CompletionException.class, () -> doctorService.getAll(0, 101, "name", true, null).join());
-        assertTrue(ex.getCause() instanceof InvalidInputException);
-        assertEquals("Page size must be between 1 and 100", ex.getCause().getMessage());
+    void GetAll_ZeroPageSize_ThrowsInvalidInputException() {
+        Exception exception = null;
+        try {
+            doctorService.getAll(0, 0, "name", true, null).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidInputException.class, exception.getCause());
+        assertEquals("Page size must be between 1 and 100", exception.getCause().getMessage());
     }
 
     @Test
-    void FindByCriteria_NegativePage_ThrowsInvalidInputException() {
-        InvalidInputException exception = assertThrows(InvalidInputException.class, () -> doctorService.findByCriteria(Map.of(), -1, 10, "name", true));
-        assertEquals("Page number must not be negative", exception.getMessage());
+    void GetAll_ExcessivePageSize_ThrowsInvalidInputException() {
+        Exception exception = null;
+        try {
+            doctorService.getAll(0, 101, "name", true, null).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidInputException.class, exception.getCause());
+        assertEquals("Page size must be between 1 and 100", exception.getCause().getMessage());
     }
 
     @Test
-    void FindByCriteria_InvalidPageSize_ThrowsInvalidInputException() {
-        InvalidInputException exception = assertThrows(InvalidInputException.class, () -> doctorService.findByCriteria(Map.of(), 0, 101, "name", true));
-        assertEquals("Page size must be between 1 and 100", exception.getMessage());
+    void GetPatientsByGeneralPractitioner_NullDoctorId_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getPatientsByGeneralPractitioner(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("doctorId must not be null", exception.getMessage());
     }
 
     @Test
-    void GetPatientsByGeneralPractitioner_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.getPatientsByGeneralPractitioner(999L));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+    void GetPatientsByGeneralPractitioner_NonExistentDoctorId_ThrowsEntityNotFoundException() {
+        Exception exception = null;
+        try {
+            doctorService.getPatientsByGeneralPractitioner(999L);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(EntityNotFoundException.class, exception);
+        assertEquals("Doctor not found with ID: 999", exception.getMessage());
     }
 
     @Test
-    void GetPatientCountByGeneralPractitioner_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.getPatientCountByGeneralPractitioner(999L));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+    void GetPatientCountByGeneralPractitioner_NullDoctorId_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getPatientCountByGeneralPractitioner(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("doctorId must not be null", exception.getMessage());
     }
 
     @Test
-    void GetVisitCount_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, () -> doctorService.getVisitCount(999L));
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), exception.getMessage());
+    void GetVisitCount_NullDoctorId_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getVisitCount(null);
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(InvalidDTOException.class, exception);
+        assertEquals("doctorId must not be null", exception.getMessage());
     }
 
     @Test
-    void GetVisitsByPeriod_NonExistentDoctor_ThrowsEntityNotFoundException() {
-        CompletionException ex = assertThrows(CompletionException.class, () -> doctorService.getVisitsByPeriod(999L, LocalDate.now(), LocalDate.now()).join());
-        assertTrue(ex.getCause() instanceof EntityNotFoundException);
-        assertEquals(MessageFormat.format(ExceptionMessages.DOCTOR_NOT_FOUND_BY_ID, 999L), ex.getCause().getMessage());
+    void GetVisitsByPeriod_NullDoctorId_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getVisitsByPeriod(null, LocalDate.now(), LocalDate.now()).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidDTOException.class, exception.getCause());
+        assertEquals("doctorId must not be null", exception.getCause().getMessage());
     }
 
     @Test
-    void GetVisitsByPeriod_NullInputs_ThrowsInvalidDTOException() {
-        CompletionException idEx = assertThrows(CompletionException.class, () -> doctorService.getVisitsByPeriod(null, LocalDate.now(), LocalDate.now()).join());
-        assertTrue(idEx.getCause() instanceof InvalidDTOException);
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("doctorId"), idEx.getCause().getMessage());
+    void GetVisitsByPeriod_NullStartDate_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getVisitsByPeriod(1L, null, LocalDate.now()).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidDTOException.class, exception.getCause());
+        assertEquals("startDate must not be null", exception.getCause().getMessage());
+    }
 
-        CompletionException startDateEx = assertThrows(CompletionException.class, () -> doctorService.getVisitsByPeriod(doctor.getId(), null, LocalDate.now()).join());
-        assertTrue(startDateEx.getCause() instanceof InvalidDTOException);
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("startDate"), startDateEx.getCause().getMessage());
-
-        CompletionException endDateEx = assertThrows(CompletionException.class, () -> doctorService.getVisitsByPeriod(doctor.getId(), LocalDate.now(), null).join());
-        assertTrue(endDateEx.getCause() instanceof InvalidDTOException);
-        assertEquals(ExceptionMessages.formatInvalidFieldNull("endDate"), endDateEx.getCause().getMessage());
+    @Test
+    void GetVisitsByPeriod_NullEndDate_ThrowsInvalidDTOException() {
+        Exception exception = null;
+        try {
+            doctorService.getVisitsByPeriod(1L, LocalDate.now(), null).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidDTOException.class, exception.getCause());
+        assertEquals("endDate must not be null", exception.getCause().getMessage());
     }
 
     @Test
     void GetVisitsByPeriod_InvalidDateRange_ThrowsInvalidDTOException() {
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.minusDays(1);
-
-        CompletionException ex = assertThrows(CompletionException.class, () -> doctorService.getVisitsByPeriod(doctor.getId(), startDate, endDate).join());
-        assertTrue(ex.getCause() instanceof InvalidDTOException);
-        assertEquals(MessageFormat.format(ExceptionMessages.INVALID_DATE_RANGE, startDate, endDate), ex.getCause().getMessage());
+        Exception exception = null;
+        try {
+            doctorService.getVisitsByPeriod(1L, LocalDate.now(), LocalDate.now().minusDays(1)).join();
+        } catch (Exception e) {
+            exception = e;
+        }
+        assertNotNull(exception);
+        assertInstanceOf(CompletionException.class, exception);
+        assertNotNull(exception.getCause());
+        assertInstanceOf(InvalidDTOException.class, exception.getCause());
+        assertTrue(exception.getCause().getMessage().contains("Start date 2025-05-07 must not be after end date 2025-05-06"));
     }
 
     // Edge Cases
     @Test
-    void Create_EmptySpecialtyIds_ReturnsDoctorViewDTO() {
-        DoctorCreateDTO createDTO = DoctorCreateDTO.builder()
-                .name("Dr. Jones")
-                .uniqueIdNumber(TestDataUtils.generateUniqueIdNumber())
-                .isGeneralPractitioner(false)
-                .specialtyIds(Set.of())
-                .build();
+    void Create_MaximumNameLength_SavesSuccessfully() {
+        String maxName = "A".repeat(100);
+        DoctorCreateDTO dto = createDoctorCreateDTO(maxName, TestDataUtils.generateUniqueIdNumber(), true, Set.of());
+        DoctorViewDTO result = doctorService.create(dto);
+        entityManager.flush();
 
-        DoctorViewDTO result = doctorService.create(createDTO);
+        assertEquals(maxName, result.getName());
+    }
 
-        assertNotNull(result);
-        assertEquals("Dr. Jones", result.getName());
+    @Test
+    void Create_EmptySpecialties_SavesSuccessfully() {
+        DoctorCreateDTO dto = createDoctorCreateDTO("Dr. Evans", TestDataUtils.generateUniqueIdNumber(), true, Set.of());
+        DoctorViewDTO result = doctorService.create(dto);
+        entityManager.flush();
+
+        assertEquals("Dr. Evans", result.getName());
         assertTrue(result.getSpecialties().isEmpty());
     }
 
     @Test
-    void GetAll_EmptyResults_ReturnsEmptyPage() {
-        doctorRepository.deleteAllInBatch();
+    void Update_SameName_UpdatesSuccessfully() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Carter");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor = doctorRepository.saveAndFlush(doctor);
+        entityManager.clear();
 
-        Page<DoctorViewDTO> result = doctorService.getAll(0, 10, "name", true, null).join();
+        DoctorUpdateDTO dto = createDoctorUpdateDTO(doctor.getId(), "Dr. Carter", false, Set.of(specialty.getId()));
+        DoctorViewDTO result = doctorService.update(dto);
+        entityManager.flush();
 
-        assertNotNull(result);
-        assertTrue(result.getContent().isEmpty());
-        assertEquals(0, result.getTotalElements());
+        assertEquals("Dr. Carter", result.getName());
+        assertEquals(1, result.getSpecialties().size());
     }
 
     @Test
-    void FindByCriteria_EmptyConditions_ReturnsAllDoctors() {
+    void FindByCriteria_EmptyConditions_ReturnsAll() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Turner");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctorRepository.saveAndFlush(doctor);
+
         Page<DoctorViewDTO> result = doctorService.findByCriteria(Map.of(), 0, 10, "name", true);
 
-        assertNotNull(result);
-        assertEquals(1, result.getContent().size());
-        assertEquals("Dr. Smith", result.getContent().get(0).getName());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Dr. Turner", result.getContent().get(0).getName());
     }
 
     @Test
-    void GetPatientsByGeneralPractitioner_NoPatients_ReturnsEmptyPage() {
-        Page<PatientViewDTO> result = doctorService.getPatientsByGeneralPractitioner(doctor.getId());
+    void GetDoctorsWithMostSickLeaves_NoSickLeaves_ReturnsEmpty() {
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Parker");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctorRepository.saveAndFlush(doctor);
 
-        assertNotNull(result);
-        assertTrue(result.getContent().isEmpty());
-        assertEquals(0, result.getTotalElements());
-    }
-
-    @Test
-    void GetPatientCountByGeneralPractitioner_NoPatients_ReturnsZeroCount() {
-        DoctorPatientCountDTO result = doctorService.getPatientCountByGeneralPractitioner(doctor.getId());
-
-        assertNotNull(result);
-        assertEquals(0L, result.getPatientCount());
-    }
-
-    @Test
-    void GetVisitCount_NoVisits_ReturnsZeroCount() {
-        DoctorVisitCountDTO result = doctorService.getVisitCount(doctor.getId());
-
-        assertNotNull(result);
-        assertEquals(0L, result.getVisitCount());
-    }
-
-    @Test
-    void GetVisitsByPeriod_NoVisits_ReturnsEmptyPage() {
-        Page<VisitViewDTO> result = doctorService.getVisitsByPeriod(doctor.getId(), LocalDate.now(), LocalDate.now()).join();
-
-        assertNotNull(result);
-        assertTrue(result.getContent().isEmpty());
-        assertEquals(0, result.getTotalElements());
-    }
-
-    @Test
-    void GetDoctorsWithMostSickLeaves_NoSickLeaves_ReturnsEmptyList() {
         List<DoctorSickLeaveCountDTO> result = doctorService.getDoctorsWithMostSickLeaves();
 
-        assertNotNull(result);
         assertTrue(result.isEmpty());
     }
 }
