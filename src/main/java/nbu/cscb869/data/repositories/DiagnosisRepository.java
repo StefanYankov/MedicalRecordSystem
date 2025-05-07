@@ -7,6 +7,7 @@ import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,4 +44,14 @@ public interface DiagnosisRepository extends SoftDeleteRepository<Diagnosis, Lon
             "WHERE d.isDeleted = false AND v.isDeleted = false " +
             "GROUP BY d ORDER BY COUNT(v) DESC")
     List<DiagnosisVisitCountDTO> findMostFrequentDiagnoses();
+
+    /**
+     * Finds diagnoses by name containing the specified string, case-insensitive, respecting soft delete.
+     * Results are sorted alphabetically by name.
+     * @param name the partial name to match (without wildcards)
+     * @param pageable pagination information
+     * @return a page of diagnoses where name contains the input string and isDeleted = false
+     */
+    @Query("SELECT d FROM Diagnosis d WHERE LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')) AND d.isDeleted = false ORDER BY d.name")
+    Page<Diagnosis> findByNameContainingIgnoreCase(@Param("name") String name, Pageable pageable);
 }

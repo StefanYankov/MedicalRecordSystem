@@ -247,6 +247,34 @@ class DiagnosisRepositoryIntegrationTests {
         assertTrue(diagnosisRepository.findById(savedDiagnosis.getId()).isEmpty());
     }
 
+    @Test
+    void FindByNameContainingIgnoreCase_PartialName_ReturnsPaged() {
+        Diagnosis diagnosis1 = createDiagnosis("Influenza", "Viral infection");
+        Diagnosis diagnosis2 = createDiagnosis("Flu", "Similar to influenza");
+        diagnosisRepository.save(diagnosis1);
+        diagnosisRepository.save(diagnosis2);
+        entityManager.flush();
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("flu", PageRequest.of(0, 2));
+
+        assertEquals(2, result.getTotalElements());
+        assertEquals(2, result.getContent().size());
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Flu")));
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Influenza")));
+    }
+
+    @Test
+    void FindByNameContainingIgnoreCase_CaseInsensitiveMatch_ReturnsPaged() {
+        Diagnosis diagnosis = createDiagnosis("Asthma", "Respiratory condition");
+        diagnosisRepository.save(diagnosis);
+        entityManager.flush();
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("ASTHMA", PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Asthma", result.getContent().get(0).getName());
+    }
+
     // Error Cases
     @Test
     void Save_WithDuplicateName_ThrowsException() {
@@ -349,5 +377,57 @@ class DiagnosisRepositoryIntegrationTests {
         Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Tuberculosis");
 
         assertFalse(foundDiagnosis.isPresent());
+    }
+
+    @Test
+    void FindByNameContainingIgnoreCase_NonExistentName_ReturnsEmpty() {
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Nonexistent", PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+    }
+
+    @Test
+    void FindByNameContainingIgnoreCase_SoftDeletedDiagnosis_ReturnsEmpty() {
+        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Lung inflammation");
+        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
+        diagnosisRepository.delete(savedDiagnosis);
+        entityManager.flush();
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Bronchitis", PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+    }
+
+    // Edge Cases
+    @Test
+    void FindByNameContainingIgnoreCase_EmptyFilter_ReturnsAll() {
+        Diagnosis diagnosis = createDiagnosis("Migraine", "Severe headache");
+        diagnosisRepository.save(diagnosis);
+        entityManager.flush();
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Migraine", result.getContent().get(0).getName());
+    }
+
+    @Test
+    void FindByNameContainingIgnoreCase_LastPageFewerElements_ReturnsCorrectPage() {
+        Diagnosis diagnosis1 = createDiagnosis("Pneumonia", "Lung infection");
+        Diagnosis diagnosis2 = createDiagnosis("Pneumonitis", "Lung inflammation");
+        Diagnosis diagnosis3 = createDiagnosis("Pneumothorax", "Collapsed lung");
+        diagnosisRepository.save(diagnosis1);
+        diagnosisRepository.save(diagnosis2);
+        diagnosisRepository.save(diagnosis3);
+        entityManager.flush();
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Pneum", PageRequest.of(1, 2));
+
+        assertEquals(3, result.getTotalElements());
+        assertEquals(1, result.getContent().size());
+        assertEquals(2, result.getTotalPages());
+        assertEquals("Pneumothorax", result.getContent().get(0).getName());
     }
 }

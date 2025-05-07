@@ -137,6 +137,24 @@ class DiagnosisRepositoryUnitTests {
         verify(diagnosisRepository).findAllActive(any(Pageable.class));
     }
 
+    @Test
+    void FindByNameContainingIgnoreCase_PartialName_ReturnsPaged() {
+        Diagnosis diagnosis2 = new Diagnosis();
+        diagnosis2.setId(2L);
+        diagnosis2.setName("Influenza");
+        diagnosis2.setDescription("Similar to flu");
+
+        Page<Diagnosis> page = new PageImpl<>(List.of(diagnosis, diagnosis2));
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("flu"), any(Pageable.class))).thenReturn(page);
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("flu", PageRequest.of(0, 2));
+
+        assertEquals(2, result.getTotalElements());
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Flu")));
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Influenza")));
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("flu"), any(Pageable.class));
+    }
+
     // Error Cases
     @Test
     void FindByName_WithNonExistentName_ReturnsEmpty() {
@@ -196,6 +214,18 @@ class DiagnosisRepositoryUnitTests {
         verify(diagnosisRepository).findAllActive(any(Pageable.class));
     }
 
+    @Test
+    void FindByNameContainingIgnoreCase_NonExistentName_ReturnsEmpty() {
+        Page<Diagnosis> emptyPage = new PageImpl<>(Collections.emptyList());
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("Nonexistent"), any(Pageable.class))).thenReturn(emptyPage);
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Nonexistent", PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("Nonexistent"), any(Pageable.class));
+    }
+
     // Edge Cases
     @Test
     void FindByName_WithSoftDeletedDiagnosis_ReturnsEmpty() {
@@ -243,5 +273,17 @@ class DiagnosisRepositoryUnitTests {
         assertEquals(1, result.getContent().size());
         assertEquals(2, result.getTotalPages());
         verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), eq(PageRequest.of(1, 2)));
+    }
+
+    @Test
+    void FindByNameContainingIgnoreCase_EmptyFilter_ReturnsAll() {
+        Page<Diagnosis> page = new PageImpl<>(Collections.singletonList(diagnosis));
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq(""), any(Pageable.class))).thenReturn(page);
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Flu", result.getContent().get(0).getName());
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq(""), any(Pageable.class));
     }
 }

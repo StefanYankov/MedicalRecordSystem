@@ -3,6 +3,7 @@ package nbu.cscb869.services.data.dtos;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
+import nbu.cscb869.common.validation.annotations.ValidVisitTime;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -17,6 +18,7 @@ public class VisitCreateDTO {
     private LocalDate visitDate;
 
     @NotNull(message = ErrorMessages.TIME_NOT_NULL)
+    @ValidVisitTime
     private LocalTime visitTime;
 
     @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
