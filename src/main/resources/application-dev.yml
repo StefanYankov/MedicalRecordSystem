@@ -1,8 +1,5 @@
 spring:
   datasource:
-    url: jdbc:mysql://db:3306/medical_record_db?createDatabaseIfNotExist=true
+    url: jdbc:mysql://mysql:3306/medical_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
     username: root
     password: nbuDBpass
-  jpa:
-    hibernate:
-      ddl-auto: update

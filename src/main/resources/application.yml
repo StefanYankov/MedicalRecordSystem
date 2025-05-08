@@ -1,32 +1,30 @@
 spring:
-  profiles:
-    active: dev
-  security:
-    enabled: false
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    url: jdbc:mysql://mysql:3306/medical_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: nbuDBpass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      initialization-fail-timeout: 60000
+      connection-timeout: 30000
+      maximum-pool-size: 10
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
-        use_sql_comments: true
-  thymeleaf:
-    cache: false
+        dialect: org.hibernate.dialect.MySQLDialect
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/medical-realm
 server:
   port: 8080
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
 cloudinary:
-  cloud_name: duntro9y8
-  api_key: '258169897437321'
-  api_secret: sBXRhPipV3MS0xsQQMyLicXP4a4
-  enhance_image_tag: true
-  static_file_support: true
-logging:
-  level:
-    org.hibernate: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-    nbu.cscb869: DEBUG
+  cloud-name: Medicine-app
+  api-key: 916245136867445
+  api-secret: 04s3evY6JbCtD5M8wMdKHcD8tgU
