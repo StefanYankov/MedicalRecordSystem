@@ -4,8 +4,9 @@ import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.YearMonthSickLeaveCountDTO;
 import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.SickLeave;
+import nbu.cscb869.data.models.Visit;
 import nbu.cscb869.data.repositories.SickLeaveRepository;
-import org.junit.jupiter.api.BeforeEach;
+import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -13,11 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,75 +29,51 @@ class SickLeaveRepositoryUnitTests {
     @Mock
     private SickLeaveRepository sickLeaveRepository;
 
-    private SickLeave sickLeave;
-    private Doctor doctor;
-
-    @BeforeEach
-    void setUp() {
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-
-        sickLeave = new SickLeave();
-        sickLeave.setId(1L);
-        sickLeave.setStartDate(LocalDate.now());
-        sickLeave.setDurationDays(5);
+    private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
+        return Doctor.builder()
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .name(name)
+                .build();
     }
 
-    // Happy Path
-    @Test
-    void Save_WithValidSickLeave_ReturnsSaved() {
-        when(sickLeaveRepository.save(sickLeave)).thenReturn(sickLeave);
+    private Visit createVisit(Doctor doctor) {
+        return Visit.builder()
+                .doctor(doctor)
+                .build();
+    }
 
-        SickLeave savedSickLeave = sickLeaveRepository.save(sickLeave);
-
-        assertEquals(5, savedSickLeave.getDurationDays());
-        assertEquals(LocalDate.now(), savedSickLeave.getStartDate());
-        verify(sickLeaveRepository).save(sickLeave);
+    private SickLeave createSickLeave(LocalDate startDate, int durationDays, Visit visit) {
+        return SickLeave.builder()
+                .startDate(startDate)
+                .durationDays(durationDays)
+                .visit(visit)
+                .build();
     }
 
     @Test
-    void FindById_WithValidId_ReturnsSickLeave() {
-        when(sickLeaveRepository.findById(1L)).thenReturn(Optional.of(sickLeave));
+    void findAll_WithData_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Visit visit = createVisit(doctor);
+        SickLeave sickLeave = createSickLeave(LocalDate.now(), 5, visit);
+        Page<SickLeave> page = new PageImpl<>(List.of(sickLeave));
+        when(sickLeaveRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        Optional<SickLeave> foundSickLeave = sickLeaveRepository.findById(1L);
-
-        assertTrue(foundSickLeave.isPresent());
-        assertEquals(5, foundSickLeave.get().getDurationDays());
-        verify(sickLeaveRepository).findById(1L);
-    }
-
-    @Test
-    void FindAllActive_WithData_ReturnsList() {
-        when(sickLeaveRepository.findAllActive()).thenReturn(Collections.singletonList(sickLeave));
-
-        List<SickLeave> result = sickLeaveRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals(5, result.getFirst().getDurationDays());
-        verify(sickLeaveRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithData_ReturnsPaged() {
-        Page<SickLeave> page = new PageImpl<>(Collections.singletonList(sickLeave));
-        when(sickLeaveRepository.findAllActive(any(PageRequest.class))).thenReturn(page);
-
-        Page<SickLeave> result = sickLeaveRepository.findAllActive(PageRequest.of(0, 1));
+        Page<SickLeave> result = sickLeaveRepository.findAll(PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals(5, result.getContent().getFirst().getDurationDays());
-        verify(sickLeaveRepository).findAllActive(any(PageRequest.class));
+        verify(sickLeaveRepository).findAll(any(Pageable.class));
     }
 
     @Test
-    void FindYearMonthWithMostSickLeaves_WithData_ReturnsList() {
+    void findYearMonthWithMostSickLeaves_WithData_ReturnsList_HappyPath() {
         YearMonthSickLeaveCountDTO dto = YearMonthSickLeaveCountDTO.builder()
                 .year(LocalDate.now().getYear())
                 .month(LocalDate.now().getMonthValue())
                 .count(1L)
                 .build();
-        when(sickLeaveRepository.findYearMonthWithMostSickLeaves()).thenReturn(Collections.singletonList(dto));
+        when(sickLeaveRepository.findYearMonthWithMostSickLeaves()).thenReturn(List.of(dto));
 
         List<YearMonthSickLeaveCountDTO> result = sickLeaveRepository.findYearMonthWithMostSickLeaves();
 
@@ -109,75 +85,37 @@ class SickLeaveRepositoryUnitTests {
     }
 
     @Test
-    void FindDoctorsWithMostSickLeaves_WithData_ReturnsList() {
+    void findDoctorsWithMostSickLeaves_WithData_ReturnsList_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
         DoctorSickLeaveCountDTO dto = DoctorSickLeaveCountDTO.builder()
                 .doctor(doctor)
                 .sickLeaveCount(1L)
                 .build();
-        when(sickLeaveRepository.findDoctorsWithMostSickLeaves()).thenReturn(Collections.singletonList(dto));
+        when(sickLeaveRepository.findDoctorsWithMostSickLeaves()).thenReturn(List.of(dto));
 
         List<DoctorSickLeaveCountDTO> result = sickLeaveRepository.findDoctorsWithMostSickLeaves();
 
         assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.getFirst().getDoctor().getName());
+        assertEquals(doctor.getUniqueIdNumber(), result.getFirst().getDoctor().getUniqueIdNumber());
         assertEquals(1L, result.getFirst().getSickLeaveCount());
         verify(sickLeaveRepository).findDoctorsWithMostSickLeaves();
     }
 
     @Test
-    void SoftDelete_WithValidSickLeave_SetsIsDeleted() {
-        doNothing().when(sickLeaveRepository).delete(sickLeave);
+    void findAll_NoData_ReturnsEmptyPage_ErrorCase() {
+        Page<SickLeave> emptyPage = new PageImpl<>(List.of());
+        when(sickLeaveRepository.findAll(any(Pageable.class))).thenReturn(emptyPage);
 
-        sickLeaveRepository.delete(sickLeave);
-
-        verify(sickLeaveRepository).delete(sickLeave);
-    }
-
-    @Test
-    void HardDeleteById_WithValidId_InvokesDeletion() {
-        doNothing().when(sickLeaveRepository).hardDeleteById(1L);
-
-        sickLeaveRepository.hardDeleteById(1L);
-
-        verify(sickLeaveRepository).hardDeleteById(1L);
-    }
-
-    // Error Cases
-    @Test
-    void FindById_WithNonExistentId_ReturnsEmpty() {
-        when(sickLeaveRepository.findById(999L)).thenReturn(Optional.empty());
-
-        Optional<SickLeave> foundSickLeave = sickLeaveRepository.findById(999L);
-
-        assertFalse(foundSickLeave.isPresent());
-        verify(sickLeaveRepository).findById(999L);
-    }
-
-    @Test
-    void FindAllActive_WithNoData_ReturnsEmpty() {
-        when(sickLeaveRepository.findAllActive()).thenReturn(Collections.emptyList());
-
-        List<SickLeave> result = sickLeaveRepository.findAllActive();
-
-        assertTrue(result.isEmpty());
-        verify(sickLeaveRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoData_ReturnsEmpty() {
-        Page<SickLeave> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(sickLeaveRepository.findAllActive(any(PageRequest.class))).thenReturn(emptyPage);
-
-        Page<SickLeave> result = sickLeaveRepository.findAllActive(PageRequest.of(0, 1));
+        Page<SickLeave> result = sickLeaveRepository.findAll(PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(sickLeaveRepository).findAllActive(any(PageRequest.class));
+        verify(sickLeaveRepository).findAll(any(Pageable.class));
     }
 
     @Test
-    void FindYearMonthWithMostSickLeaves_WithNoData_ReturnsEmpty() {
-        when(sickLeaveRepository.findYearMonthWithMostSickLeaves()).thenReturn(Collections.emptyList());
+    void findYearMonthWithMostSickLeaves_NoData_ReturnsEmptyList_ErrorCase() {
+        when(sickLeaveRepository.findYearMonthWithMostSickLeaves()).thenReturn(List.of());
 
         List<YearMonthSickLeaveCountDTO> result = sickLeaveRepository.findYearMonthWithMostSickLeaves();
 
@@ -186,8 +124,8 @@ class SickLeaveRepositoryUnitTests {
     }
 
     @Test
-    void FindDoctorsWithMostSickLeaves_WithNoData_ReturnsEmpty() {
-        when(sickLeaveRepository.findDoctorsWithMostSickLeaves()).thenReturn(Collections.emptyList());
+    void findDoctorsWithMostSickLeaves_NoData_ReturnsEmptyList_ErrorCase() {
+        when(sickLeaveRepository.findDoctorsWithMostSickLeaves()).thenReturn(List.of());
 
         List<DoctorSickLeaveCountDTO> result = sickLeaveRepository.findDoctorsWithMostSickLeaves();
 
@@ -195,46 +133,21 @@ class SickLeaveRepositoryUnitTests {
         verify(sickLeaveRepository).findDoctorsWithMostSickLeaves();
     }
 
-    // Edge Cases
     @Test
-    void FindAllActive_WithSoftDeletedSickLeave_ExcludesDeleted() {
-        SickLeave deletedSickLeave = new SickLeave();
-        deletedSickLeave.setId(2L);
-        deletedSickLeave.setStartDate(LocalDate.now());
-        deletedSickLeave.setDurationDays(3);
-        deletedSickLeave.setIsDeleted(true);
+    void findAll_WithLargePageSize_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
+        Visit visit = createVisit(doctor);
+        List<SickLeave> sickLeaves = new java.util.ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            sickLeaves.add(createSickLeave(LocalDate.now(), 5, visit));
+        }
+        Page<SickLeave> page = new PageImpl<>(sickLeaves);
+        when(sickLeaveRepository.findAll(eq(PageRequest.of(0, 10)))).thenReturn(page);
 
-        when(sickLeaveRepository.findAllActive()).thenReturn(Collections.singletonList(sickLeave));
+        Page<SickLeave> result = sickLeaveRepository.findAll(PageRequest.of(0, 10));
 
-        List<SickLeave> result = sickLeaveRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals(5, result.getFirst().getDurationDays());
-        assertFalse(result.contains(deletedSickLeave));
-        verify(sickLeaveRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
-        SickLeave sickLeave2 = new SickLeave();
-        sickLeave2.setId(2L);
-        sickLeave2.setStartDate(LocalDate.now());
-        sickLeave2.setDurationDays(7);
-
-        SickLeave sickLeave3 = new SickLeave();
-        sickLeave3.setId(3L);
-        sickLeave3.setStartDate(LocalDate.now());
-        sickLeave3.setDurationDays(10);
-
-        Page<SickLeave> page = new PageImpl<>(Collections.singletonList(sickLeave3), PageRequest.of(1, 2), 3);
-        when(sickLeaveRepository.findAllActive(PageRequest.of(1, 2))).thenReturn(page);
-
-        Page<SickLeave> result = sickLeaveRepository.findAllActive(PageRequest.of(1, 2));
-
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals(10, result.getContent().getFirst().getDurationDays());
-        assertEquals(2, result.getTotalPages());
-        verify(sickLeaveRepository).findAllActive(PageRequest.of(1, 2));
+        assertEquals(5, result.getTotalElements());
+        assertEquals(5, result.getContent().size());
+        verify(sickLeaveRepository).findAll(eq(PageRequest.of(0, 10)));
     }
 }

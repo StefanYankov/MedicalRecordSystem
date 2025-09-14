@@ -30,6 +30,11 @@ public class ValidationConfig {
     public static final int EGN_LENGTH = 10;
     public static final String EGN_REGEX = "^\\d{" + EGN_LENGTH + "}$";
 
+    // Email
+    public static final int EMAIL_MIN_LENGTH = 5;
+    public static final int EMAIL_MAX_LENGTH = 255;
+    public static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+
     private ValidationConfig() {
         throw new IllegalStateException("Utility class");
     }

@@ -1,10 +1,8 @@
-package nbu.cscb869.data.models.base;
+package nbu.cscb869.data.base;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -13,15 +11,13 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Abstract base entity providing common fields and soft delete functionality.
+ * Abstract base entity providing common fields
  * Includes auditing fields (created/modified) and soft delete fields ({@code isDeleted}, {@code deletedOn}).
- * Entities extending this class should add an index on {@code is_deleted} for query performance.
  */
 @Getter
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-@Where(clause = "is_deleted = false")
 public abstract class BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,20 +37,12 @@ public abstract class BaseEntity {
     @Column
     private String modifiedBy;
 
-    @NotNull
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted = false;
-
-    @Column(name = "deleted_on")
-    private LocalDateTime deletedOn;
-
     @Version
-    private Long version;
+    private Long version;  // Optimistic locking to prevent concurrent updates
 
     @PrePersist
     public void prePersist() {
         this.createdOn = LocalDateTime.now();
-        this.isDeleted = false;
     }
 
     @PreUpdate
@@ -62,19 +50,17 @@ public abstract class BaseEntity {
         this.modifiedOn = LocalDateTime.now();
     }
 
-    // NB! added isDeleted for the methods below
-
+    // equals/hashCode based on ID only
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         BaseEntity that = (BaseEntity) o;
-        return Objects.equals(id, that.id) && Objects.equals(isDeleted, that.isDeleted);
+        return Objects.equals(id, that.id);
     }
-
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, isDeleted);
+        return Objects.hash(id);
     }
 }

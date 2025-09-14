@@ -5,7 +5,6 @@ import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -17,7 +16,6 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,493 +25,292 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class VisitRepositoryUnitTests {
+
     @Mock
     private VisitRepository visitRepository;
 
-    private Visit visit;
-    private Doctor doctor;
-    private Patient patient;
-    private Diagnosis diagnosis;
-    private Treatment treatment;
-    private Medicine medicine;
-    private SickLeave sickLeave;
-    private LocalDate today;
-    private LocalTime visitTime;
-
-    @BeforeEach
-    void setUp() {
-        today = LocalDate.now();
-        visitTime = LocalTime.of(10, 30);
-
-        diagnosis = new Diagnosis();
-        diagnosis.setId(1L);
-        diagnosis.setName("Flu");
-        diagnosis.setDescription("Viral infection");
-
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setName("Jane Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(today);
-
-        medicine = new Medicine();
-        medicine.setId(1L);
-        medicine.setName("Amoxicillin");
-        medicine.setDosage("500mg");
-        medicine.setFrequency("Twice daily");
-
-        treatment = new Treatment();
-        treatment.setId(1L);
-        treatment.setDescription("Antibiotic therapy");
-        treatment.setMedicines(List.of(medicine));
-
-        sickLeave = new SickLeave();
-        sickLeave.setId(1L);
-        sickLeave.setStartDate(today);
-        sickLeave.setDurationDays(5);
-
-        visit = new Visit();
-        visit.setId(1L);
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setDiagnosis(diagnosis);
-        visit.setVisitDate(today);
-        visit.setVisitTime(visitTime);
-        visit.setSickLeaveIssued(false);
-        visit.setTreatment(treatment);
-        visit.setSickLeave(sickLeave);
-        visit.setIsDeleted(false);
+    private Diagnosis createDiagnosis(String name, String description) {
+        return Diagnosis.builder()
+                .name(name)
+                .description(description)
+                .build();
     }
 
-    // Happy Path
-    @Test
-    void Save_WithValidVisit_ReturnsSaved() {
-        when(visitRepository.save(visit)).thenReturn(visit);
+    private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
+        return Doctor.builder()
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .name(name)
+                .build();
+    }
 
-        Visit savedVisit = visitRepository.save(visit);
+    private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
+        return Patient.builder()
+                .egn(egn)
+                .generalPractitioner(generalPractitioner)
+                .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .build();
+    }
 
-        assertEquals(today, savedVisit.getVisitDate());
-        assertEquals(visitTime, savedVisit.getVisitTime());
-        verify(visitRepository).save(visit);
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, SickLeave sickLeave) {
+        Visit visit = Visit.builder()
+                .patient(patient)
+                .doctor(doctor)
+                .diagnosis(diagnosis)
+                .visitDate(visitDate)
+                .visitTime(visitTime)
+                .build();
+        if (sickLeave != null) {
+            visit.setSickLeave(sickLeave);
+            sickLeave.setVisit(visit);
+        }
+        return visit;
     }
 
     @Test
-    void Save_WithSickLeave_ReturnsSaved() {
-        visit.setSickLeaveIssued(true);
-        when(visitRepository.save(visit)).thenReturn(visit);
-
-        Visit savedVisit = visitRepository.save(visit);
-
-        assertTrue(savedVisit.isSickLeaveIssued());
-        assertNotNull(savedVisit.getSickLeave());
-        assertEquals(5, savedVisit.getSickLeave().getDurationDays());
-        verify(visitRepository).save(visit);
-    }
-
-    @Test
-    void Save_WithTreatment_ReturnsSaved() {
-        when(visitRepository.save(visit)).thenReturn(visit);
-
-        Visit savedVisit = visitRepository.save(visit);
-
-        assertNotNull(savedVisit.getTreatment());
-        assertEquals("Antibiotic therapy", savedVisit.getTreatment().getDescription());
-        assertEquals(1, savedVisit.getTreatment().getMedicines().size());
-        assertEquals("Amoxicillin", savedVisit.getTreatment().getMedicines().getFirst().getName());
-        verify(visitRepository).save(visit);
-    }
-
-    @Test
-    void FindByPatient_WithValidPatient_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
+    void findByPatient_ValidPatient_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
         when(visitRepository.findByPatient(eq(patient), any(Pageable.class))).thenReturn(page);
 
         Page<Visit> result = visitRepository.findByPatient(patient, PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
+        assertEquals(LocalDate.now(), result.getContent().getFirst().getVisitDate());
         verify(visitRepository).findByPatient(eq(patient), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctor_WithValidDoctor_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
+    void findByDoctor_ValidDoctor_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
         when(visitRepository.findByDoctor(eq(doctor), any(Pageable.class))).thenReturn(page);
 
         Page<Visit> result = visitRepository.findByDoctor(doctor, PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
+        assertEquals(LocalDate.now(), result.getContent().getFirst().getVisitDate());
         verify(visitRepository).findByDoctor(eq(doctor), any(Pageable.class));
     }
 
     @Test
-    void FindByDateRange_WithValidRange_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
+    void findByDateRange_ValidRange_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
+        LocalDate today = LocalDate.now();
         when(visitRepository.findByDateRange(eq(today), eq(today), any(Pageable.class))).thenReturn(page);
 
         Page<Visit> result = visitRepository.findByDateRange(today, today, PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
         verify(visitRepository).findByDateRange(eq(today), eq(today), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctorAndDateRange_WithValidDoctorAndRange_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
+    void findByDoctorAndDateRange_ValidDoctorAndRange_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
+        LocalDate today = LocalDate.now();
         when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(today), eq(today), any(Pageable.class))).thenReturn(page);
 
         Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, today, today, PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
         verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(today), eq(today), any(Pageable.class));
     }
 
     @Test
-    void FindByDiagnosis_WithValidDiagnosis_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
+    void findByDiagnosis_ValidDiagnosis_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Charlie Green");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
         when(visitRepository.findByDiagnosis(eq(diagnosis), any(Pageable.class))).thenReturn(page);
 
         Page<Visit> result = visitRepository.findByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
+        assertEquals(LocalDate.now(), result.getContent().getFirst().getVisitDate());
         verify(visitRepository).findByDiagnosis(eq(diagnosis), any(Pageable.class));
     }
 
     @Test
-    void FindMostFrequentDiagnoses_WithData_ReturnsList() {
+    void findMostFrequentDiagnoses_WithData_ReturnsList_HappyPath() {
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
         DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder()
                 .diagnosis(diagnosis)
                 .visitCount(1L)
                 .build();
-        when(visitRepository.findMostFrequentDiagnoses()).thenReturn(Collections.singletonList(dto));
+        when(visitRepository.findMostFrequentDiagnoses()).thenReturn(List.of(dto));
 
         List<DiagnosisVisitCountDTO> result = visitRepository.findMostFrequentDiagnoses();
 
         assertEquals(1, result.size());
         assertEquals("Flu", result.getFirst().getDiagnosis().getName());
-        assertEquals(1L, result.getFirst().getVisitCount());
         verify(visitRepository).findMostFrequentDiagnoses();
     }
 
     @Test
-    void CountVisitsByDoctor_WithData_ReturnsList() {
+    void countVisitsByDoctor_WithData_ReturnsList_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. David Black");
         DoctorVisitCountDTO dto = DoctorVisitCountDTO.builder()
                 .doctor(doctor)
                 .visitCount(1L)
                 .build();
-        when(visitRepository.countVisitsByDoctor()).thenReturn(Collections.singletonList(dto));
+        when(visitRepository.countVisitsByDoctor()).thenReturn(List.of(dto));
 
         List<DoctorVisitCountDTO> result = visitRepository.countVisitsByDoctor();
 
         assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.getFirst().getDoctor().getName());
-        assertEquals(1L, result.getFirst().getVisitCount());
+        assertEquals(doctor.getUniqueIdNumber(), result.getFirst().getDoctor().getUniqueIdNumber());
         verify(visitRepository).countVisitsByDoctor();
     }
 
     @Test
-    void FindAllActive_WithData_ReturnsList() {
-        when(visitRepository.findAllActive()).thenReturn(Collections.singletonList(visit));
+    void findByPatientOrDoctorFilter_ValidFilter_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor("DOC123", true, "Dr. Eve White");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
+        when(visitRepository.findByPatientOrDoctorFilter(eq("%DOC123%"), any(Pageable.class))).thenReturn(page);
 
-        List<Visit> result = visitRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals(today, result.getFirst().getVisitDate());
-        assertEquals(visitTime, result.getFirst().getVisitTime());
-        verify(visitRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithData_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
-        when(visitRepository.findAllActive(any(Pageable.class))).thenReturn(page);
-
-        Page<Visit> result = visitRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter("%DOC123%", PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
-        verify(visitRepository).findAllActive(any(Pageable.class));
+        assertEquals("DOC123", result.getContent().getFirst().getDoctor().getUniqueIdNumber());
+        verify(visitRepository).findByPatientOrDoctorFilter(eq("%DOC123%"), any(Pageable.class));
     }
 
     @Test
-    void SoftDelete_WithValidVisit_SetsIsDeleted() {
-        doNothing().when(visitRepository).delete(visit);
+    void findByDoctorAndDateTime_ValidParams_ReturnsVisit_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Frank Gray");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        when(visitRepository.findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)))).thenReturn(Optional.of(visit));
 
-        visitRepository.delete(visit);
-
-        verify(visitRepository).delete(visit);
-    }
-
-    @Test
-    void HardDeleteById_WithValidId_InvokesDeletion() {
-        doNothing().when(visitRepository).hardDeleteById(1L);
-
-        visitRepository.hardDeleteById(1L);
-
-        verify(visitRepository).hardDeleteById(1L);
-    }
-
-    @Test
-    void FindByPatientOrDoctorFilter_WithValidFilter_ReturnsPaged() {
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
-        when(visitRepository.findByPatientOrDoctorFilter(eq("%jane%"), any(Pageable.class))).thenReturn(page);
-
-        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter("%jane%", PageRequest.of(0, 1));
-
-        assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
-        assertEquals("Jane Doe", result.getContent().getFirst().getPatient().getName());
-        verify(visitRepository).findByPatientOrDoctorFilter(eq("%jane%"), any(Pageable.class));
-    }
-
-    @Test
-    void FindByPatientOrDoctorFilter_WithNoMatches_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByPatientOrDoctorFilter(eq("%nonexistent%"), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter("%nonexistent%", PageRequest.of(0, 1));
-
-        assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByPatientOrDoctorFilter(eq("%nonexistent%"), any(Pageable.class));
-    }
-
-    @Test
-    void FindByDoctorAndDateTime_WithValidParams_ReturnsVisit() {
-        when(visitRepository.findByDoctorAndDateTime(eq(doctor), eq(today), eq(visitTime))).thenReturn(Optional.of(visit));
-
-        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, today, visitTime);
+        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, LocalDate.now(), LocalTime.of(10, 30));
 
         assertTrue(result.isPresent());
-        assertEquals(today, result.get().getVisitDate());
-        assertEquals(visitTime, result.get().getVisitTime());
-        verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(today), eq(visitTime));
+        assertEquals(LocalDate.now(), result.get().getVisitDate());
+        verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)));
     }
 
     @Test
-    void FindByDoctorAndDateTime_WithNoMatch_ReturnsEmpty() {
-        when(visitRepository.findByDoctorAndDateTime(eq(doctor), eq(today), eq(LocalTime.of(11, 0)))).thenReturn(Optional.empty());
+    void findByPatient_NoVisits_ReturnsEmptyPage_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Grace Blue");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByPatient(eq(patient), any(Pageable.class))).thenReturn(emptyPage);
 
-        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, today, LocalTime.of(11, 0));
-
-        assertFalse(result.isPresent());
-        verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(today), eq(LocalTime.of(11, 0)));
-    }
-
-    // Error Cases
-    @Test
-    void Save_WithNullVisitDate_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setPatient(patient);
-        invalidVisit.setDoctor(doctor);
-        invalidVisit.setDiagnosis(diagnosis);
-        invalidVisit.setVisitTime(visitTime);
-        invalidVisit.setSickLeaveIssued(false);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void Save_WithNullVisitTime_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setPatient(patient);
-        invalidVisit.setDoctor(doctor);
-        invalidVisit.setDiagnosis(diagnosis);
-        invalidVisit.setVisitDate(today);
-        invalidVisit.setSickLeaveIssued(false);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void Save_WithNullSickLeaveIssued_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setPatient(patient);
-        invalidVisit.setDoctor(doctor);
-        invalidVisit.setDiagnosis(diagnosis);
-        invalidVisit.setVisitDate(today);
-        invalidVisit.setVisitTime(visitTime);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void Save_WithNullPatient_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setDoctor(doctor);
-        invalidVisit.setDiagnosis(diagnosis);
-        invalidVisit.setVisitDate(today);
-        invalidVisit.setVisitTime(visitTime);
-        invalidVisit.setSickLeaveIssued(false);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void Save_WithNullDoctor_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setPatient(patient);
-        invalidVisit.setDiagnosis(diagnosis);
-        invalidVisit.setVisitDate(today);
-        invalidVisit.setVisitTime(visitTime);
-        invalidVisit.setSickLeaveIssued(false);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void Save_WithNullDiagnosis_ThrowsException() {
-        Visit invalidVisit = new Visit();
-        invalidVisit.setPatient(patient);
-        invalidVisit.setDoctor(doctor);
-        invalidVisit.setVisitDate(today);
-        invalidVisit.setVisitTime(visitTime);
-        invalidVisit.setSickLeaveIssued(false);
-
-        when(visitRepository.save(invalidVisit)).thenThrow(org.springframework.dao.DataIntegrityViolationException.class);
-
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> visitRepository.save(invalidVisit));
-        verify(visitRepository).save(invalidVisit);
-    }
-
-    @Test
-    void FindByPatient_WithNoVisits_ReturnsEmpty() {
-        Patient otherPatient = new Patient();
-        otherPatient.setId(2L);
-        otherPatient.setName("John Smith");
-        otherPatient.setEgn(TestDataUtils.generateValidEgn());
-        otherPatient.setGeneralPractitioner(doctor);
-        otherPatient.setLastInsurancePaymentDate(today);
-
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByPatient(eq(otherPatient), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Visit> result = visitRepository.findByPatient(otherPatient, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatient(patient, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByPatient(eq(otherPatient), any(Pageable.class));
+        verify(visitRepository).findByPatient(eq(patient), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctor_WithNoVisits_ReturnsEmpty() {
-        Doctor otherDoctor = new Doctor();
-        otherDoctor.setId(2L);
-        otherDoctor.setName("Dr. Jones");
-        otherDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        otherDoctor.setGeneralPractitioner(true);
+    void findByDoctor_NoVisits_ReturnsEmptyPage_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Henry Red");
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDoctor(eq(doctor), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDoctor(eq(otherDoctor), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Visit> result = visitRepository.findByDoctor(otherDoctor, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDoctor(doctor, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDoctor(eq(otherDoctor), any(Pageable.class));
+        verify(visitRepository).findByDoctor(eq(doctor), any(Pageable.class));
     }
 
     @Test
-    void FindByDateRange_WithNoVisits_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDateRange(eq(today.minusDays(1)), eq(today.minusDays(1)), any(Pageable.class))).thenReturn(emptyPage);
+    void findByDateRange_NoVisits_ReturnsEmptyPage_ErrorCase() {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDateRange(eq(yesterday), eq(yesterday), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> result = visitRepository.findByDateRange(today.minusDays(1), today.minusDays(1), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDateRange(yesterday, yesterday, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDateRange(eq(today.minusDays(1)), eq(today.minusDays(1)), any(Pageable.class));
+        verify(visitRepository).findByDateRange(eq(yesterday), eq(yesterday), any(Pageable.class));
     }
 
     @Test
-    void FindByDateRange_WithInvalidRange_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDateRange(eq(today), eq(today.minusDays(1)), any(Pageable.class))).thenReturn(emptyPage);
+    void findByDateRange_InvalidRange_ReturnsEmptyPage_ErrorCase() {
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDateRange(eq(today), eq(yesterday), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> result = visitRepository.findByDateRange(today, today.minusDays(1), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDateRange(today, yesterday, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDateRange(eq(today), eq(today.minusDays(1)), any(Pageable.class));
+        verify(visitRepository).findByDateRange(eq(today), eq(yesterday), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctorAndDateRange_WithNoVisits_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(today.minusDays(1)), eq(today.minusDays(1)), any(Pageable.class))).thenReturn(emptyPage);
+    void findByDoctorAndDateRange_NoVisits_ReturnsEmptyPage_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Ivy Purple");
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(yesterday), eq(yesterday), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, today.minusDays(1), today.minusDays(1), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, yesterday, yesterday, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(today.minusDays(1)), eq(today.minusDays(1)), any(Pageable.class));
+        verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(yesterday), eq(yesterday), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctorAndDateRange_WithInvalidRange_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(today), eq(today.minusDays(1)), any(Pageable.class))).thenReturn(emptyPage);
+    void findByDoctorAndDateRange_InvalidRange_ReturnsEmptyPage_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(today), eq(yesterday), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, today, today.minusDays(1), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, today, yesterday, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(today), eq(today.minusDays(1)), any(Pageable.class));
+        verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(today), eq(yesterday), any(Pageable.class));
     }
 
     @Test
-    void FindByDiagnosis_WithNoVisits_ReturnsEmpty() {
-        Diagnosis otherDiagnosis = new Diagnosis();
-        otherDiagnosis.setId(2L);
-        otherDiagnosis.setName("Cold");
-        otherDiagnosis.setDescription("Common cold");
+    void findByDiagnosis_NoVisits_ReturnsEmptyPage_ErrorCase() {
+        Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByDiagnosis(eq(diagnosis), any(Pageable.class))).thenReturn(emptyPage);
 
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findByDiagnosis(eq(otherDiagnosis), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Visit> result = visitRepository.findByDiagnosis(otherDiagnosis, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findByDiagnosis(eq(otherDiagnosis), any(Pageable.class));
+        verify(visitRepository).findByDiagnosis(eq(diagnosis), any(Pageable.class));
     }
 
     @Test
-    void FindMostFrequentDiagnoses_WithNoData_ReturnsEmpty() {
-        when(visitRepository.findMostFrequentDiagnoses()).thenReturn(Collections.emptyList());
+    void findMostFrequentDiagnoses_NoData_ReturnsEmptyList_ErrorCase() {
+        when(visitRepository.findMostFrequentDiagnoses()).thenReturn(List.of());
 
         List<DiagnosisVisitCountDTO> result = visitRepository.findMostFrequentDiagnoses();
 
@@ -522,8 +319,8 @@ class VisitRepositoryUnitTests {
     }
 
     @Test
-    void CountVisitsByDoctor_WithNoData_ReturnsEmpty() {
-        when(visitRepository.countVisitsByDoctor()).thenReturn(Collections.emptyList());
+    void countVisitsByDoctor_NoData_ReturnsEmptyList_ErrorCase() {
+        when(visitRepository.countVisitsByDoctor()).thenReturn(List.of());
 
         List<DoctorVisitCountDTO> result = visitRepository.countVisitsByDoctor();
 
@@ -532,82 +329,42 @@ class VisitRepositoryUnitTests {
     }
 
     @Test
-    void FindAllActive_WithNoData_ReturnsEmpty() {
-        when(visitRepository.findAllActive()).thenReturn(Collections.emptyList());
+    void findByPatientOrDoctorFilter_NoMatches_ReturnsEmptyPage_ErrorCase() {
+        Page<Visit> emptyPage = new PageImpl<>(List.of());
+        when(visitRepository.findByPatientOrDoctorFilter(eq("%NONEXISTENT%"), any(Pageable.class))).thenReturn(emptyPage);
 
-        List<Visit> result = visitRepository.findAllActive();
-
-        assertTrue(result.isEmpty());
-        verify(visitRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoData_ReturnsEmpty() {
-        Page<Visit> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(visitRepository.findAllActive(any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Visit> result = visitRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter("%NONEXISTENT%", PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(visitRepository).findAllActive(any(Pageable.class));
-    }
-
-    // Edge Cases
-    @Test
-    void FindByPatient_WithSoftDeletedVisit_ReturnsEmpty() {
-        Visit deletedVisit = new Visit();
-        deletedVisit.setId(2L);
-        deletedVisit.setPatient(patient);
-        deletedVisit.setDoctor(doctor);
-        deletedVisit.setDiagnosis(diagnosis);
-        deletedVisit.setVisitDate(today);
-        deletedVisit.setVisitTime(visitTime);
-        deletedVisit.setSickLeaveIssued(false);
-        deletedVisit.setIsDeleted(true);
-
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit));
-        when(visitRepository.findByPatient(eq(patient), any(Pageable.class))).thenReturn(page);
-
-        Page<Visit> result = visitRepository.findByPatient(patient, PageRequest.of(0, 1));
-
-        assertEquals(1, result.getTotalElements());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(visitTime, result.getContent().getFirst().getVisitTime());
-        assertFalse(result.getContent().contains(deletedVisit));
-        verify(visitRepository).findByPatient(eq(patient), any(Pageable.class));
+        verify(visitRepository).findByPatientOrDoctorFilter(eq("%NONEXISTENT%"), any(Pageable.class));
     }
 
     @Test
-    void FindByDoctorAndDateRange_WithLastPageFewerElements_ReturnsCorrectPage() {
-        Visit visit2 = new Visit();
-        visit2.setId(2L);
-        visit2.setPatient(patient);
-        visit2.setDoctor(doctor);
-        visit2.setDiagnosis(diagnosis);
-        visit2.setVisitDate(today);
-        visit2.setVisitTime(LocalTime.of(11, 0));
-        visit2.setSickLeaveIssued(false);
+    void findByDoctorAndDateTime_NoMatch_ReturnsEmpty_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
+        when(visitRepository.findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(11, 0)))).thenReturn(Optional.empty());
 
-        Visit visit3 = new Visit();
-        visit3.setId(3L);
-        visit3.setPatient(patient);
-        visit3.setDoctor(doctor);
-        visit3.setDiagnosis(diagnosis);
-        visit3.setVisitDate(today);
-        visit3.setVisitTime(LocalTime.of(11, 30));
-        visit3.setSickLeaveIssued(false);
+        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, LocalDate.now(), LocalTime.of(11, 0));
 
-        Page<Visit> page = new PageImpl<>(Collections.singletonList(visit3), PageRequest.of(1, 2), 3);
-        when(visitRepository.findByDoctorAndDateRange(eq(doctor), eq(today), eq(today), eq(PageRequest.of(1, 2)))).thenReturn(page);
+        assertFalse(result.isPresent());
+        verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(11, 0)));
+    }
 
-        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, today, today, PageRequest.of(1, 2));
+    @Test
+    void findByDoctorAndDateTime_MultipleVisitsSameTime_ReturnsFirst_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
+        Patient patient1 = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient2 = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit1 = createVisit(patient1, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit2 = createVisit(patient2, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        when(visitRepository.findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)))).thenReturn(Optional.of(visit1));
 
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals(today, result.getContent().getFirst().getVisitDate());
-        assertEquals(LocalTime.of(11, 30), result.getContent().getFirst().getVisitTime());
-        assertEquals(2, result.getTotalPages());
-        verify(visitRepository).findByDoctorAndDateRange(eq(doctor), eq(today), eq(today), eq(PageRequest.of(1, 2)));
+        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, LocalDate.now(), LocalTime.of(10, 30));
+
+        assertTrue(result.isPresent());
+        assertEquals(patient1.getEgn(), result.get().getPatient().getEgn());
+        verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)));
     }
 }

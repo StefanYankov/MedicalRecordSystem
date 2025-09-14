@@ -2,37 +2,34 @@ package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
-import nbu.cscb869.data.models.base.BaseEntity;
-import org.hibernate.annotations.SQLDelete;
+import nbu.cscb869.data.base.BaseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Getter
 @Setter
+@Builder
 @Entity
 @Table(name = "visits", indexes = {
         @Index(columnList = "patient_id"),
         @Index(columnList = "doctor_id"),
         @Index(columnList = "diagnosis_id"),
-        @Index(columnList = "is_deleted")
+        @Index(columnList = "visit_date")
 })
-@SQLDelete(sql = "UPDATE visits SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Visit extends BaseEntity {
+
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     @Column(name = "visit_date", nullable = false)
     private LocalDate visitDate;
 
-    @NotNull(message = ErrorMessages.TIME_NOT_NULL )
+    @NotNull(message = ErrorMessages.TIME_NOT_NULL)
     @Column(name = "visit_time")
     private LocalTime visitTime;
-
-    @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
-    @Column(name = "sick_leave_issued", nullable = false)
-    private boolean sickLeaveIssued;
 
     @ManyToOne
     @NotNull
@@ -49,9 +46,13 @@ public class Visit extends BaseEntity {
     @JoinColumn(name = "diagnosis_id", nullable = false)
     private Diagnosis diagnosis;
 
-    @OneToOne(mappedBy = "visit")
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, optional = true)
     private SickLeave sickLeave;
 
-    @OneToOne(mappedBy = "visit")
+    @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, optional = true)
     private Treatment treatment;
+
+    public boolean isSickLeaveIssued() {
+        return sickLeave != null;
+    }
 }

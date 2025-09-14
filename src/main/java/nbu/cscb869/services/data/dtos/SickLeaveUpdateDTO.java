@@ -21,8 +21,8 @@ public class SickLeaveUpdateDTO {
 
     @NotNull(message = ErrorMessages.DURATION_NOT_NULL)
     @Min(value = ValidationConfig.DURATION_MIN_DAYS, message = ErrorMessages.DURATION_MIN)
-    private int durationDays;
+    private Integer durationDays;
 
-    @NotNull
+    @NotNull(message = ErrorMessages.VISIT_ID_NOT_NULL)
     private Long visitId;
 }

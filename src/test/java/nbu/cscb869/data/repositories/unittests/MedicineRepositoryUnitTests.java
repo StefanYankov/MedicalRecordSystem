@@ -1,14 +1,9 @@
+// nbu.cscb869.data.repositories.unittests/MedicineRepositoryUnitTests.java
 package nbu.cscb869.data.repositories.unittests;
 
-import nbu.cscb869.data.models.Diagnosis;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Medicine;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.Treatment;
-import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.MedicineRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,14 +11,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,166 +28,108 @@ class MedicineRepositoryUnitTests {
     @Mock
     private MedicineRepository medicineRepository;
 
-    private Medicine medicine;
-    private Treatment treatment;
-    private Visit visit;
-    private Diagnosis diagnosis;
-    private Doctor doctor;
-    private Patient patient;
-
-    @BeforeEach
-    void setUp() {
-        diagnosis = new Diagnosis();
-        diagnosis.setId(1L);
-        diagnosis.setName("Flu");
-        diagnosis.setDescription("Viral infection");
-
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setName("Jane Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-
-        visit = new Visit();
-        visit.setId(1L);
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setDiagnosis(diagnosis);
-        visit.setVisitDate(LocalDate.now());
-        visit.setVisitTime(LocalTime.of(10, 30));
-        visit.setSickLeaveIssued(false);
-
-        treatment = new Treatment();
-        treatment.setId(1L);
-        treatment.setDescription("Antibiotic therapy");
-        treatment.setVisit(visit);
-
-        medicine = new Medicine();
-        medicine.setId(1L);
-        medicine.setName("Aspirin");
-        medicine.setDosage("500mg");
-        medicine.setFrequency("Once daily");
-        medicine.setTreatment(treatment);
+    private Medicine createMedicine(String name, String dosage, String frequency, Treatment treatment) {
+        return Medicine.builder()
+                .name(name)
+                .dosage(dosage)
+                .frequency(frequency)
+                .treatment(treatment)
+                .build();
     }
 
-    // Happy Path
-    @Test
-    void FindAllActive_WithData_ReturnsList() {
-        when(medicineRepository.findAllActive()).thenReturn(Collections.singletonList(medicine));
+    private Treatment createTreatment(String description, Visit visit) {
+        return Treatment.builder()
+                .description(description)
+                .visit(visit)
+                .build();
+    }
 
-        List<Medicine> result = medicineRepository.findAllActive();
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, SickLeave sickLeave) {
+        Visit visit = Visit.builder()
+                .patient(patient)
+                .doctor(doctor)
+                .diagnosis(diagnosis)
+                .visitDate(visitDate)
+                .visitTime(visitTime)
+                .build();
+        if (sickLeave != null) {
+            visit.setSickLeave(sickLeave);
+            sickLeave.setVisit(visit);
+        }
+        return visit;
+    }
 
-        assertEquals(1, result.size());
-        assertEquals("Aspirin", result.getFirst().getName());
-        verify(medicineRepository).findAllActive();
+    private Diagnosis createDiagnosis(String name, String description) {
+        return Diagnosis.builder()
+                .name(name)
+                .description(description)
+                .build();
+    }
+
+    private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
+        return Doctor.builder()
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .name(name)
+                .build();
+    }
+
+    private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
+        return Patient.builder()
+                .egn(egn)
+                .generalPractitioner(generalPractitioner)
+                .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .build();
     }
 
     @Test
-    void FindAllActivePaged_WithData_ReturnsPaged() {
-        Page<Medicine> page = new PageImpl<>(Collections.singletonList(medicine));
-        when(medicineRepository.findAllActive(any(PageRequest.class))).thenReturn(page);
+    void findAll_WithData_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Treatment treatment = createTreatment("Antibiotic therapy", visit);
+        Medicine medicine = createMedicine("Aspirin", "500mg", "Once daily", treatment);
+        Page<Medicine> page = new PageImpl<>(List.of(medicine));
+        when(medicineRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        Page<Medicine> result = medicineRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Medicine> result = medicineRepository.findAll(PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
         assertEquals("Aspirin", result.getContent().getFirst().getName());
-        verify(medicineRepository).findAllActive(any(PageRequest.class));
+        verify(medicineRepository).findAll(any(Pageable.class));
     }
 
     @Test
-    void HardDeleteById_WithValidId_InvokesDeletion() {
-        doNothing().when(medicineRepository).hardDeleteById(1L);
+    void findAll_NoData_ReturnsEmptyPage_ErrorCase() {
+        Page<Medicine> emptyPage = new PageImpl<>(List.of());
+        when(medicineRepository.findAll(any(Pageable.class))).thenReturn(emptyPage);
 
-        medicineRepository.hardDeleteById(1L);
-
-        verify(medicineRepository).hardDeleteById(1L);
-    }
-
-    @Test
-    void SoftDelete_WithValidMedicine_SetsIsDeleted() {
-        doNothing().when(medicineRepository).delete(medicine);
-
-        medicineRepository.delete(medicine);
-
-        verify(medicineRepository).delete(medicine);
-    }
-
-    // Error Cases
-    @Test
-    void FindAllActive_WithNoData_ReturnsEmpty() {
-        when(medicineRepository.findAllActive()).thenReturn(Collections.emptyList());
-
-        List<Medicine> result = medicineRepository.findAllActive();
-
-        assertTrue(result.isEmpty());
-        verify(medicineRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoData_ReturnsEmpty() {
-        Page<Medicine> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(medicineRepository.findAllActive(any(PageRequest.class))).thenReturn(emptyPage);
-
-        Page<Medicine> result = medicineRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Medicine> result = medicineRepository.findAll(PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(medicineRepository).findAllActive(any(PageRequest.class));
-    }
-
-    // Edge Cases
-    @Test
-    void FindAllActive_WithSoftDeletedMedicine_ExcludesDeleted() {
-        Medicine deletedMedicine = new Medicine();
-        deletedMedicine.setId(2L);
-        deletedMedicine.setName("Paracetamol");
-        deletedMedicine.setDosage("500mg");
-        deletedMedicine.setFrequency("As needed");
-        deletedMedicine.setTreatment(treatment);
-        deletedMedicine.setIsDeleted(true);
-
-        when(medicineRepository.findAllActive()).thenReturn(Collections.singletonList(medicine));
-
-        List<Medicine> result = medicineRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals("Aspirin", result.getFirst().getName());
-        assertFalse(result.contains(deletedMedicine));
-        verify(medicineRepository).findAllActive();
+        verify(medicineRepository).findAll(any(Pageable.class));
     }
 
     @Test
-    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
-        Medicine medicine2 = new Medicine();
-        medicine2.setId(2L);
-        medicine2.setName("Paracetamol");
-        medicine2.setDosage("500mg");
-        medicine2.setFrequency("As needed");
-        medicine2.setTreatment(treatment);
+    void findAll_WithLargePageSize_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
+        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Treatment treatment = createTreatment("Antibiotic therapy", visit);
+        List<Medicine> medicines = new java.util.ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            medicines.add(createMedicine("Medicine" + i, "10mg", "Once daily", treatment));
+        }
+        Page<Medicine> page = new PageImpl<>(medicines);
+        when(medicineRepository.findAll(eq(PageRequest.of(0, 10)))).thenReturn(page);
 
-        Medicine medicine3 = new Medicine();
-        medicine3.setId(3L);
-        medicine3.setName("Ibuprofen");
-        medicine3.setDosage("200mg");
-        medicine3.setFrequency("Every 6 hours");
-        medicine3.setTreatment(treatment);
+        Page<Medicine> result = medicineRepository.findAll(PageRequest.of(0, 10));
 
-        Page<Medicine> page = new PageImpl<>(Collections.singletonList(medicine3), PageRequest.of(1, 2), 3);
-        when(medicineRepository.findAllActive(PageRequest.of(1, 2))).thenReturn(page);
-
-        Page<Medicine> result = medicineRepository.findAllActive(PageRequest.of(1, 2));
-
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals("Ibuprofen", result.getContent().getFirst().getName());
-        assertEquals(2, result.getTotalPages());
-        verify(medicineRepository).findAllActive(PageRequest.of(1, 2));
+        assertEquals(5, result.getTotalElements());
+        assertEquals(5, result.getContent().size());
+        verify(medicineRepository).findAll(eq(PageRequest.of(0, 10)));
     }
 }

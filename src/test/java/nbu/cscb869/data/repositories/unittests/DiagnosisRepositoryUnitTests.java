@@ -3,12 +3,7 @@ package nbu.cscb869.data.repositories.unittests;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.PatientDiagnosisDTO;
 import nbu.cscb869.data.models.Diagnosis;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.Visit;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
-import nbu.cscb869.data.utils.TestDataUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,17 +11,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DiagnosisRepositoryUnitTests {
@@ -34,157 +29,119 @@ class DiagnosisRepositoryUnitTests {
     @Mock
     private DiagnosisRepository diagnosisRepository;
 
-    private Diagnosis diagnosis;
-    private Doctor doctor;
-    private Patient patient;
-    private Visit visit;
-
-    @BeforeEach
-    void setUp() {
-        diagnosis = new Diagnosis();
-        diagnosis.setId(1L);
-        diagnosis.setName("Flu");
-        diagnosis.setDescription("Viral infection");
-
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setName("Jane Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-
-        visit = new Visit();
-        visit.setId(1L);
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setDiagnosis(diagnosis);
-        visit.setVisitDate(LocalDate.now());
-        visit.setVisitTime(LocalTime.of(10, 30));
-        visit.setSickLeaveIssued(false);
-    }
-
-    // Happy Path
     @Test
-    void FindByName_WithExistingName_ReturnsDiagnosis() {
+    void findByName_ExistingName_ReturnsDiagnosis_HappyPath() {
+        Diagnosis diagnosis = Diagnosis.builder().name("Flu").description("Viral infection").build();
         when(diagnosisRepository.findByName("Flu")).thenReturn(Optional.of(diagnosis));
 
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Flu");
+        Optional<Diagnosis> found = diagnosisRepository.findByName("Flu");
 
-        assertTrue(foundDiagnosis.isPresent());
-        assertEquals("Flu", foundDiagnosis.get().getName());
+        assertTrue(found.isPresent());
+        assertEquals("Flu", found.get().getName());
         verify(diagnosisRepository).findByName("Flu");
     }
 
     @Test
-    void FindPatientsByDiagnosis_WithValidDiagnosis_ReturnsPaged() {
-        PatientDiagnosisDTO dto = PatientDiagnosisDTO.builder()
-                .patient(patient)
-                .diagnosisName("Flu")
-                .build();
-        Page<PatientDiagnosisDTO> page = new PageImpl<>(Collections.singletonList(dto));
-        when(diagnosisRepository.findPatientsByDiagnosis(eq(diagnosis), any(Pageable.class))).thenReturn(page);
+    void findByName_NonExistentName_ReturnsEmpty_ErrorCase() {
+        when(diagnosisRepository.findByName("Nonexistent")).thenReturn(Optional.empty());
 
-        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
+        Optional<Diagnosis> found = diagnosisRepository.findByName("Nonexistent");
 
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Flu", result.getContent().get(0).getDiagnosisName());
-        assertEquals(patient.getId(), result.getContent().get(0).getPatient().getId());
-        verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), any(Pageable.class));
+        assertFalse(found.isPresent());
+        verify(diagnosisRepository).findByName("Nonexistent");
     }
 
     @Test
-    void FindMostFrequentDiagnoses_WithData_ReturnsSorted() {
-        DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder()
-                .diagnosis(diagnosis)
-                .visitCount(1L)
-                .build();
-        when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(Collections.singletonList(dto));
-
-        List<DiagnosisVisitCountDTO> result = diagnosisRepository.findMostFrequentDiagnoses();
-
-        assertEquals(1, result.size());
-        assertEquals("Flu", result.get(0).getDiagnosis().getName());
-        assertEquals(1L, result.get(0).getVisitCount());
-        verify(diagnosisRepository).findMostFrequentDiagnoses();
-    }
-
-    @Test
-    void FindAllActive_WithData_ReturnsList() {
-        when(diagnosisRepository.findAllActive()).thenReturn(Collections.singletonList(diagnosis));
-
-        List<Diagnosis> result = diagnosisRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals("Flu", result.get(0).getName());
-        verify(diagnosisRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithData_ReturnsPaged() {
-        Page<Diagnosis> page = new PageImpl<>(Collections.singletonList(diagnosis));
-        when(diagnosisRepository.findAllActive(any(Pageable.class))).thenReturn(page);
-
-        Page<Diagnosis> result = diagnosisRepository.findAllActive(PageRequest.of(0, 1));
-
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Flu", result.getContent().get(0).getName());
-        verify(diagnosisRepository).findAllActive(any(Pageable.class));
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_PartialName_ReturnsPaged() {
-        Diagnosis diagnosis2 = new Diagnosis();
-        diagnosis2.setId(2L);
-        diagnosis2.setName("Influenza");
-        diagnosis2.setDescription("Similar to flu");
-
-        Page<Diagnosis> page = new PageImpl<>(List.of(diagnosis, diagnosis2));
-        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("flu"), any(Pageable.class))).thenReturn(page);
+    void findByNameContainingIgnoreCase_PartialName_ReturnsPaged_HappyPath() {
+        Diagnosis d1 = Diagnosis.builder().name("Flu").build();
+        Diagnosis d2 = Diagnosis.builder().name("Influenza").build();
+        Page<Diagnosis> page = new PageImpl<>(List.of(d1, d2));
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("flu"), any(PageRequest.class))).thenReturn(page);
 
         Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("flu", PageRequest.of(0, 2));
 
         assertEquals(2, result.getTotalElements());
         assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Flu")));
-        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Influenza")));
-        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("flu"), any(Pageable.class));
-    }
-
-    // Error Cases
-    @Test
-    void FindByName_WithNonExistentName_ReturnsEmpty() {
-        when(diagnosisRepository.findByName("Nonexistent")).thenReturn(Optional.empty());
-
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Nonexistent");
-
-        assertFalse(foundDiagnosis.isPresent());
-        verify(diagnosisRepository).findByName("Nonexistent");
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("flu"), any(PageRequest.class));
     }
 
     @Test
-    void FindPatientsByDiagnosis_WithNoData_ReturnsEmpty() {
-        Diagnosis otherDiagnosis = new Diagnosis();
-        otherDiagnosis.setId(2L);
-        otherDiagnosis.setName("Other");
+    void findByNameContainingIgnoreCase_NonExistentName_ReturnsEmptyPage_ErrorCase() {
+        Page<Diagnosis> emptyPage = new PageImpl<>(List.of());
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("xyz"), any(PageRequest.class))).thenReturn(emptyPage);
 
-        Page<PatientDiagnosisDTO> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(diagnosisRepository.findPatientsByDiagnosis(eq(otherDiagnosis), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(otherDiagnosis, PageRequest.of(0, 1));
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("xyz", PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-        verify(diagnosisRepository).findPatientsByDiagnosis(eq(otherDiagnosis), any(Pageable.class));
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("xyz"), any(PageRequest.class));
     }
 
     @Test
-    void FindMostFrequentDiagnoses_WithNoData_ReturnsEmpty() {
-        when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(Collections.emptyList());
+    void findByNameContainingIgnoreCase_EmptyFilter_ReturnsAll_EdgeCase() {
+        Diagnosis d = Diagnosis.builder().name("Flu").build();
+        Page<Diagnosis> page = new PageImpl<>(List.of(d));
+        when(diagnosisRepository.findByNameContainingIgnoreCase(eq(""), any(PageRequest.class))).thenReturn(page);
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq(""), any(PageRequest.class));
+    }
+
+    @Test
+    void findPatientsByDiagnosis_ValidDiagnosis_ReturnsPaged_HappyPath() {
+        Diagnosis diagnosis = Diagnosis.builder().name("Flu").build();
+        PatientDiagnosisDTO dto = PatientDiagnosisDTO.builder().patient(null).diagnosisName("Flu").build(); // Mock minimal
+        Page<PatientDiagnosisDTO> page = new PageImpl<>(List.of(dto));
+        when(diagnosisRepository.findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class))).thenReturn(page);
+
+        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Flu", result.getContent().getFirst().getDiagnosisName());
+        verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class));
+    }
+
+    @Test
+    void findPatientsByDiagnosis_NoData_ReturnsEmptyPage_ErrorCase() {
+        Diagnosis diagnosis = Diagnosis.builder().name("Other").build();
+        Page<PatientDiagnosisDTO> emptyPage = new PageImpl<>(List.of());
+        when(diagnosisRepository.findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class))).thenReturn(emptyPage);
+
+        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class));
+    }
+
+    @Test
+    void findPatientsByDiagnosis_LargePageSize_EdgeCase() {
+        Diagnosis diagnosis = Diagnosis.builder().name("Flu").build();
+        Page<PatientDiagnosisDTO> page = new PageImpl<>(List.of(), PageRequest.of(0, 100), 0);
+        when(diagnosisRepository.findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class))).thenReturn(page);
+
+        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 100));
+
+        assertEquals(0, result.getTotalElements());
+        verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), any(PageRequest.class));
+    }
+
+    @Test
+    void findMostFrequentDiagnoses_WithData_ReturnsSortedList_HappyPath() {
+        Diagnosis d = Diagnosis.builder().name("Flu").build();
+        DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder().diagnosis(d).visitCount(1L).build();
+        when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(List.of(dto));
+
+        List<DiagnosisVisitCountDTO> result = diagnosisRepository.findMostFrequentDiagnoses();
+
+        assertEquals(1, result.size());
+        assertEquals("Flu", result.getFirst().getDiagnosis().getName());
+        verify(diagnosisRepository).findMostFrequentDiagnoses();
+    }
+
+    @Test
+    void findMostFrequentDiagnoses_NoData_ReturnsEmptyList_ErrorCase() {
+        when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(List.of());
 
         List<DiagnosisVisitCountDTO> result = diagnosisRepository.findMostFrequentDiagnoses();
 
@@ -193,97 +150,16 @@ class DiagnosisRepositoryUnitTests {
     }
 
     @Test
-    void FindAllActive_WithNoData_ReturnsEmpty() {
-        when(diagnosisRepository.findAllActive()).thenReturn(Collections.emptyList());
+    void findMostFrequentDiagnoses_MaxCount_EdgeCase() {
+        Diagnosis d = Diagnosis.builder().name("Flu").build();
+        List<DiagnosisVisitCountDTO> largeList = IntStream.range(0, 100)
+                .mapToObj(i -> DiagnosisVisitCountDTO.builder().diagnosis(d).visitCount(i).build())
+                .collect(Collectors.toList());
+        when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(largeList);
 
-        List<Diagnosis> result = diagnosisRepository.findAllActive();
+        List<DiagnosisVisitCountDTO> result = diagnosisRepository.findMostFrequentDiagnoses();
 
-        assertTrue(result.isEmpty());
-        verify(diagnosisRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoData_ReturnsEmpty() {
-        Page<Diagnosis> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(diagnosisRepository.findAllActive(any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Diagnosis> result = diagnosisRepository.findAllActive(PageRequest.of(0, 1));
-
-        assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-        verify(diagnosisRepository).findAllActive(any(Pageable.class));
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_NonExistentName_ReturnsEmpty() {
-        Page<Diagnosis> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(diagnosisRepository.findByNameContainingIgnoreCase(eq("Nonexistent"), any(Pageable.class))).thenReturn(emptyPage);
-
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Nonexistent", PageRequest.of(0, 1));
-
-        assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq("Nonexistent"), any(Pageable.class));
-    }
-
-    // Edge Cases
-    @Test
-    void FindByName_WithSoftDeletedDiagnosis_ReturnsEmpty() {
-        Diagnosis deletedDiagnosis = new Diagnosis();
-        deletedDiagnosis.setId(2L);
-        deletedDiagnosis.setName("Deleted");
-        deletedDiagnosis.setIsDeleted(true);
-
-        when(diagnosisRepository.findByName("Deleted")).thenReturn(Optional.empty());
-
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Deleted");
-
-        assertFalse(foundDiagnosis.isPresent());
-        verify(diagnosisRepository).findByName("Deleted");
-    }
-
-    @Test
-    void FindPatientsByDiagnosis_WithLastPageFewerElements_ReturnsCorrectPage() {
-        Patient patient2 = new Patient();
-        patient2.setId(2L);
-        patient2.setName("John Smith");
-        patient2.setEgn(TestDataUtils.generateValidEgn());
-        patient2.setGeneralPractitioner(doctor);
-        patient2.setLastInsurancePaymentDate(LocalDate.now());
-
-        PatientDiagnosisDTO dto1 = PatientDiagnosisDTO.builder()
-                .patient(patient)
-                .diagnosisName("Flu")
-                .build();
-        PatientDiagnosisDTO dto2 = PatientDiagnosisDTO.builder()
-                .patient(patient2)
-                .diagnosisName("Flu")
-                .build();
-        PatientDiagnosisDTO dto3 = PatientDiagnosisDTO.builder()
-                .patient(patient2)
-                .diagnosisName("Flu")
-                .build();
-
-        Page<PatientDiagnosisDTO> page = new PageImpl<>(Collections.singletonList(dto3), PageRequest.of(1, 2), 3);
-        when(diagnosisRepository.findPatientsByDiagnosis(eq(diagnosis), eq(PageRequest.of(1, 2)))).thenReturn(page);
-
-        Page<PatientDiagnosisDTO> result = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(1, 2));
-
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals(2, result.getTotalPages());
-        verify(diagnosisRepository).findPatientsByDiagnosis(eq(diagnosis), eq(PageRequest.of(1, 2)));
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_EmptyFilter_ReturnsAll() {
-        Page<Diagnosis> page = new PageImpl<>(Collections.singletonList(diagnosis));
-        when(diagnosisRepository.findByNameContainingIgnoreCase(eq(""), any(Pageable.class))).thenReturn(page);
-
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
-
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Flu", result.getContent().get(0).getName());
-        verify(diagnosisRepository).findByNameContainingIgnoreCase(eq(""), any(Pageable.class));
+        assertEquals(100, result.size());
+        verify(diagnosisRepository).findMostFrequentDiagnoses();
     }
 }

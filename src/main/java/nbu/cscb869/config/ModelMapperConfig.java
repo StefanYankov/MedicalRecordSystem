@@ -2,6 +2,7 @@ package nbu.cscb869.config;
 
 import nbu.cscb869.data.models.*;
 import nbu.cscb869.services.data.dtos.*;
+import nbu.cscb869.services.data.dtos.identity.*;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeMap;
 import org.springframework.context.annotation.Bean;
@@ -55,7 +56,7 @@ public class ModelMapperConfig {
         TypeMap<Diagnosis, DiagnosisViewDTO> diagnosisViewMap = modelMapper.typeMap(Diagnosis.class, DiagnosisViewDTO.class)
                 .setProvider(req -> new DiagnosisViewDTO());
         diagnosisViewMap.addMappings(mapper -> {
-            mapper.map(Diagnosis::getId, DiagnosisViewDTO::setId);
+            mapper.skip(DiagnosisViewDTO::setId);
             mapper.map(Diagnosis::getName, DiagnosisViewDTO::setName);
             mapper.map(Diagnosis::getDescription, DiagnosisViewDTO::setDescription);
         });
@@ -65,7 +66,6 @@ public class ModelMapperConfig {
         TypeMap<PatientCreateDTO, Patient> patientCreateMap = modelMapper.typeMap(PatientCreateDTO.class, Patient.class)
                 .setProvider(req -> new Patient());
         patientCreateMap.addMappings(mapper -> {
-            mapper.map(PatientCreateDTO::getName, Patient::setName);
             mapper.map(PatientCreateDTO::getEgn, Patient::setEgn);
             mapper.map(PatientCreateDTO::getLastInsurancePaymentDate, Patient::setLastInsurancePaymentDate);
             mapper.using(ctx -> {
@@ -81,7 +81,7 @@ public class ModelMapperConfig {
                 .setProvider(req -> new Patient());
         patientUpdateMap.addMappings(mapper -> {
             mapper.map(PatientUpdateDTO::getId, Patient::setId);
-            mapper.map(PatientUpdateDTO::getName, Patient::setName);
+            mapper.map(PatientUpdateDTO::getEgn, Patient::setEgn);
             mapper.map(PatientUpdateDTO::getLastInsurancePaymentDate, Patient::setLastInsurancePaymentDate);
             mapper.using(ctx -> {
                 Long id = (Long) ctx.getSource();
@@ -95,8 +95,7 @@ public class ModelMapperConfig {
         TypeMap<Patient, PatientViewDTO> patientViewMap = modelMapper.typeMap(Patient.class, PatientViewDTO.class)
                 .setProvider(req -> new PatientViewDTO());
         patientViewMap.addMappings(mapper -> {
-            mapper.map(Patient::getId, PatientViewDTO::setId);
-            mapper.map(Patient::getName, PatientViewDTO::setName);
+            mapper.skip(PatientViewDTO::setId);
             mapper.map(Patient::getEgn, PatientViewDTO::setEgn);
             mapper.map(Patient::getLastInsurancePaymentDate, PatientViewDTO::setLastInsurancePaymentDate);
             mapper.using(ctx -> ctx.getSource() != null ? modelMapper.map(ctx.getSource(), DoctorViewDTO.class) : null)
@@ -137,7 +136,7 @@ public class ModelMapperConfig {
         TypeMap<SickLeave, SickLeaveViewDTO> sickLeaveViewMap = modelMapper.typeMap(SickLeave.class, SickLeaveViewDTO.class)
                 .setProvider(req -> new SickLeaveViewDTO());
         sickLeaveViewMap.addMappings(mapper -> {
-            mapper.map(SickLeave::getId, SickLeaveViewDTO::setId);
+            mapper.skip(SickLeaveViewDTO::setId);
             mapper.map(SickLeave::getStartDate, SickLeaveViewDTO::setStartDate);
             mapper.map(SickLeave::getDurationDays, SickLeaveViewDTO::setDurationDays);
             mapper.using(ctx -> ctx.getSource() != null ? ((Visit) ctx.getSource()).getId() : null)
@@ -149,7 +148,6 @@ public class ModelMapperConfig {
         TypeMap<DoctorCreateDTO, Doctor> doctorCreateMap = modelMapper.typeMap(DoctorCreateDTO.class, Doctor.class)
                 .setProvider(req -> new Doctor());
         doctorCreateMap.addMappings(mapper -> {
-            mapper.map(DoctorCreateDTO::getName, Doctor::setName);
             mapper.map(DoctorCreateDTO::getUniqueIdNumber, Doctor::setUniqueIdNumber);
             mapper.map(DoctorCreateDTO::isGeneralPractitioner, Doctor::setGeneralPractitioner);
             mapper.map(DoctorCreateDTO::getImageUrl, Doctor::setImageUrl);
@@ -162,8 +160,8 @@ public class ModelMapperConfig {
                 .setProvider(req -> new Doctor());
         doctorUpdateMap.addMappings(mapper -> {
             mapper.map(DoctorUpdateDTO::getId, Doctor::setId);
-            mapper.map(DoctorUpdateDTO::getName, Doctor::setName);
-            mapper.map(DoctorUpdateDTO::isGeneralPractitioner, Doctor::setGeneralPractitioner);
+            mapper.map(DoctorUpdateDTO::getUniqueIdNumber, Doctor::setUniqueIdNumber);
+            mapper.map(DoctorUpdateDTO::getIsGeneralPractitioner, Doctor::setGeneralPractitioner);
             mapper.map(DoctorUpdateDTO::getImageUrl, Doctor::setImageUrl);
             mapper.skip(Doctor::setSpecialties);
             mapper.skip(Doctor::setPatients);
@@ -173,8 +171,7 @@ public class ModelMapperConfig {
         TypeMap<Doctor, DoctorViewDTO> doctorViewMap = modelMapper.typeMap(Doctor.class, DoctorViewDTO.class)
                 .setProvider(req -> new DoctorViewDTO());
         doctorViewMap.addMappings(mapper -> {
-            mapper.map(Doctor::getId, DoctorViewDTO::setId);
-            mapper.map(Doctor::getName, DoctorViewDTO::setName);
+            mapper.skip(DoctorViewDTO::setId);
             mapper.map(Doctor::getUniqueIdNumber, DoctorViewDTO::setUniqueIdNumber);
             mapper.map(Doctor::isGeneralPractitioner, DoctorViewDTO::setGeneralPractitioner);
             mapper.map(Doctor::getImageUrl, DoctorViewDTO::setImageUrl);
@@ -193,7 +190,7 @@ public class ModelMapperConfig {
                 .setProvider(req -> new Visit());
         visitCreateMap.addMappings(mapper -> {
             mapper.map(VisitCreateDTO::getVisitDate, Visit::setVisitDate);
-            mapper.map(VisitCreateDTO::isSickLeaveIssued, Visit::setSickLeaveIssued);
+            mapper.map(VisitCreateDTO::getVisitTime, Visit::setVisitTime);
             mapper.using(ctx -> {
                 Long id = (Long) ctx.getSource();
                 if (id == null) return null;
@@ -224,7 +221,7 @@ public class ModelMapperConfig {
         visitUpdateMap.addMappings(mapper -> {
             mapper.map(VisitUpdateDTO::getId, Visit::setId);
             mapper.map(VisitUpdateDTO::getVisitDate, Visit::setVisitDate);
-            mapper.map(VisitUpdateDTO::isSickLeaveIssued, Visit::setSickLeaveIssued);
+            mapper.map(VisitUpdateDTO::getVisitTime, Visit::setVisitTime);
             mapper.using(ctx -> {
                 Long id = (Long) ctx.getSource();
                 if (id == null) return null;
@@ -253,8 +250,9 @@ public class ModelMapperConfig {
         TypeMap<Visit, VisitViewDTO> visitViewMap = modelMapper.typeMap(Visit.class, VisitViewDTO.class)
                 .setProvider(req -> new VisitViewDTO());
         visitViewMap.addMappings(mapper -> {
-            mapper.map(Visit::getId, VisitViewDTO::setId);
+            mapper.skip(VisitViewDTO::setId);
             mapper.map(Visit::getVisitDate, VisitViewDTO::setVisitDate);
+            mapper.map(Visit::getVisitTime, VisitViewDTO::setVisitTime);
             mapper.map(Visit::isSickLeaveIssued, VisitViewDTO::setSickLeaveIssued);
             mapper.using(ctx -> ctx.getSource() != null ? modelMapper.map(ctx.getSource(), PatientViewDTO.class) : null)
                     .map(Visit::getPatient, VisitViewDTO::setPatient);
@@ -302,7 +300,7 @@ public class ModelMapperConfig {
         TypeMap<Treatment, TreatmentViewDTO> treatmentViewMap = modelMapper.typeMap(Treatment.class, TreatmentViewDTO.class)
                 .setProvider(req -> new TreatmentViewDTO());
         treatmentViewMap.addMappings(mapper -> {
-            mapper.map(Treatment::getId, TreatmentViewDTO::setId);
+            mapper.skip(TreatmentViewDTO::setId);
             mapper.map(Treatment::getDescription, TreatmentViewDTO::setDescription);
             mapper.using(ctx -> ctx.getSource() != null ? ((Visit) ctx.getSource()).getId() : null)
                     .map(Treatment::getVisit, TreatmentViewDTO::setVisitId);
@@ -351,7 +349,7 @@ public class ModelMapperConfig {
         TypeMap<Medicine, MedicineViewDTO> medicineViewMap = modelMapper.typeMap(Medicine.class, MedicineViewDTO.class)
                 .setProvider(req -> new MedicineViewDTO());
         medicineViewMap.addMappings(mapper -> {
-            mapper.map(Medicine::getId, MedicineViewDTO::setId);
+            mapper.skip(MedicineViewDTO::setId);
             mapper.map(Medicine::getName, MedicineViewDTO::setName);
             mapper.map(Medicine::getDosage, MedicineViewDTO::setDosage);
             mapper.map(Medicine::getFrequency, MedicineViewDTO::setFrequency);
@@ -379,7 +377,7 @@ public class ModelMapperConfig {
         TypeMap<Specialty, SpecialtyViewDTO> specialtyViewMap = modelMapper.typeMap(Specialty.class, SpecialtyViewDTO.class)
                 .setProvider(req -> new SpecialtyViewDTO());
         specialtyViewMap.addMappings(mapper -> {
-            mapper.map(Specialty::getId, SpecialtyViewDTO::setId);
+            mapper.skip(SpecialtyViewDTO::setId);
             mapper.map(Specialty::getName, SpecialtyViewDTO::setName);
             mapper.map(Specialty::getDescription, SpecialtyViewDTO::setDescription);
         });

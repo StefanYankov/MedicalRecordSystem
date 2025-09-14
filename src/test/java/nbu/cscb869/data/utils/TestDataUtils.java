@@ -2,6 +2,7 @@ package nbu.cscb869.data.utils;
 
 import java.time.LocalDate;
 import java.util.Random;
+import java.util.UUID;
 
 public class TestDataUtils {
     private static final int[] EGN_WEIGHTS = {2, 4, 8, 5, 10, 9, 7, 3, 6};
@@ -35,6 +36,14 @@ public class TestDataUtils {
     }
 
     public static String generateUniqueIdNumber() {
-        return "DOC" + java.util.UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5);
+        return "DOC" + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5);
+    }
+
+    public static String generateEmail() {
+        return "user" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+    }
+
+    public static String generateKeycloakId() {
+        return UUID.randomUUID().toString();
     }
 }

@@ -22,7 +22,7 @@ public class MedicineCreateDTO {
     private String dosage;
 
     @NotBlank(message = ErrorMessages.FREQUENCY_NOT_BLANK)
-    @Size(max = ValidationConfig.FREQUENCY_MAX_LENGTH)
+    @Size(max = ValidationConfig.FREQUENCY_MAX_LENGTH, message = ErrorMessages.FREQUENCY_SIZE)
     private String frequency;
 
     @NotNull(message = ErrorMessages.TREATMENT_ID_NOT_NULL)

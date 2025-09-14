@@ -12,8 +12,6 @@ import java.time.LocalDate;
 public class PatientViewDTO {
     private Long id;
 
-    private String name;
-
     private String egn;
 
     private LocalDate lastInsurancePaymentDate;

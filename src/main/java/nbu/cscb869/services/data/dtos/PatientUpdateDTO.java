@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
 import nbu.cscb869.common.validation.ValidationConfig;
+import nbu.cscb869.common.validation.annotations.Egn;
 
 import java.time.LocalDate;
 
@@ -17,9 +18,9 @@ import java.time.LocalDate;
 public class PatientUpdateDTO {
     private Long id;
 
-    @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
-    @Size(min = ValidationConfig.NAME_MIN_LENGTH, max = ValidationConfig.NAME_MAX_LENGTH)
-    private String name;
+    @Egn(message = ErrorMessages.EGN_INVALID)
+    @NotBlank(message = ErrorMessages.EGN_NOT_BLANK)
+    private String egn;
 
     private LocalDate lastInsurancePaymentDate;
 

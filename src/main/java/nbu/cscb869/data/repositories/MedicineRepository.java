@@ -1,20 +1,15 @@
 package nbu.cscb869.data.repositories;
 
 import nbu.cscb869.data.models.Medicine;
-import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-/**
- * Repository for managing {@link Medicine} entities with soft delete support.
- */
-public interface MedicineRepository extends SoftDeleteRepository<Medicine, Long> {
+public interface MedicineRepository extends JpaRepository<Medicine, Long> {
     /**
-     * Retrieves a page of non-deleted medicine records.
+     * Retrieves a page of  medicine records.
      * @param pageable pagination information
-     * @return a page of medicine entities where {@code isDeleted = false}
+     * @return a page of medicine entities
      */
-    @Query("SELECT m FROM Medicine m WHERE m.isDeleted = false")
-    Page<Medicine> findAllActive(Pageable pageable);
+    Page<Medicine> findAll(Pageable pageable);
 }

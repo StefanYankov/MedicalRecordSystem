@@ -13,9 +13,9 @@ import nbu.cscb869.common.validation.ValidationConfig;
 @AllArgsConstructor
 public class SpecialtyCreateDTO {
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
-    @Size(max = ValidationConfig.SPECIALTY_NAME_MAX_LENGTH)
+    @Size(max = ValidationConfig.SPECIALTY_NAME_MAX_LENGTH, message = ErrorMessages.DESCRIPTION_SIZE)
     private String name;
 
-    @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH)
+    @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH, message = ErrorMessages.DESCRIPTION_SIZE)
     private String description;
 }

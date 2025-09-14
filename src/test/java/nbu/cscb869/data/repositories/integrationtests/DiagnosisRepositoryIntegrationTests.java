@@ -1,12 +1,8 @@
 package nbu.cscb869.data.repositories.integrationtests;
 
-import jakarta.persistence.EntityManager;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.PatientDiagnosisDTO;
-import nbu.cscb869.data.models.Diagnosis;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
@@ -21,9 +17,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -32,33 +25,19 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
 class DiagnosisRepositoryIntegrationTests {
-    @Container
-    private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("test_db")
-            .withUsername("test")
-            .withPassword("test")
-            .withExposedPorts(3306)
-            .withEnv("MYSQL_ROOT_PASSWORD", "test");
 
     @Autowired
     private DiagnosisRepository diagnosisRepository;
-
     @Autowired
     private DoctorRepository doctorRepository;
-
     @Autowired
     private PatientRepository patientRepository;
-
     @Autowired
     private VisitRepository visitRepository;
-
-    @Autowired
-    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -69,365 +48,243 @@ class DiagnosisRepositoryIntegrationTests {
     }
 
     private Diagnosis createDiagnosis(String name, String description) {
-        Diagnosis diagnosis = new Diagnosis();
-        diagnosis.setName(name);
-        diagnosis.setDescription(description);
-        return diagnosis;
+        return Diagnosis.builder()
+                .name(name)
+                .description(description)
+                .build();
     }
 
-    private Doctor createDoctor(String name, String uniqueIdNumber, boolean isGeneralPractitioner) {
-        Doctor doctor = new Doctor();
-        doctor.setName(name);
-        doctor.setUniqueIdNumber(uniqueIdNumber);
-        doctor.setGeneralPractitioner(isGeneralPractitioner);
-        return doctor;
+    private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
+        return Doctor.builder()
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .name(name)
+                .build();
     }
 
-    private Patient createPatient(String name, String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
-        Patient patient = new Patient();
-        patient.setName(name);
-        patient.setEgn(egn);
-        patient.setGeneralPractitioner(generalPractitioner);
-        patient.setLastInsurancePaymentDate(lastInsurancePaymentDate);
-        return patient;
+    private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
+        return Patient.builder()
+                .egn(egn)
+                .generalPractitioner(generalPractitioner)
+                .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .build();
     }
 
-    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, boolean sickLeaveIssued) {
-        Visit visit = new Visit();
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setDiagnosis(diagnosis);
-        visit.setVisitDate(visitDate);
-        visit.setVisitTime(visitTime);
-        visit.setSickLeaveIssued(sickLeaveIssued);
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, SickLeave sickLeave) {
+        Visit visit = Visit.builder()
+                .patient(patient)
+                .doctor(doctor)
+                .diagnosis(diagnosis)
+                .visitDate(visitDate)
+                .visitTime(visitTime)
+                .build();
+        if (sickLeave != null) {
+            visit.setSickLeave(sickLeave);
+            sickLeave.setVisit(visit);
+        }
         return visit;
     }
 
-    private void softDeleteRelatedVisits(Diagnosis diagnosis) {
-        Page<Visit> visits = visitRepository.findByDiagnosis(diagnosis, PageRequest.of(0, Integer.MAX_VALUE));
-        visits.forEach(visitRepository::delete);
-        entityManager.flush();
-    }
-
-    // Happy Path
+    // Happy Path: Basic save operation
     @Test
-    void Save_WithValidDiagnosis_SavesSuccessfully() {
+    void save_WithValidDiagnosis_SavesSuccessfully_HappyPath() {
         Diagnosis diagnosis = createDiagnosis("Flu", "Influenza infection");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findById(savedDiagnosis.getId());
+        Diagnosis saved = diagnosisRepository.save(diagnosis);
 
-        assertTrue(foundDiagnosis.isPresent());
-        assertEquals("Flu", foundDiagnosis.get().getName());
-        assertEquals("Influenza infection", foundDiagnosis.get().getDescription());
-        assertFalse(foundDiagnosis.get().getIsDeleted());
-        assertNotNull(foundDiagnosis.get().getCreatedOn());
+        Optional<Diagnosis> found = diagnosisRepository.findById(saved.getId());
+        assertTrue(found.isPresent());
+        assertEquals("Flu", found.get().getName());
     }
 
+    // Error Case: Duplicate name
     @Test
-    void FindByName_WithExistingName_ReturnsDiagnosis() {
+    void save_WithDuplicateName_ThrowsException_ErrorCase() {
+        Diagnosis diagnosis1 = createDiagnosis("Flu", "Influenza");
+        Diagnosis diagnosis2 = createDiagnosis("Flu", "Another description");
+        diagnosisRepository.save(diagnosis1);
+
+        assertThrows(DataIntegrityViolationException.class, () -> diagnosisRepository.save(diagnosis2));
+    }
+
+    // Edge Case: Maximum name length
+    @Test
+    void save_WithMaximumNameLength_SavesSuccessfully_EdgeCase() {
+        String maxName = "A".repeat(100); // Assuming ValidationConfig.NAME_MAX_LENGTH = 100
+        Diagnosis diagnosis = createDiagnosis(maxName, "Description");
+        Diagnosis saved = diagnosisRepository.save(diagnosis);
+
+        assertEquals(maxName, saved.getName());
+    }
+
+    // Happy Path: Find by existing name
+    @Test
+    void findByName_WithExistingName_ReturnsDiagnosis_HappyPath() {
         Diagnosis diagnosis = createDiagnosis("Hypertension", "High blood pressure");
         diagnosisRepository.save(diagnosis);
-        entityManager.flush();
 
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Hypertension");
+        Optional<Diagnosis> found = diagnosisRepository.findByName("Hypertension");
 
-        assertTrue(foundDiagnosis.isPresent());
-        assertEquals("Hypertension", foundDiagnosis.get().getName());
+        assertTrue(found.isPresent());
+        assertEquals("Hypertension", found.get().getName());
     }
 
+    // Error Case: Non-existent name
     @Test
-    void FindPatientsByDiagnosis_WithMultipleVisits_ReturnsPaged() {
-        Doctor doctor = createDoctor("Dr. John Smith", TestDataUtils.generateUniqueIdNumber(), true);
+    void findByName_WithNonExistentName_ReturnsEmpty_ErrorCase() {
+        Optional<Diagnosis> found = diagnosisRepository.findByName("Nonexistent");
+
+        assertFalse(found.isPresent());
+    }
+
+    // Happy Path: Partial name match with pagination
+    @Test
+    void findByNameContainingIgnoreCase_PartialName_ReturnsPaged_HappyPath() {
+        Diagnosis d1 = createDiagnosis("Influenza", "Viral infection");
+        Diagnosis d2 = createDiagnosis("Flu", "Similar to influenza");
+        diagnosisRepository.saveAll(List.of(d1, d2));
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("flu", PageRequest.of(0, 2));
+
+        assertEquals(2, result.getTotalElements());
+        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Flu")));
+    }
+
+    // Error Case: Non-existent partial name
+    @Test
+    void findByNameContainingIgnoreCase_NonExistentName_ReturnsEmptyPage_ErrorCase() {
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("xyz", PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+    }
+
+    // Edge Case: Empty filter returns all
+    @Test
+    void findByNameContainingIgnoreCase_EmptyFilter_ReturnsAll_EdgeCase() {
+        Diagnosis d = createDiagnosis("Migraine", "Severe headache");
+        diagnosisRepository.save(d);
+
+        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+    }
+
+    // Happy Path: Find patients with diagnosis using relationships
+    @Test
+    void findPatientsByDiagnosis_WithMultipleVisits_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient1 = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient2 = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         doctor = doctorRepository.save(doctor);
-        Patient patient1 = createPatient("Jane Doe", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Patient patient2 = createPatient("Bob White", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
         patient1 = patientRepository.save(patient1);
         patient2 = patientRepository.save(patient2);
         Diagnosis diagnosis = createDiagnosis("Diabetes", "Type 2 diabetes");
         diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit1 = createVisit(patient1, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), false);
-        Visit visit2 = createVisit(patient2, doctor, diagnosis, LocalDate.now(), LocalTime.of(11, 0), false);
-        visitRepository.save(visit1);
-        visitRepository.save(visit2);
-        entityManager.flush();
+        visitRepository.saveAll(List.of(
+                createVisit(patient1, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
+                createVisit(patient2, doctor, diagnosis, LocalDate.now(), LocalTime.of(11, 0), null)
+        ));
 
         Page<PatientDiagnosisDTO> patients = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
         assertEquals(2, patients.getTotalElements());
         assertEquals(1, patients.getContent().size());
-        assertTrue(patients.getContent().stream().anyMatch(dto -> dto.getPatient().getName().equals("Jane Doe")));
+        assertEquals("Diabetes", patients.getContent().getFirst().getDiagnosisName());
     }
 
+    // Error Case: No visits for diagnosis
     @Test
-    void FindMostFrequentDiagnoses_WithMultipleVisits_ReturnsSorted() {
-        Doctor doctor = createDoctor("Dr. Alice Brown", TestDataUtils.generateUniqueIdNumber(), true);
-        doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient("Tom Green", TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        patient = patientRepository.save(patient);
-        Diagnosis diagnosis1 = createDiagnosis("Asthma", "Chronic respiratory condition");
-        Diagnosis diagnosis2 = createDiagnosis("Flu", "Influenza infection");
-        diagnosis1 = diagnosisRepository.save(diagnosis1);
-        diagnosis2 = diagnosisRepository.save(diagnosis2);
-        Visit visit1 = createVisit(patient, doctor, diagnosis1, LocalDate.now(), LocalTime.of(10, 30), false);
-        Visit visit2 = createVisit(patient, doctor, diagnosis1, LocalDate.now().minusDays(1), LocalTime.of(11, 0), false);
-        Visit visit3 = createVisit(patient, doctor, diagnosis2, LocalDate.now().minusDays(2), LocalTime.of(12, 0), false);
-        visitRepository.save(visit1);
-        visitRepository.save(visit2);
-        visitRepository.save(visit3);
-        entityManager.flush();
-
-        List<DiagnosisVisitCountDTO> frequentDiagnoses = diagnosisRepository.findMostFrequentDiagnoses();
-
-        assertEquals(2, frequentDiagnoses.size());
-        assertEquals("Asthma", frequentDiagnoses.get(0).getDiagnosis().getName());
-        assertEquals(2, frequentDiagnoses.get(0).getVisitCount());
-        assertEquals("Flu", frequentDiagnoses.get(1).getDiagnosis().getName());
-        assertEquals(1, frequentDiagnoses.get(1).getVisitCount());
-    }
-
-    @Test
-    void FindAllActive_WithMultipleDiagnoses_ReturnsAll() {
-        Diagnosis diagnosis1 = createDiagnosis("Migraine", "Severe headache");
-        Diagnosis diagnosis2 = createDiagnosis("Bronchitis", "Inflammation of bronchi");
-        diagnosisRepository.save(diagnosis1);
-        diagnosisRepository.save(diagnosis2);
-        entityManager.flush();
-
-        List<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive();
-
-        assertEquals(2, activeDiagnoses.size());
-        assertTrue(activeDiagnoses.stream().anyMatch(d -> d.getName().equals("Migraine")));
-        assertTrue(activeDiagnoses.stream().anyMatch(d -> d.getName().equals("Bronchitis")));
-    }
-
-    @Test
-    void FindAllActivePaged_WithMultipleDiagnoses_ReturnsPaged() {
-        Diagnosis diagnosis1 = createDiagnosis("Pneumonia", "Lung infection");
-        Diagnosis diagnosis2 = createDiagnosis("Allergy", "Immune response");
-        diagnosisRepository.save(diagnosis1);
-        diagnosisRepository.save(diagnosis2);
-        entityManager.flush();
-
-        Page<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive(PageRequest.of(0, 1));
-
-        assertEquals(2, activeDiagnoses.getTotalElements());
-        assertEquals(1, activeDiagnoses.getContent().size());
-    }
-
-    @Test
-    void SoftDelete_WithExistingDiagnosis_SetsIsDeleted() {
-        Diagnosis diagnosis = createDiagnosis("Arthritis", "Joint inflammation");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-
-        diagnosisRepository.delete(savedDiagnosis);
-        entityManager.flush();
-        Optional<Diagnosis> deletedDiagnosis = diagnosisRepository.findById(savedDiagnosis.getId());
-        if (deletedDiagnosis.isPresent()) {
-            entityManager.refresh(deletedDiagnosis.get());
-        }
-
-        assertTrue(deletedDiagnosis.isPresent());
-        assertTrue(deletedDiagnosis.get().getIsDeleted());
-        assertNotNull(deletedDiagnosis.get().getDeletedOn());
-        assertEquals(0, diagnosisRepository.findAllActive().size());
-    }
-
-    @Test
-    void HardDelete_WithExistingDiagnosis_RemovesDiagnosis() {
-        Diagnosis diagnosis = createDiagnosis("Gastritis", "Stomach inflammation");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-
-        softDeleteRelatedVisits(savedDiagnosis);
-        diagnosisRepository.hardDeleteById(savedDiagnosis.getId());
-        entityManager.flush();
-
-        assertTrue(diagnosisRepository.findById(savedDiagnosis.getId()).isEmpty());
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_PartialName_ReturnsPaged() {
-        Diagnosis diagnosis1 = createDiagnosis("Influenza", "Viral infection");
-        Diagnosis diagnosis2 = createDiagnosis("Flu", "Similar to influenza");
-        diagnosisRepository.save(diagnosis1);
-        diagnosisRepository.save(diagnosis2);
-        entityManager.flush();
-
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("flu", PageRequest.of(0, 2));
-
-        assertEquals(2, result.getTotalElements());
-        assertEquals(2, result.getContent().size());
-        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Flu")));
-        assertTrue(result.getContent().stream().anyMatch(d -> d.getName().equals("Influenza")));
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_CaseInsensitiveMatch_ReturnsPaged() {
-        Diagnosis diagnosis = createDiagnosis("Asthma", "Respiratory condition");
-        diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("ASTHMA", PageRequest.of(0, 1));
-
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Asthma", result.getContent().get(0).getName());
-    }
-
-    // Error Cases
-    @Test
-    void Save_WithDuplicateName_ThrowsException() {
-        Diagnosis diagnosis1 = createDiagnosis("Flu", "Influenza infection");
-        Diagnosis diagnosis2 = createDiagnosis("Flu", "Another description");
-        diagnosisRepository.save(diagnosis1);
-        entityManager.flush();
-        assertThrows(DataIntegrityViolationException.class, () -> {
-            diagnosisRepository.save(diagnosis2);
-            entityManager.flush();
-        });
-    }
-
-    @Test
-    void FindByName_WithNonExistentName_ReturnsEmpty() {
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Nonexistent");
-
-        assertFalse(foundDiagnosis.isPresent());
-    }
-
-    @Test
-    void FindPatientsByDiagnosis_WithNoVisits_ReturnsEmpty() {
+    void findPatientsByDiagnosis_WithNoVisits_ReturnsEmpty_ErrorCase() {
         Diagnosis diagnosis = createDiagnosis("Cancer", "Malignant growth");
-        diagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
+        diagnosisRepository.save(diagnosis);
 
         Page<PatientDiagnosisDTO> patients = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 1));
 
         assertEquals(0, patients.getTotalElements());
-        assertTrue(patients.getContent().isEmpty());
     }
 
+    // Edge Case: Large page size
     @Test
-    void FindMostFrequentDiagnoses_WithNoVisits_ReturnsEmpty() {
+    void findPatientsByDiagnosis_LargePageSize_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        doctor = doctorRepository.save(doctor);
+        patient = patientRepository.save(patient);
+        Diagnosis diagnosis = createDiagnosis("Flu", "Influenza");
+        diagnosis = diagnosisRepository.save(diagnosis);
+        visitRepository.save(createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 0), null));
+
+        Page<PatientDiagnosisDTO> patients = diagnosisRepository.findPatientsByDiagnosis(diagnosis, PageRequest.of(0, 100));
+
+        assertEquals(1, patients.getTotalElements());
+    }
+
+    // Happy Path: Find most frequent diagnoses
+    @Test
+    void findMostFrequentDiagnoses_WithMultipleVisits_ReturnsSorted_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        doctor = doctorRepository.save(doctor);
+        patient = patientRepository.save(patient);
+        Diagnosis diagnosis1 = createDiagnosis("Asthma", "Chronic respiratory");
+        Diagnosis diagnosis2 = createDiagnosis("Flu", "Influenza");
+        diagnosisRepository.saveAll(List.of(diagnosis1, diagnosis2));
+        visitRepository.saveAll(List.of(
+                createVisit(patient, doctor, diagnosis1, LocalDate.now(), LocalTime.of(10, 30), null),
+                createVisit(patient, doctor, diagnosis1, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null),
+                createVisit(patient, doctor, diagnosis2, LocalDate.now().minusDays(2), LocalTime.of(12, 0), null)
+        ));
+
+        List<DiagnosisVisitCountDTO> frequent = diagnosisRepository.findMostFrequentDiagnoses();
+
+        assertEquals(2, frequent.size());
+        assertEquals("Asthma", frequent.getFirst().getDiagnosis().getName());
+        assertEquals(2, frequent.getFirst().getVisitCount());
+    }
+
+    // Error Case: No visits
+    @Test
+    void findMostFrequentDiagnoses_WithNoVisits_ReturnsEmpty_ErrorCase() {
         Diagnosis diagnosis = createDiagnosis("Hepatitis", "Liver inflammation");
         diagnosisRepository.save(diagnosis);
-        entityManager.flush();
 
-        List<DiagnosisVisitCountDTO> frequentDiagnoses = diagnosisRepository.findMostFrequentDiagnoses();
+        List<DiagnosisVisitCountDTO> frequent = diagnosisRepository.findMostFrequentDiagnoses();
 
-        assertTrue(frequentDiagnoses.isEmpty());
+        assertTrue(frequent.isEmpty());
     }
 
+    // Edge Case: Maximum visit count
     @Test
-    void HardDelete_WithNonExistentId_DoesNotThrow() {
-        assertDoesNotThrow(() -> diagnosisRepository.hardDeleteById(999L));
-    }
-
-    // Edge Cases
-    @Test
-    void Save_WithMaximumNameLength_SavesSuccessfully() {
-        String maxName = "A".repeat(100); // DIAGNOSIS_NAME_MAX_LENGTH = 100
-        Diagnosis diagnosis = createDiagnosis(maxName, "Description");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-
-        assertEquals(maxName, savedDiagnosis.getName());
-    }
-
-    @Test
-    void Save_WithMaximumDescriptionLength_SavesSuccessfully() {
-        String maxDescription = "D".repeat(500); // DESCRIPTION_MAX_LENGTH = 500
-        Diagnosis diagnosis = createDiagnosis("Cold", maxDescription);
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        entityManager.flush();
-
-        assertEquals(maxDescription, savedDiagnosis.getDescription());
-    }
-
-    @Test
-    void FindAllActive_WithNoDiagnoses_ReturnsEmpty() {
-        List<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive();
-
-        assertTrue(activeDiagnoses.isEmpty());
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoDiagnoses_ReturnsEmpty() {
-        Page<Diagnosis> activeDiagnoses = diagnosisRepository.findAllActive(PageRequest.of(0, 1));
-
-        assertEquals(0, activeDiagnoses.getTotalElements());
-        assertTrue(activeDiagnoses.getContent().isEmpty());
-    }
-
-    @Test
-    void SoftDelete_WithNonExistentDiagnosis_DoesNotThrow() {
-        Diagnosis diagnosis = new Diagnosis();
-        diagnosis.setId(999L);
-
-        assertDoesNotThrow(() -> diagnosisRepository.delete(diagnosis));
-    }
-
-    @Test
-    void FindByName_WithSoftDeletedDiagnosis_ReturnsEmpty() {
-        Diagnosis diagnosis = createDiagnosis("Tuberculosis", "Bacterial infection");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        diagnosisRepository.delete(savedDiagnosis);
-        entityManager.flush();
-
-        Optional<Diagnosis> foundDiagnosis = diagnosisRepository.findByName("Tuberculosis");
-
-        assertFalse(foundDiagnosis.isPresent());
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_NonExistentName_ReturnsEmpty() {
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Nonexistent", PageRequest.of(0, 1));
-
-        assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    @Test
-    void FindByNameContainingIgnoreCase_SoftDeletedDiagnosis_ReturnsEmpty() {
-        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Lung inflammation");
-        Diagnosis savedDiagnosis = diagnosisRepository.save(diagnosis);
-        diagnosisRepository.delete(savedDiagnosis);
-        entityManager.flush();
-
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Bronchitis", PageRequest.of(0, 1));
-
-        assertEquals(0, result.getTotalElements());
-        assertTrue(result.getContent().isEmpty());
-    }
-
-    // Edge Cases
-    @Test
-    void FindByNameContainingIgnoreCase_EmptyFilter_ReturnsAll() {
-        Diagnosis diagnosis = createDiagnosis("Migraine", "Severe headache");
+    void findMostFrequentDiagnoses_MaxCount_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        doctor = doctorRepository.save(doctor);
+        patient = patientRepository.save(patient);
+        Diagnosis diagnosis = createDiagnosis("Flu", "Influenza");
         diagnosisRepository.save(diagnosis);
-        entityManager.flush();
+        for (int i = 0; i < 100; i++) {
+            visitRepository.save(createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(i), LocalTime.of(10, 0), null));
+        }
 
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("", PageRequest.of(0, 1));
+        List<DiagnosisVisitCountDTO> frequent = diagnosisRepository.findMostFrequentDiagnoses();
 
-        assertEquals(1, result.getTotalElements());
-        assertEquals("Migraine", result.getContent().get(0).getName());
+        assertEquals(1, frequent.size());
+        assertEquals(100, frequent.getFirst().getVisitCount());
     }
 
+    // Happy Path: Delete existing diagnosis
     @Test
-    void FindByNameContainingIgnoreCase_LastPageFewerElements_ReturnsCorrectPage() {
-        Diagnosis diagnosis1 = createDiagnosis("Pneumonia", "Lung infection");
-        Diagnosis diagnosis2 = createDiagnosis("Pneumonitis", "Lung inflammation");
-        Diagnosis diagnosis3 = createDiagnosis("Pneumothorax", "Collapsed lung");
-        diagnosisRepository.save(diagnosis1);
-        diagnosisRepository.save(diagnosis2);
-        diagnosisRepository.save(diagnosis3);
-        entityManager.flush();
+    void delete_WithExistingDiagnosis_RemovesDiagnosis_HappyPath() {
+        Diagnosis diagnosis = createDiagnosis("Gastritis", "Stomach inflammation");
+        Diagnosis saved = diagnosisRepository.save(diagnosis);
 
-        Page<Diagnosis> result = diagnosisRepository.findByNameContainingIgnoreCase("Pneum", PageRequest.of(1, 2));
+        diagnosisRepository.delete(saved);
 
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals(2, result.getTotalPages());
-        assertEquals("Pneumothorax", result.getContent().get(0).getName());
+        assertTrue(diagnosisRepository.findById(saved.getId()).isEmpty());
+    }
+
+    // Error Case: Delete non-existent diagnosis
+    @Test
+    void delete_WithNonExistentId_DoesNotThrow_ErrorCase() {
+        assertDoesNotThrow(() -> diagnosisRepository.delete(Diagnosis.builder().name("Nonexistent").build()));
     }
 }

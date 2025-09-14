@@ -12,8 +12,6 @@ import java.util.Set;
 public class DoctorViewDTO {
     private Long id;
 
-    private String name;
-
     private String uniqueIdNumber;
 
     private boolean isGeneralPractitioner;

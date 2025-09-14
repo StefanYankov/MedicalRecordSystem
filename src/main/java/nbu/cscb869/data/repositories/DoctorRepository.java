@@ -4,44 +4,34 @@ import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.repositories.base.SoftDeleteRepository;
+import nbu.cscb869.data.models.Patient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository for managing {@link Doctor} entities with soft delete support.
- */
-public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
+public interface DoctorRepository extends JpaRepository<Doctor, Long>, JpaSpecificationExecutor<Doctor> {
     /**
-     * Finds a doctor by unique ID number, respecting soft delete.
+     * Finds a doctor by unique ID number
      * @param uniqueIdNumber the doctor's unique ID number
-     * @return an optional containing the doctor if found and not deleted
+     * @return an optional containing the doctor if found
      */
-    @Query("SELECT d FROM Doctor d WHERE d.uniqueIdNumber = :uniqueIdNumber AND d.isDeleted = false")
     Optional<Doctor> findByUniqueIdNumber(String uniqueIdNumber);
 
     /**
-     * Retrieves a page of non-deleted doctor records.
+     * Retrieves a page of non-deleted doctors by unique ID number containing the filter.
+     * @param filter the filter string to match against uniqueIdNumber
      * @param pageable pagination information
-     * @return a page of doctor entities where {@code isDeleted = false}
+     * @return a page of doctor entities
      */
-    @Query("SELECT d FROM Doctor d WHERE d.isDeleted = false")
-    Page<Doctor> findAllActive(Pageable pageable);
-
-    /**
-     * Retrieves a page of non-deleted doctors by name or unique ID number containing the filter.
-     * @param filter the filter string to match against name or uniqueIdNumber
-     * @param pageable pagination information
-     * @return a page of doctor entities where {@code isDeleted = false}
-     */
-    @Query("SELECT d FROM Doctor d WHERE d.isDeleted = false AND (LOWER(d.name) LIKE LOWER(:filter) OR LOWER(d.uniqueIdNumber) LIKE LOWER(:filter))")
-    Page<Doctor> findByNameOrUniqueIdNumberContaining(@Param("filter") String filter, Pageable pageable);
+    @Query("SELECT d FROM Doctor d WHERE LOWER(d.uniqueIdNumber) LIKE LOWER(:filter)")
+    Page<Doctor> findByUniqueIdNumberContaining(@Param("filter") String filter, Pageable pageable);
 
     /**
      * Finds doctors matching the given specification.
@@ -52,12 +42,20 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
     Page<Doctor> findAll(Specification<Doctor> spec, Pageable pageable);
 
     /**
+     * Retrieves a page of patients assigned to a specific general practitioner.
+     * @param generalPractitioner the general practitioner whose patients are to be retrieved
+     * @param pageable pagination information
+     * @return a page of patient entities
+     */
+    @Query("SELECT p FROM Patient p WHERE p.generalPractitioner = :generalPractitioner")
+    Page<Patient> findPatientsByGeneralPractitioner(@Param("generalPractitioner") Doctor generalPractitioner, Pageable pageable);
+
+    /**
      * Counts patients per general practitioner, including those with zero patients.
      * @return a list of DTOs with doctors and their patient counts
      */
     @Query("SELECT new nbu.cscb869.data.dto.DoctorPatientCountDTO(d, COUNT(p)) " +
             "FROM Doctor d LEFT JOIN Patient p ON p.generalPractitioner = d " +
-            "WHERE d.isDeleted = false AND (p.isDeleted = false OR p IS NULL) " +
             "GROUP BY d")
     List<DoctorPatientCountDTO> findPatientCountByGeneralPractitioner();
 
@@ -67,7 +65,6 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
      */
     @Query("SELECT new nbu.cscb869.data.dto.DoctorVisitCountDTO(d, COUNT(v)) " +
             "FROM Doctor d LEFT JOIN Visit v ON v.doctor = d " +
-            "WHERE d.isDeleted = false AND (v.isDeleted = false OR v IS NULL) " +
             "GROUP BY d")
     List<DoctorVisitCountDTO> findVisitCountByDoctor();
 
@@ -77,15 +74,6 @@ public interface DoctorRepository extends SoftDeleteRepository<Doctor, Long> {
      */
     @Query("SELECT new nbu.cscb869.data.dto.DoctorSickLeaveCountDTO(d, COUNT(sl)) " +
             "FROM Doctor d JOIN Visit v ON v.doctor = d JOIN SickLeave sl ON sl.visit = v " +
-            "WHERE d.isDeleted = false AND v.isDeleted = false AND sl.isDeleted = false " +
             "GROUP BY d ORDER BY COUNT(sl) DESC")
     List<DoctorSickLeaveCountDTO> findDoctorsWithMostSickLeaves();
-
-    /**
-     * Finds a doctor by ID, including soft-deleted entities, for debugging purposes.
-     * @param id the doctor's ID
-     * @return an optional containing the doctor if found
-     */
-    @Query("SELECT d FROM Doctor d WHERE d.id = :id")
-    Optional<Doctor> findByIdIncludingDeleted(@Param("id") Long id);
 }

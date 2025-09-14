@@ -16,10 +16,6 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PatientCreateDTO {
-    @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
-    @Size(min = ValidationConfig.NAME_MIN_LENGTH, max = ValidationConfig.NAME_MAX_LENGTH)
-    private String name;
-
     @Egn(message = ErrorMessages.EGN_INVALID)
     @NotBlank(message = ErrorMessages.EGN_NOT_BLANK)
     private String egn;

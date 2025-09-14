@@ -18,6 +18,6 @@ public class DiagnosisUpdateDTO {
     @Size(max = ValidationConfig.NAME_MAX_LENGTH)
     private String name;
 
-    @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH)
+    @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH, message = ErrorMessages.DESCRIPTION_SIZE)
     private String description;
 }

@@ -24,14 +24,14 @@ public class VisitUpdateDTO {
     private LocalTime visitTime;
 
     @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
-    private boolean sickLeaveIssued;
+    private Boolean sickLeaveIssued;
 
-    @NotNull
+    @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long patientId;
 
-    @NotNull
+    @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long doctorId;
 
-    @NotNull
+    @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long diagnosisId;
 }

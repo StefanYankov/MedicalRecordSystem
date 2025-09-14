@@ -3,13 +3,9 @@ package nbu.cscb869.data.repositories.unittests;
 import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
-import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.data.models.Patient;
-import nbu.cscb869.data.models.SickLeave;
-import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -17,10 +13,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,160 +31,200 @@ class DoctorRepositoryUnitTests {
     @Mock
     private DoctorRepository doctorRepository;
 
-    private Doctor doctor;
-    private Patient patient;
-    private Visit visit;
-    private SickLeave sickLeave;
-
-    @BeforeEach
-    void setUp() {
-        doctor = new Doctor();
-        doctor.setId(1L);
-        doctor.setName("Dr. Smith");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setGeneralPractitioner(true);
-
-        patient = new Patient();
-        patient.setId(1L);
-        patient.setName("Jane Doe");
-        patient.setEgn(TestDataUtils.generateValidEgn());
-        patient.setGeneralPractitioner(doctor);
-        patient.setLastInsurancePaymentDate(LocalDate.now());
-
-        visit = new Visit();
-        visit.setId(1L);
-        visit.setPatient(patient);
-        visit.setDoctor(doctor);
-        visit.setVisitDate(LocalDate.now());
-        visit.setVisitTime(LocalTime.of(10, 30));
-        visit.setSickLeaveIssued(true);
-
-        sickLeave = new SickLeave();
-        sickLeave.setId(1L);
-        sickLeave.setVisit(visit);
-        sickLeave.setStartDate(LocalDate.now());
-        sickLeave.setDurationDays(5);
+    private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
+        return Doctor.builder()
+                .uniqueIdNumber(uniqueIdNumber)
+                .isGeneralPractitioner(isGeneralPractitioner)
+                .name(name)
+                .build();
     }
 
-    // Happy Path
+    private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
+        return Patient.builder()
+                .egn(egn)
+                .generalPractitioner(generalPractitioner)
+                .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .build();
+    }
+
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, SickLeave sickLeave) {
+        Visit visit = Visit.builder()
+                .patient(patient)
+                .doctor(doctor)
+                .diagnosis(diagnosis)
+                .visitDate(visitDate)
+                .visitTime(visitTime)
+                .build();
+        if (sickLeave != null) {
+            visit.setSickLeave(sickLeave);
+            sickLeave.setVisit(visit);
+        }
+        return visit;
+    }
+
+    private SickLeave createSickLeave(LocalDate startDate, int durationDays, Visit visit) {
+        return SickLeave.builder()
+                .startDate(startDate)
+                .durationDays(durationDays)
+                .visit(visit)
+                .build();
+    }
+
     @Test
-    void FindByUniqueIdNumber_WithExistingId_ReturnsDoctor() {
+    void findByUniqueIdNumber_ExistingId_ReturnsDoctor_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
         when(doctorRepository.findByUniqueIdNumber(doctor.getUniqueIdNumber())).thenReturn(Optional.of(doctor));
 
-        Optional<Doctor> foundDoctor = doctorRepository.findByUniqueIdNumber(doctor.getUniqueIdNumber());
+        Optional<Doctor> found = doctorRepository.findByUniqueIdNumber(doctor.getUniqueIdNumber());
 
-        assertTrue(foundDoctor.isPresent());
-        assertEquals("Dr. Smith", foundDoctor.get().getName());
+        assertTrue(found.isPresent());
+        assertEquals(doctor.getUniqueIdNumber(), found.get().getUniqueIdNumber());
         verify(doctorRepository).findByUniqueIdNumber(doctor.getUniqueIdNumber());
     }
 
     @Test
-    void FindAllActive_WithData_ReturnsList() {
-        when(doctorRepository.findAllActive()).thenReturn(Collections.singletonList(doctor));
+    void findByUniqueIdNumberContaining_Filter_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor("DOC123", true, "Dr. Jane Smith");
+        Page<Doctor> page = new PageImpl<>(List.of(doctor));
+        when(doctorRepository.findByUniqueIdNumberContaining(eq("123"), any(Pageable.class))).thenReturn(page);
 
-        List<Doctor> result = doctorRepository.findAllActive();
-
-        assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.get(0).getName());
-        verify(doctorRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithData_ReturnsPaged() {
-        Page<Doctor> page = new PageImpl<>(Collections.singletonList(doctor));
-        when(doctorRepository.findAllActive(any(PageRequest.class))).thenReturn(page);
-
-        Page<Doctor> result = doctorRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Doctor> result = doctorRepository.findByUniqueIdNumberContaining("123", PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals("Dr. Smith", result.getContent().get(0).getName());
-        verify(doctorRepository).findAllActive(any(PageRequest.class));
+        assertEquals("DOC123", result.getContent().getFirst().getUniqueIdNumber());
+        verify(doctorRepository).findByUniqueIdNumberContaining(eq("123"), any(Pageable.class));
     }
 
     @Test
-    void FindPatientCountByGeneralPractitioner_WithData_ReturnsList() {
+    void findAll_WithSpecification_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
+        Page<Doctor> page = new PageImpl<>(List.of(doctor));
+        Specification<Doctor> spec = mock(Specification.class);
+        when(doctorRepository.findAll(eq(spec), any(Pageable.class))).thenReturn(page);
+
+        Page<Doctor> result = doctorRepository.findAll(spec, PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(doctor.getUniqueIdNumber(), result.getContent().getFirst().getUniqueIdNumber());
+        verify(doctorRepository).findAll(eq(spec), any(Pageable.class));
+    }
+
+    @Test
+    void findPatientsByGeneralPractitioner_WithPatients_ReturnsPaged_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Page<Patient> page = new PageImpl<>(List.of(patient));
+        when(doctorRepository.findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class))).thenReturn(page);
+
+        Page<Patient> result = doctorRepository.findPatientsByGeneralPractitioner(doctor, PageRequest.of(0, 1));
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(patient.getEgn(), result.getContent().getFirst().getEgn());
+        verify(doctorRepository).findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class));
+    }
+
+    @Test
+    void findPatientCountByGeneralPractitioner_WithData_ReturnsList_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
         DoctorPatientCountDTO dto = DoctorPatientCountDTO.builder()
                 .doctor(doctor)
                 .patientCount(1L)
                 .build();
-        when(doctorRepository.findPatientCountByGeneralPractitioner()).thenReturn(Collections.singletonList(dto));
+        when(doctorRepository.findPatientCountByGeneralPractitioner()).thenReturn(List.of(dto));
 
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
 
         assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.get(0).getDoctor().getName());
-        assertEquals(1L, result.get(0).getPatientCount());
+        assertEquals(doctor.getUniqueIdNumber(), result.getFirst().getDoctor().getUniqueIdNumber());
+        assertEquals(1L, result.getFirst().getPatientCount());
         verify(doctorRepository).findPatientCountByGeneralPractitioner();
     }
 
     @Test
-    void FindVisitCountByDoctor_WithData_ReturnsList() {
+    void findVisitCountByDoctor_WithData_ReturnsList_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
         DoctorVisitCountDTO dto = DoctorVisitCountDTO.builder()
                 .doctor(doctor)
                 .visitCount(1L)
                 .build();
-        when(doctorRepository.findVisitCountByDoctor()).thenReturn(Collections.singletonList(dto));
+        when(doctorRepository.findVisitCountByDoctor()).thenReturn(List.of(dto));
 
         List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
 
         assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.get(0).getDoctor().getName());
-        assertEquals(1L, result.get(0).getVisitCount());
+        assertEquals(doctor.getUniqueIdNumber(), result.getFirst().getDoctor().getUniqueIdNumber());
+        assertEquals(1L, result.getFirst().getVisitCount());
         verify(doctorRepository).findVisitCountByDoctor();
     }
 
     @Test
-    void FindDoctorsWithMostSickLeaves_WithData_ReturnsList() {
+    void findDoctorsWithMostSickLeaves_WithData_ReturnsList_HappyPath() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
         DoctorSickLeaveCountDTO dto = DoctorSickLeaveCountDTO.builder()
                 .doctor(doctor)
                 .sickLeaveCount(1L)
                 .build();
-        when(doctorRepository.findDoctorsWithMostSickLeaves()).thenReturn(Collections.singletonList(dto));
+        when(doctorRepository.findDoctorsWithMostSickLeaves()).thenReturn(List.of(dto));
 
         List<DoctorSickLeaveCountDTO> result = doctorRepository.findDoctorsWithMostSickLeaves();
 
         assertEquals(1, result.size());
-        assertEquals("Dr. Smith", result.get(0).getDoctor().getName());
-        assertEquals(1L, result.get(0).getSickLeaveCount());
+        assertEquals(doctor.getUniqueIdNumber(), result.getFirst().getDoctor().getUniqueIdNumber());
+        assertEquals(1L, result.getFirst().getSickLeaveCount());
         verify(doctorRepository).findDoctorsWithMostSickLeaves();
     }
 
-    // Error Cases
     @Test
-    void FindByUniqueIdNumber_WithNonExistentId_ReturnsEmpty() {
+    void findByUniqueIdNumber_NonExistentId_ReturnsEmpty_ErrorCase() {
         when(doctorRepository.findByUniqueIdNumber("NONEXISTENT")).thenReturn(Optional.empty());
 
-        Optional<Doctor> foundDoctor = doctorRepository.findByUniqueIdNumber("NONEXISTENT");
+        Optional<Doctor> found = doctorRepository.findByUniqueIdNumber("NONEXISTENT");
 
-        assertFalse(foundDoctor.isPresent());
+        assertFalse(found.isPresent());
         verify(doctorRepository).findByUniqueIdNumber("NONEXISTENT");
     }
 
     @Test
-    void FindAllActive_WithNoData_ReturnsEmpty() {
-        when(doctorRepository.findAllActive()).thenReturn(Collections.emptyList());
+    void findByUniqueIdNumberContaining_NonExistentFilter_ReturnsEmptyPage_ErrorCase() {
+        Page<Doctor> emptyPage = new PageImpl<>(List.of());
+        when(doctorRepository.findByUniqueIdNumberContaining(eq("NONEXISTENT"), any(Pageable.class))).thenReturn(emptyPage);
 
-        List<Doctor> result = doctorRepository.findAllActive();
-
-        assertTrue(result.isEmpty());
-        verify(doctorRepository).findAllActive();
-    }
-
-    @Test
-    void FindAllActivePaged_WithNoData_ReturnsEmpty() {
-        Page<Doctor> emptyPage = new PageImpl<>(Collections.emptyList());
-        when(doctorRepository.findAllActive(any(PageRequest.class))).thenReturn(emptyPage);
-
-        Page<Doctor> result = doctorRepository.findAllActive(PageRequest.of(0, 1));
+        Page<Doctor> result = doctorRepository.findByUniqueIdNumberContaining("NONEXISTENT", PageRequest.of(0, 1));
 
         assertEquals(0, result.getTotalElements());
         assertTrue(result.getContent().isEmpty());
-        verify(doctorRepository).findAllActive(any(PageRequest.class));
+        verify(doctorRepository).findByUniqueIdNumberContaining(eq("NONEXISTENT"), any(Pageable.class));
     }
 
     @Test
-    void FindPatientCountByGeneralPractitioner_WithNoData_ReturnsEmpty() {
-        when(doctorRepository.findPatientCountByGeneralPractitioner()).thenReturn(Collections.emptyList());
+    void findAll_WithSpecificationNoMatches_ReturnsEmptyPage_ErrorCase() {
+        Specification<Doctor> spec = mock(Specification.class);
+        Page<Doctor> emptyPage = new PageImpl<>(List.of());
+        when(doctorRepository.findAll(eq(spec), any(Pageable.class))).thenReturn(emptyPage);
+
+        Page<Doctor> result = doctorRepository.findAll(spec, PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(doctorRepository).findAll(eq(spec), any(Pageable.class));
+    }
+
+    @Test
+    void findPatientsByGeneralPractitioner_NoPatients_ReturnsEmptyPage_ErrorCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
+        Page<Patient> emptyPage = new PageImpl<>(List.of());
+        when(doctorRepository.findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class))).thenReturn(emptyPage);
+
+        Page<Patient> result = doctorRepository.findPatientsByGeneralPractitioner(doctor, PageRequest.of(0, 1));
+
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(doctorRepository).findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class));
+    }
+
+    @Test
+    void findPatientCountByGeneralPractitioner_NoData_ReturnsEmptyList_ErrorCase() {
+        when(doctorRepository.findPatientCountByGeneralPractitioner()).thenReturn(List.of());
 
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
 
@@ -196,8 +233,8 @@ class DoctorRepositoryUnitTests {
     }
 
     @Test
-    void FindVisitCountByDoctor_WithNoData_ReturnsEmpty() {
-        when(doctorRepository.findVisitCountByDoctor()).thenReturn(Collections.emptyList());
+    void findVisitCountByDoctor_NoData_ReturnsEmptyList_ErrorCase() {
+        when(doctorRepository.findVisitCountByDoctor()).thenReturn(List.of());
 
         List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
 
@@ -206,8 +243,8 @@ class DoctorRepositoryUnitTests {
     }
 
     @Test
-    void FindDoctorsWithMostSickLeaves_WithNoData_ReturnsEmpty() {
-        when(doctorRepository.findDoctorsWithMostSickLeaves()).thenReturn(Collections.emptyList());
+    void findDoctorsWithMostSickLeaves_NoData_ReturnsEmptyList_ErrorCase() {
+        when(doctorRepository.findDoctorsWithMostSickLeaves()).thenReturn(List.of());
 
         List<DoctorSickLeaveCountDTO> result = doctorRepository.findDoctorsWithMostSickLeaves();
 
@@ -215,43 +252,34 @@ class DoctorRepositoryUnitTests {
         verify(doctorRepository).findDoctorsWithMostSickLeaves();
     }
 
-    // Edge Cases
     @Test
-    void FindByUniqueIdNumber_WithSoftDeletedDoctor_ReturnsEmpty() {
-        Doctor deletedDoctor = new Doctor();
-        deletedDoctor.setName("Deleted");
-        deletedDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        deletedDoctor.setGeneralPractitioner(true);
-        deletedDoctor.setIsDeleted(true);
+    void findByUniqueIdNumberContaining_EmptyFilter_ReturnsAllDoctors_EdgeCase() {
+        Doctor doctor1 = createDoctor("DOC123", true, "Dr. John Doe");
+        Doctor doctor2 = createDoctor("DOC456", false, "Dr. Jane Smith");
+        Page<Doctor> page = new PageImpl<>(List.of(doctor1, doctor2));
+        when(doctorRepository.findByUniqueIdNumberContaining(eq(""), any(Pageable.class))).thenReturn(page);
 
-        when(doctorRepository.findByUniqueIdNumber(deletedDoctor.getUniqueIdNumber())).thenReturn(Optional.empty());
+        Page<Doctor> result = doctorRepository.findByUniqueIdNumberContaining("", PageRequest.of(0, 2));
 
-        Optional<Doctor> foundDoctor = doctorRepository.findByUniqueIdNumber(deletedDoctor.getUniqueIdNumber());
-
-        assertFalse(foundDoctor.isPresent());
-        verify(doctorRepository).findByUniqueIdNumber(deletedDoctor.getUniqueIdNumber());
+        assertEquals(2, result.getTotalElements());
+        assertEquals(2, result.getContent().size());
+        verify(doctorRepository).findByUniqueIdNumberContaining(eq(""), any(Pageable.class));
     }
 
     @Test
-    void FindAllActivePaged_WithLastPageFewerElements_ReturnsCorrectPage() {
-        Doctor doctor2 = new Doctor();
-        doctor2.setName("Dr. Jones");
-        doctor2.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor2.setGeneralPractitioner(true);
+    void findPatientsByGeneralPractitioner_WithLargePageSize_EdgeCase() {
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
+        List<Patient> patients = new java.util.ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            patients.add(createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now()));
+        }
+        Page<Patient> page = new PageImpl<>(patients);
+        when(doctorRepository.findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class))).thenReturn(page);
 
-        Doctor doctor3 = new Doctor();
-        doctor3.setName("Dr. Brown");
-        doctor3.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor3.setGeneralPractitioner(true);
+        Page<Patient> result = doctorRepository.findPatientsByGeneralPractitioner(doctor, PageRequest.of(0, 10));
 
-        Page<Doctor> page = new PageImpl<>(Collections.singletonList(doctor3), PageRequest.of(1, 2), 3);
-        when(doctorRepository.findAllActive(PageRequest.of(1, 2))).thenReturn(page);
-
-        Page<Doctor> result = doctorRepository.findAllActive(PageRequest.of(1, 2));
-
-        assertEquals(3, result.getTotalElements());
-        assertEquals(1, result.getContent().size());
-        assertEquals(2, result.getTotalPages());
-        verify(doctorRepository).findAllActive(PageRequest.of(1, 2));
+        assertEquals(5, result.getTotalElements());
+        assertEquals(5, result.getContent().size());
+        verify(doctorRepository).findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class));
     }
 }

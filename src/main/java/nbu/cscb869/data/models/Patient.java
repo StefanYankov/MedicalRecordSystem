@@ -3,14 +3,10 @@ package nbu.cscb869.data.models;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
-import nbu.cscb869.common.validation.ValidationConfig;
 import nbu.cscb869.common.validation.annotations.Egn;
-import nbu.cscb869.data.models.base.BaseEntity;
-import org.hibernate.annotations.SQLDelete;
+import nbu.cscb869.data.base.BaseEntity;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -18,17 +14,14 @@ import java.util.List;
 
 @Getter
 @Setter
+@Builder
 @Entity
 @Table(name = "patients", indexes = {
-        @Index(columnList = "egn"),
-        @Index(columnList = "is_deleted")
+        @Index(columnList = "egn")
 })
-@SQLDelete(sql = "UPDATE patients SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Patient extends BaseEntity {
-    @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
-    @Size(min = ValidationConfig.NAME_MIN_LENGTH, max = ValidationConfig.NAME_MAX_LENGTH)
-    @Column(nullable = false)
-    private String name;
 
     @Egn(message = ErrorMessages.EGN_INVALID)
     @NotBlank(message = ErrorMessages.EGN_NOT_BLANK)
@@ -43,11 +36,6 @@ public class Patient extends BaseEntity {
     @JoinColumn(name = "general_practitioner_id")
     private Doctor generalPractitioner;
 
-    @OneToMany(mappedBy = "patient")
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Visit> visits = new ArrayList<>();
-
-    public boolean hasValidInsurance() {
-        return lastInsurancePaymentDate != null &&
-                lastInsurancePaymentDate.isAfter(LocalDate.now().minusMonths(6));
-    }
 }

@@ -2,24 +2,24 @@ package nbu.cscb869.data.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import nbu.cscb869.common.validation.ValidationConfig;
-import nbu.cscb869.data.models.base.BaseEntity;
-import org.hibernate.annotations.SQLDelete;
+import nbu.cscb869.data.base.BaseEntity;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
 @Setter
+@Builder
 @Entity
 @Table(name = "treatments", indexes = {
-        @Index(columnList = "visit_id"),
-        @Index(columnList = "is_deleted")
+        @Index(columnList = "visit_id")
 })
-@SQLDelete(sql = "UPDATE treatments SET is_deleted = true, deleted_on = CURRENT_TIMESTAMP WHERE id = ? AND version = ?")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Treatment extends BaseEntity {
+
     @Size(max = ValidationConfig.DESCRIPTION_MAX_LENGTH)
     private String description;
 

@@ -6,13 +6,18 @@ spring:
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         schema_management:
           skip_missing_table_drops: true
     show-sql: true
+testcontainers:
+  mysql:
+    database: test_db
+    username: test
+    password: test
 cloudinary:
   cloud-name: duntro9y8
   api-key: 258169897437321
