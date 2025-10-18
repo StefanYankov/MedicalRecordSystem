@@ -28,15 +28,37 @@ public final class ExceptionMessages {
     public static final String INVALID_GENERAL_PRACTITIONER = "Selected doctor with ID {0} is not a general practitioner";
     public static final String PATIENT_NOT_FOUND_BY_ID = "Patient not found with ID: {0}";
     public static final String PATIENT_NOT_FOUND_BY_EGN = "Patient not found with EGN: {0}";
+    public static final String PATIENT_NOT_FOUND_BY_KEYCLOAK_ID = "Patient not found with Keycloak ID: {0}";
+    public static final String PATIENT_KEYCLOAK_ID_EXISTS = "Patient with Keycloak ID {0} already exists";
+    public static final String KEYCLOAK_ID_MISSING_FOR_ADMIN_CREATION = "Keycloak ID must be provided for admin patient creation";
+
+    public static final String DIAGNOSIS_NAME_EXISTS = "Diagnosis with name ''{0}'' already exists.";
+    public static final String DIAGNOSIS_NOT_FOUND_BY_ID = "Diagnosis not found with ID: {0}";
+    public static final String DIAGNOSIS_NOT_FOUND_BY_NAME = "Diagnosis not found with name: {0}";
+    public static final String DIAGNOSIS_IN_USE = "Cannot delete diagnosis with ID: {0} because it is referenced by active visits.";
+
+    public static final String TREATMENT_NOT_FOUND_BY_ID = "Treatment not found with ID: {0}";
+    public static final String VISIT_NOT_FOUND_BY_ID = "Visit not found with ID: {0}";
+    public static final String SICK_LEAVE_NOT_FOUND_BY_ID = "Sick leave not found with ID: {0}";
+    public static final String SPECIALTY_IN_USE = "Cannot delete specialty with ID: {0} because it is assigned to one or more doctors.";
+    public static final String SPECIALTY_NAME_EXISTS = "Specialty with name ''{0}'' already exists.";
+
 
     private ExceptionMessages() {
         throw new IllegalStateException("Utility class");
     }
 
     // Helper methods for MessageFormat
-
     public static String formatDoctorNotFoundById(Long id) {
         return MessageFormat.format(DOCTOR_NOT_FOUND_BY_ID, id);
+    }
+
+    public static String formatDoctorNotFoundByUniqueId(String uniqueId) {
+        return MessageFormat.format(DOCTOR_NOT_FOUND_BY_UNIQUE_ID, uniqueId);
+    }
+
+    public static String formatSpecialtyNotFoundByName(String name) {
+        return MessageFormat.format(SPECIALTY_NOT_FOUND_BY_NAME, name);
     }
 
     public static String formatInvalidDTONull(String dtoName) {
@@ -109,5 +131,57 @@ public final class ExceptionMessages {
 
     public static String formatPatientNotFoundByEgn(String egn) {
         return MessageFormat.format(PATIENT_NOT_FOUND_BY_EGN, egn);
+    }
+
+    public static String formatPatientNotFoundByKeycloakId(String keycloakId) {
+        return MessageFormat.format(PATIENT_NOT_FOUND_BY_KEYCLOAK_ID, keycloakId);
+    }
+
+    public static String formatPatientKeycloakIdExists(String keycloakId) {
+        return MessageFormat.format(PATIENT_KEYCLOAK_ID_EXISTS, keycloakId);
+    }
+
+    public static String formatKeycloakIdMissingForAdminCreation() {
+        return KEYCLOAK_ID_MISSING_FOR_ADMIN_CREATION;
+    }
+
+    public static String formatDoctorUniqueIdExists(String uniqueId) {
+        return MessageFormat.format(DOCTOR_UNIQUE_ID_EXISTS, uniqueId);
+    }
+
+    public static String formatDiagnosisNameExists(String name) {
+        return MessageFormat.format(DIAGNOSIS_NAME_EXISTS, name);
+    }
+
+    public static String formatDiagnosisNotFoundById(Long id) {
+        return MessageFormat.format(DIAGNOSIS_NOT_FOUND_BY_ID, id);
+    }
+
+    public static String formatDiagnosisNotFoundByName(String name) {
+        return MessageFormat.format(DIAGNOSIS_NOT_FOUND_BY_NAME, name);
+    }
+
+    public static String formatDiagnosisInUse(Long id) {
+        return MessageFormat.format(DIAGNOSIS_IN_USE, id);
+    }
+
+    public static String formatTreatmentNotFoundById(Long id) {
+        return MessageFormat.format(TREATMENT_NOT_FOUND_BY_ID, id);
+    }
+
+    public static String formatVisitNotFoundById(Long id) {
+        return MessageFormat.format(VISIT_NOT_FOUND_BY_ID, id);
+    }
+
+    public static String formatSickLeaveNotFoundById(Long id) {
+        return MessageFormat.format(SICK_LEAVE_NOT_FOUND_BY_ID, id);
+    }
+
+    public static String formatSpecialtyInUse(Long id) {
+        return MessageFormat.format(SPECIALTY_IN_USE, id);
+    }
+
+    public static String formatSpecialtyNameExists(String name) {
+        return MessageFormat.format(SPECIALTY_NAME_EXISTS, name);
     }
 }

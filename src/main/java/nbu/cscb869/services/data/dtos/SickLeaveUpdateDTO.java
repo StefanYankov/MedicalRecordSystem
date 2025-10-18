@@ -8,11 +8,7 @@ import nbu.cscb869.common.validation.ValidationConfig;
 
 import java.time.LocalDate;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class SickLeaveUpdateDTO {
     private Long id;
 

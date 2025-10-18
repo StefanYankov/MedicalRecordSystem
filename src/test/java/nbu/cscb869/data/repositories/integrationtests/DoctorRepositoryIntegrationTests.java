@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,6 +39,8 @@ class DoctorRepositoryIntegrationTests {
     private DiagnosisRepository diagnosisRepository;
     @Autowired
     private SickLeaveRepository sickLeaveRepository;
+    @Autowired
+    private SpecialtyRepository specialtyRepository;
 
     @BeforeEach
     void setUp() {
@@ -46,22 +49,26 @@ class DoctorRepositoryIntegrationTests {
         patientRepository.deleteAll();
         doctorRepository.deleteAll();
         diagnosisRepository.deleteAll();
+        specialtyRepository.deleteAll();
     }
 
     private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
-        return Doctor.builder()
-                .uniqueIdNumber(uniqueIdNumber)
-                .isGeneralPractitioner(isGeneralPractitioner)
-                .name(name)
-                .build();
+        Doctor doctor = new Doctor();
+        doctor.setUniqueIdNumber(uniqueIdNumber);
+        doctor.setGeneralPractitioner(isGeneralPractitioner);
+        doctor.setName(name);
+        doctor.setKeycloakId(TestDataUtils.generateKeycloakId());
+        return doctor;
     }
 
-    private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
-        return Patient.builder()
-                .egn(egn)
-                .generalPractitioner(generalPractitioner)
-                .lastInsurancePaymentDate(lastInsurancePaymentDate)
-                .build();
+    private Patient createPatient(String egn, String name, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
+        Patient patient = new Patient();
+        patient.setEgn(egn);
+        patient.setName(name); // FIX: Set the patient's name
+        patient.setGeneralPractitioner(generalPractitioner);
+        patient.setLastInsurancePaymentDate(lastInsurancePaymentDate);
+        patient.setKeycloakId(TestDataUtils.generateKeycloakId());
+        return patient;
     }
 
     private Diagnosis createDiagnosis(String name, String description) {
@@ -144,7 +151,7 @@ class DoctorRepositoryIntegrationTests {
     void findPatientsByGeneralPractitioner_WithPatients_ReturnsPaged_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Zero", doctor, LocalDate.now());
         patientRepository.save(patient);
 
         Page<Patient> result = doctorRepository.findPatientsByGeneralPractitioner(doctor, PageRequest.of(0, 1));
@@ -157,7 +164,7 @@ class DoctorRepositoryIntegrationTests {
     void findPatientCountByGeneralPractitioner_WithPatients_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient One", doctor, LocalDate.now());
         patientRepository.save(patient);
 
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
@@ -170,7 +177,7 @@ class DoctorRepositoryIntegrationTests {
     void findVisitCountByDoctor_WithVisits_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Green");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Two", doctor, LocalDate.now());
         patient = patientRepository.save(patient);
         Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
         diagnosis = diagnosisRepository.save(diagnosis);
@@ -187,7 +194,7 @@ class DoctorRepositoryIntegrationTests {
     void findDoctorsWithMostSickLeaves_WithSickLeaves_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Lee");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Three", doctor, LocalDate.now());
         patient = patientRepository.save(patient);
         Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
         diagnosis = diagnosisRepository.save(diagnosis);
@@ -200,6 +207,46 @@ class DoctorRepositoryIntegrationTests {
 
         assertEquals(1, result.size());
         assertEquals(1L, result.getFirst().getSickLeaveCount());
+    }
+
+    @Test
+    void existsBySpecialtiesContains_WhenSpecialtyInUse_ReturnsTrue_HappyPath() {
+        // ARRANGE
+        Specialty specialty = new Specialty();
+        specialty.setName("Cardiology");
+        specialty = specialtyRepository.save(specialty);
+
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), false, "Dr. Specialist");
+        doctor.setSpecialties(Set.of(specialty));
+        doctorRepository.save(doctor);
+
+        // ACT
+        boolean result = doctorRepository.existsBySpecialtiesContains(specialty);
+
+        // ASSERT
+        assertTrue(result);
+    }
+
+    @Test
+    void existsBySpecialtiesContains_WhenSpecialtyNotInUse_ReturnsFalse_ErrorCase() {
+        // ARRANGE
+        Specialty specialty = new Specialty();
+        specialty.setName("Cardiology");
+        specialty = specialtyRepository.save(specialty);
+
+        Specialty unusedSpecialty = new Specialty();
+        unusedSpecialty.setName("Unused");
+        unusedSpecialty = specialtyRepository.save(unusedSpecialty);
+
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), false, "Dr. Specialist");
+        doctor.setSpecialties(Set.of(specialty));
+        doctorRepository.save(doctor);
+
+        // ACT
+        boolean result = doctorRepository.existsBySpecialtiesContains(unusedSpecialty);
+
+        // ASSERT
+        assertFalse(result);
     }
 
     @Test
@@ -294,7 +341,7 @@ class DoctorRepositoryIntegrationTests {
         doctor = doctorRepository.save(doctor);
         List<Patient> patients = new java.util.ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            patients.add(createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now()));
+            patients.add(createPatient(TestDataUtils.generateValidEgn(), "Patient " + i, doctor, LocalDate.now()));
         }
         patientRepository.saveAll(patients);
 

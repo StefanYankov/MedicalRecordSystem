@@ -4,17 +4,11 @@ import lombok.*;
 
 import java.time.LocalDate;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class PatientViewDTO {
     private Long id;
-
+    private String name;
     private String egn;
-
     private LocalDate lastInsurancePaymentDate;
-
-    private DoctorViewDTO generalPractitioner;
+    private Long generalPractitionerId;
 }

@@ -10,10 +10,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Abstract base entity providing common fields
- * Includes auditing fields (created/modified) and soft delete fields ({@code isDeleted}, {@code deletedOn}).
- */
 @Getter
 @Setter
 @MappedSuperclass

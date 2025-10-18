@@ -2,8 +2,12 @@ package nbu.cscb869.services.services.utility;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import nbu.cscb869.common.exceptions.InvalidDoctorException;
-import org.springframework.beans.factory.annotation.Value;
+import nbu.cscb869.common.exceptions.ImageProcessingException;
+import nbu.cscb869.common.validation.ErrorMessages;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,68 +20,69 @@ import java.util.Map;
 @Service
 public class CloudinaryService {
 
+    private static final Logger log = LoggerFactory.getLogger(CloudinaryService.class);
+
     private final Cloudinary cloudinary;
 
-    /**
-     * Constructs a new CloudinaryService with the specified Cloudinary configuration.
-     *
-     * @param cloudName the Cloudinary cloud name from application properties
-     * @param apiKey    the Cloudinary API key from application properties
-     * @param apiSecret the Cloudinary API secret from application properties
-     */
-    public CloudinaryService(
-            @Value("${cloudinary.cloud-name}") String cloudName,
-            @Value("${cloudinary.api-key}") String apiKey,
-            @Value("${cloudinary.api-secret}") String apiSecret) {
-        this.cloudinary = new Cloudinary(ObjectUtils.asMap(
-                "cloud_name", cloudName,
-                "api_key", apiKey,
-                "api_secret", apiSecret
-        ));
+    public CloudinaryService(Cloudinary cloudinary) {
+        this.cloudinary = cloudinary;
     }
 
     /**
-     * Uploads an image to Cloudinary and returns the secure URL.
-     *
+     * Asynchronously uploads an image to Cloudinary and returns the secure URL.
      * @param file the image file to upload
      * @return the secure URL of the uploaded image
-     * @throws InvalidDoctorException if the file is null, empty, or upload fails
+     * @throws ImageProcessingException if the file is null, empty, exceeds 10MB, or is not an image type
      */
+    @Async
+    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @org.springframework.retry.annotation.Backoff(delay = 1000))
     public String uploadImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new InvalidDoctorException("Image file must not be null or empty");
+            throw new ImageProcessingException(ErrorMessages.IMAGE_FILE_NULL_OR_EMPTY);
+        }
+        if (file.getSize() > 10_485_760) { // 10MB limit
+            throw new ImageProcessingException(ErrorMessages.IMAGE_FILE_SIZE_EXCEEDED, 10);
+        }
+        if (!file.getContentType().startsWith("image/")) {
+            throw new ImageProcessingException(ErrorMessages.IMAGE_FILE_INVALID_TYPE);
         }
         try {
-            Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+            log.info("Starting image upload for file: {}", file.getOriginalFilename());
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "resource_type", "image",
                     "folder", "medical_record/doctors"
             ));
-            return (String) uploadResult.get("secure_url");
+            String secureUrl = (String) uploadResult.get("secure_url");
+            log.info("Image uploaded successfully: {}", secureUrl);
+            return secureUrl;
         } catch (IOException e) {
-            throw new InvalidDoctorException("Failed to upload image: " + e.getMessage());
+            log.error("Failed to upload image: {}", e.getMessage(), e);
+            throw new ImageProcessingException(ErrorMessages.IMAGE_UPLOAD_FAILED, e.getMessage());
         }
     }
 
     /**
      * Deletes an image from Cloudinary using its public ID.
-     *
      * @param publicId the public ID of the image to delete
-     * @throws InvalidDoctorException if deletion fails
+     * @throws ImageProcessingException if deletion fails
      */
+    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @org.springframework.retry.annotation.Backoff(delay = 1000))
     public void deleteImage(String publicId) {
         if (publicId == null || publicId.isEmpty()) {
             return;
         }
         try {
+            log.info("Deleting image with public ID: {}", publicId);
             cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            log.info("Image deleted successfully");
         } catch (IOException e) {
-            throw new InvalidDoctorException("Failed to delete image: " + e.getMessage());
+            log.error("Failed to delete image: {}", e.getMessage(), e);
+            throw new ImageProcessingException(ErrorMessages.IMAGE_DELETE_FAILED, publicId);
         }
     }
 
     /**
      * Extracts the public ID from a Cloudinary URL.
-     *
      * @param url the Cloudinary URL of the image
      * @return the public ID, or null if the URL is invalid
      */
@@ -87,6 +92,10 @@ public class CloudinaryService {
         }
         String[] parts = url.split("/");
         String fileName = parts[parts.length - 1];
-        return "medical_record/doctors/" + fileName.substring(0, fileName.lastIndexOf("."));
+        int dotIndex = fileName.lastIndexOf(".");
+        if (dotIndex <= 0 || dotIndex >= fileName.length() - 1) {
+            return null;
+        }
+        return "medical_record/doctors/" + fileName.substring(0, dotIndex);
     }
 }

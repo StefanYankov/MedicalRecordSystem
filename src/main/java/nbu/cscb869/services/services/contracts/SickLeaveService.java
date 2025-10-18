@@ -2,12 +2,14 @@ package nbu.cscb869.services.services.contracts;
 
 import nbu.cscb869.common.exceptions.EntityNotFoundException;
 import nbu.cscb869.common.exceptions.InvalidDTOException;
+import nbu.cscb869.data.dto.YearMonthSickLeaveCountDTO;
 import nbu.cscb869.services.data.dtos.SickLeaveCreateDTO;
 import nbu.cscb869.services.data.dtos.SickLeaveUpdateDTO;
 import nbu.cscb869.services.data.dtos.SickLeaveViewDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -37,7 +39,7 @@ public interface SickLeaveService {
     SickLeaveViewDTO update(SickLeaveUpdateDTO dto);
 
     /**
-     * Soft deletes a sick leave by ID.
+     * Deletes a sick leave by ID.
      * @param id the ID of the sick leave to delete
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the sick leave is not found
@@ -47,6 +49,7 @@ public interface SickLeaveService {
 
     /**
      * Retrieves a sick leave by ID.
+     * Patient access is restricted in the implementation to their own records.
      * @param id the ID of the sick leave
      * @return the sick leave's view DTO
      * @throws InvalidDTOException if the ID is null
@@ -66,4 +69,11 @@ public interface SickLeaveService {
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     CompletableFuture<Page<SickLeaveViewDTO>> getAll(int page, int size, String orderBy, boolean ascending);
+
+    /**
+     * Retrieves the months with the highest number of issued sick leaves.
+     * @return a list of DTOs containing the year, month, and the count of sick leaves.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    List<YearMonthSickLeaveCountDTO> getMonthsWithMostSickLeaves();
 }

@@ -1,5 +1,6 @@
 package nbu.cscb869.services.data.dtos;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -20,5 +21,6 @@ public class TreatmentCreateDTO {
     @NotNull(message = ErrorMessages.VISIT_ID_NOT_NULL)
     private Long visitId;
 
-    private List<Long> medicineIds;
+    @Valid // Ensures nested validation is triggered
+    private List<MedicineCreateDTO> medicines;
 }

@@ -61,6 +61,8 @@ dependencies {
 
     // Cloudinary
     implementation 'com.cloudinary:cloudinary-http44:1.39.0'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.aspectj:aspectjweaver'
 
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

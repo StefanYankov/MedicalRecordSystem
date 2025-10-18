@@ -5,6 +5,7 @@ import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
+import nbu.cscb869.data.models.Specialty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -76,4 +77,11 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long>, JpaSpecif
             "FROM Doctor d JOIN Visit v ON v.doctor = d JOIN SickLeave sl ON sl.visit = v " +
             "GROUP BY d ORDER BY COUNT(sl) DESC")
     List<DoctorSickLeaveCountDTO> findDoctorsWithMostSickLeaves();
+
+    /**
+     * Checks if any doctor is associated with the given specialty.
+     * @param specialty the specialty to check for
+     * @return true if the specialty is in use, false otherwise
+     */
+    boolean existsBySpecialtiesContains(Specialty specialty);
 }

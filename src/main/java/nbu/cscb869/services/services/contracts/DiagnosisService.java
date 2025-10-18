@@ -40,7 +40,7 @@ public interface DiagnosisService {
     DiagnosisViewDTO update(DiagnosisUpdateDTO dto);
 
     /**
-     * Soft deletes a diagnosis by ID.
+     * Deletes a diagnosis by ID.
      * @param id the ID of the diagnosis to delete
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the diagnosis is not found

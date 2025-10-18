@@ -19,6 +19,7 @@ import java.util.Set;
 @Builder
 @Entity
 @Table(name = "doctors", indexes = {
+        @Index(columnList = "keycloak_id"),
         @Index(columnList = "uniqueIdNumber")
 })
 @NoArgsConstructor
@@ -38,20 +39,26 @@ public class Doctor extends BaseEntity {
     @Column(name = "is_general_practitioner", nullable = false)
     private boolean isGeneralPractitioner;
 
+    @Column(nullable = false, unique = true)
+    private String keycloakId;
+
+    @Column
+    private String imageUrl;
+
     @ManyToMany
     @JoinTable(
             name = "doctor_specialties",
             joinColumns = @JoinColumn(name = "doctor_id"),
             inverseJoinColumns = @JoinColumn(name = "specialty_id")
     )
+    @Builder.Default
     private Set<Specialty> specialties = new HashSet<>();
 
     @OneToMany(mappedBy = "generalPractitioner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Patient> patients = new ArrayList<>();
 
     @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Visit> visits = new ArrayList<>();
-
-    @Column
-    private String imageUrl;
 }

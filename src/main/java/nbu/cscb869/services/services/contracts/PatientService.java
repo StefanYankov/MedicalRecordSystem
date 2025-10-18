@@ -8,6 +8,7 @@ import nbu.cscb869.services.data.dtos.PatientCreateDTO;
 import nbu.cscb869.services.data.dtos.PatientUpdateDTO;
 import nbu.cscb869.services.data.dtos.PatientViewDTO;
 import org.springframework.data.domain.Page;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
@@ -19,7 +20,8 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface PatientService {
     /**
-     * Creates a new patient with the provided DTO.
+     * Creates a new patient with the provided DTO. For Admin use.
+     * Note: The PatientCreateDTO must be updated to include a keycloakId.
      * @param dto the DTO containing patient creation data
      * @return the created patient's view DTO
      * @throws InvalidDTOException if the DTO is null or invalid
@@ -30,6 +32,15 @@ public interface PatientService {
     PatientViewDTO create(PatientCreateDTO dto);
 
     /**
+     * Allows a patient to register themselves.
+     * The keycloakId is taken from the security context.
+     * @param dto the DTO containing patient creation data
+     * @return the created patient's view DTO
+     */
+    @PreAuthorize("hasRole('PATIENT')")
+    PatientViewDTO registerPatient(PatientCreateDTO dto);
+
+    /**
      * Updates an existing patient with the provided DTO.
      * @param dto the DTO containing updated patient data
      * @return the updated patient's view DTO
@@ -37,11 +48,11 @@ public interface PatientService {
      * @throws EntityNotFoundException if the patient or general practitioner is not found
      * @throws InvalidPatientException if the EGN is already in use or general practitioner is invalid
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PATIENT')") // FIX: Allow patients to enter the method
     PatientViewDTO update(PatientUpdateDTO dto);
 
     /**
-     * Soft deletes a patient by ID.
+     * Deletes a patient by ID.
      * @param id the ID of the patient to delete
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the patient is not found
@@ -70,6 +81,16 @@ public interface PatientService {
     PatientViewDTO getByEgn(String egn);
 
     /**
+     * Retrieves a patient by their Keycloak ID.
+     * @param keycloakId the user's Keycloak ID
+     * @return the patient's view DTO
+     * @throws InvalidDTOException if the keycloakId is null or empty
+     * @throws EntityNotFoundException if the patient is not found
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    PatientViewDTO getByKeycloakId(String keycloakId);
+
+    /**
      * Retrieves all active patients with pagination, sorting, and optional filtering by EGN.
      * @param page the page number (0-based)
      * @param size the number of items per page
@@ -80,6 +101,7 @@ public interface PatientService {
      * @throws InvalidDTOException if pagination parameters are invalid
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @Async
     CompletableFuture<Page<PatientViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter);
 
     /**

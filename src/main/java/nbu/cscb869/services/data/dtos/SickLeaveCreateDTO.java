@@ -8,11 +8,7 @@ import nbu.cscb869.common.validation.ValidationConfig;
 
 import java.time.LocalDate;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class SickLeaveCreateDTO {
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
     private LocalDate startDate;

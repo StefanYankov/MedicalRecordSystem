@@ -29,7 +29,7 @@ cloudinary:
   api-key: 916245136867445
   api-secret: 04s3evY6JbCtD5M8wMdKHcD8tgU
 keycloak:
-  auth-server-url: http://keycloak:8080
+  auth-server-url: http://keycloak:8080/auth
   realm: medical-realm
   admin-client-id: admin-cli
   admin-username: admin

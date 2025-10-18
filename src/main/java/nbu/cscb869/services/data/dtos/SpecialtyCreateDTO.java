@@ -6,11 +6,7 @@ import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
 import nbu.cscb869.common.validation.ValidationConfig;
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class SpecialtyCreateDTO {
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
     @Size(max = ValidationConfig.SPECIALTY_NAME_MAX_LENGTH, message = ErrorMessages.DESCRIPTION_SIZE)

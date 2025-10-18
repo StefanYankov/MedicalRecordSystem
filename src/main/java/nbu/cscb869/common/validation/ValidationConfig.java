@@ -34,6 +34,9 @@ public class ValidationConfig {
     public static final int EMAIL_MIN_LENGTH = 5;
     public static final int EMAIL_MAX_LENGTH = 255;
     public static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    public static final int PASSWORD_MIN_LENGTH = 6;
+    public static final int PASSWORD_MAX_LENGTH = 100;
+    public static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{6,}$";
 
     private ValidationConfig() {
         throw new IllegalStateException("Utility class");

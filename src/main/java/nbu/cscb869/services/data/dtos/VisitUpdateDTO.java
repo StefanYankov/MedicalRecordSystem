@@ -23,9 +23,6 @@ public class VisitUpdateDTO {
     @ValidVisitTime
     private LocalTime visitTime;
 
-    @NotNull(message = ErrorMessages.SICK_LEAVE_NOT_NULL)
-    private Boolean sickLeaveIssued;
-
     @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long patientId;
 
@@ -34,4 +31,7 @@ public class VisitUpdateDTO {
 
     @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long diagnosisId;
+
+    private SickLeaveCreateDTO sickLeave;
+    private TreatmentCreateDTO treatment;
 }

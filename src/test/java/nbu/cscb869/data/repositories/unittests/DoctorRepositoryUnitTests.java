@@ -175,6 +175,20 @@ class DoctorRepositoryUnitTests {
     }
 
     @Test
+    void existsBySpecialtiesContains_WhenExists_ReturnsTrue_HappyPath() {
+        // ARRANGE
+        Specialty specialty = new Specialty();
+        when(doctorRepository.existsBySpecialtiesContains(specialty)).thenReturn(true);
+
+        // ACT
+        boolean result = doctorRepository.existsBySpecialtiesContains(specialty);
+
+        // ASSERT
+        assertTrue(result);
+        verify(doctorRepository).existsBySpecialtiesContains(specialty);
+    }
+
+    @Test
     void findByUniqueIdNumber_NonExistentId_ReturnsEmpty_ErrorCase() {
         when(doctorRepository.findByUniqueIdNumber("NONEXISTENT")).thenReturn(Optional.empty());
 

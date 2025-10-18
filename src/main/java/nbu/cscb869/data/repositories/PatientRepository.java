@@ -22,6 +22,13 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Optional<Patient> findByEgn(String egn);
 
     /**
+     * Retrieves a patient by their Keycloak ID.
+     * @param keycloakId the Keycloak ID to search for
+     * @return an optional patient entity
+     */
+    Optional<Patient> findByKeycloakId(String keycloakId);
+
+    /**
      * Retrieves a page of patients assigned to a specific general practitioner.
      * @param generalPractitioner the general practitioner to filter by
      * @param pageable pagination information

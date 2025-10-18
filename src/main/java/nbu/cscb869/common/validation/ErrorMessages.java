@@ -3,9 +3,9 @@ package nbu.cscb869.common.validation;
 import java.text.MessageFormat;
 
 public class ErrorMessages {
-    public static final String NAME_NOT_BLANK = "Name cannot be blank";
-    public static final String NAME_NOT_NULL = "Name must not be null";
-    public static final String NAME_SIZE = "Name must be between {0} and {1} characters";
+
+    // TODO: re-organise
+
     public static final String UNIQUE_ID_NOT_BLANK = "Unique ID number cannot be blank";
     public static final String UNIQUE_ID_PATTERN = "Unique ID number must be {0}-{1} alphanumeric characters";
     public static final String EGN_NOT_BLANK = "EGN cannot be blank";
@@ -36,14 +36,47 @@ public class ErrorMessages {
     public static final String FREQUENCY_SIZE = "Frequency cannot exceed {0} characters";
     public static final String TREATMENT_ID_NOT_NULL = "Treatment ID cannot be null";
     public static final String KEYCLOAK_ID_NOT_BLANK = "Keycloak ID cannot be blank";
+
+
+    public static final String ENTITY_TYPE_NOT_BLANK = "Entity type cannot be blank";
+    public static final String ENTITY_ID_NOT_NULL = "Entity ID cannot be null";
+    public static final String ROLE_NOT_NULL = "Role cannot be null";
+
+
+    // Roles
+    public static final String ROLE_PATIENT = "PATIENT";
+    public static final String ROLE_DOCTOR = "DOCTOR";
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_NAME_NOT_BLANK = "Role name cannot be blank";
+
+    // Error messages
+    public static final String USER_NOT_FOUND = "User not found with ID: {0}";
+    public static final String USER_NOT_NULL = "User cannot be null";
+    public static final String USER_ALREADY_EXISTS = "User already exists with email: {0}";
+    public static final String INVALID_ROLE = "Invalid role: {0}";
+    public static final String AUTHENTICATION_FAILED = "Authentication failed: {0}";
+
+    // Validation messages
     public static final String EMAIL_NOT_BLANK = "Email cannot be blank";
     public static final String EMAIL_INVALID = "Invalid email format";
     public static final String EMAIL_SIZE = "Email must be between {0} and {1} characters";
-    public static final String ROLE_NAME_NOT_BLANK = "Role name cannot be blank";
-    public static final String ENTITY_TYPE_NOT_BLANK = "Entity type cannot be blank";
-    public static final String ENTITY_ID_NOT_NULL = "Entity ID cannot be null";
-    public static final String USER_NOT_NULL = "User cannot be null";
-    public static final String ROLE_NOT_NULL = "Role cannot be null";
+    public static final String PASSWORD_NOT_BLANK = "Password cannot be blank";
+    public static final String PASSWORD_SIZE = "Password must be between {6} and {100} characters";
+    public static final String PASSWORD_PATTERN = "Password must contain at least one uppercase, one lowercase, and one digit";
+    public static final String NAME_NOT_BLANK = "Name cannot be blank";
+    public static final String NAME_NOT_NULL = "Name must not be null";
+    public static final String NAME_SIZE = "Name must be between {0} and {1} characters";
+
+    // Keycloak constants
+    public static final String KEYCLOAK_REALM = "medical-realm";
+
+    // New image processing error messages
+    public static final String IMAGE_FILE_NULL_OR_EMPTY = "Image file must not be null or empty";
+    public static final String IMAGE_FILE_SIZE_EXCEEDED = "Image file must be less than {0}MB";
+    public static final String IMAGE_FILE_INVALID_TYPE = "File must be an image";
+    public static final String IMAGE_UPLOAD_FAILED = "Failed to upload image: {0}";
+    public static final String IMAGE_DELETE_FAILED = "Failed to delete image: {0}";
+
 
     // Utility method for formatting parameterized messages
     public static String format(String message, Object... arguments) {

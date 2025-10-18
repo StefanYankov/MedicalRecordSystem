@@ -15,6 +15,7 @@ import nbu.cscb869.services.data.dtos.PatientViewDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,7 +56,7 @@ public interface DoctorService {
     DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image);
 
     /**
-     * Soft deletes a doctor by ID.
+     * Deletes a doctor by ID.
      * @param id the ID of the doctor to delete
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the doctor is not found
@@ -71,7 +72,7 @@ public interface DoctorService {
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the doctor is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     DoctorViewDTO getById(Long id);
 
     /**
@@ -81,7 +82,7 @@ public interface DoctorService {
      * @throws InvalidDTOException if the unique ID number is null or empty
      * @throws EntityNotFoundException if the doctor is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     DoctorViewDTO getByUniqueIdNumber(String uniqueIdNumber);
 
     /**
@@ -94,8 +95,9 @@ public interface DoctorService {
      * @return a CompletableFuture containing a page of doctor view DTOs
      * @throws InvalidDTOException if pagination parameters are invalid
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    CompletableFuture<Page<DoctorViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter);
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    @Async
+    CompletableFuture<Page<DoctorViewDTO>> getAllAsync(int page, int size, String orderBy, boolean ascending, String filter);
 
     /**
      * Retrieves doctors by dynamic criteria with pagination and sorting.
@@ -107,7 +109,7 @@ public interface DoctorService {
      * @return a page of doctor view DTOs
      * @throws InvalidInputException if pagination parameters are invalid
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     Page<DoctorViewDTO> findByCriteria(Specification<Doctor> spec, int page, int size, String orderBy, boolean ascending);
 
     /**
@@ -121,7 +123,7 @@ public interface DoctorService {
      * @throws InvalidDoctorException if the doctor is not a general practitioner
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    Page<PatientViewDTO> getByGeneralPractitioner(Long generalPractitionerId, int page, int size);
+    Page<PatientViewDTO> getPatientsByGeneralPractitioner(Long generalPractitionerId, int page, int size);
 
     /**
      * Retrieves patient counts for general practitioners.
@@ -150,8 +152,7 @@ public interface DoctorService {
      * @throws EntityNotFoundException if the doctor is not found
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    CompletableFuture<Page<VisitViewDTO>> getVisitsByPeriod(Long doctorId, LocalDate startDate, LocalDate endDate, int page, int size);
-
+    Page<VisitViewDTO> getVisitsByPeriod(Long doctorId, LocalDate startDate, LocalDate endDate, int page, int size);
     /**
      * Retrieves doctors with the highest sick leave counts.
      * @return a list of DTOs containing doctors and their sick leave counts
