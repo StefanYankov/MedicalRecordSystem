@@ -2,6 +2,7 @@ package nbu.cscb869.common.exceptions;
 
 import java.text.MessageFormat;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public final class ExceptionMessages {
     public static final String DOCTOR_NOT_FOUND_BY_ID = "Doctor not found with ID: {0}";
@@ -42,6 +43,12 @@ public final class ExceptionMessages {
     public static final String SICK_LEAVE_NOT_FOUND_BY_ID = "Sick leave not found with ID: {0}";
     public static final String SPECIALTY_IN_USE = "Cannot delete specialty with ID: {0} because it is assigned to one or more doctors.";
     public static final String SPECIALTY_NAME_EXISTS = "Specialty with name ''{0}'' already exists.";
+
+    public static final String VISIT_TIME_BOOKED = "Visit time {0} on {1} is already booked for this doctor.";
+    public static final String VISIT_OUTSIDE_WORKING_HOURS = "Visit time must be between {0} and {1}.";
+    public static final String PATIENT_INSURANCE_INVALID = "Patient with ID {0} has not paid health insurance in the last 6 months.";
+    public static final String PATIENT_ACCESS_DENIED = "Patients can only access their own records.";
+    public static final String INVALID_PAGINATION_FOR_OPERATION = "Invalid pagination parameters for operation ''{0}''.";
 
 
     private ExceptionMessages() {
@@ -183,5 +190,21 @@ public final class ExceptionMessages {
 
     public static String formatSpecialtyNameExists(String name) {
         return MessageFormat.format(SPECIALTY_NAME_EXISTS, name);
+    }
+
+    public static String formatVisitTimeBooked(LocalTime time, LocalDate date) {
+        return MessageFormat.format(VISIT_TIME_BOOKED, time, date);
+    }
+
+    public static String formatPatientInsuranceInvalid(Long patientId) {
+        return MessageFormat.format(PATIENT_INSURANCE_INVALID, patientId);
+    }
+
+    public static String formatVisitOutsideWorkingHours(LocalTime start, LocalTime end) {
+        return MessageFormat.format(VISIT_OUTSIDE_WORKING_HOURS, start, end);
+    }
+
+    public static String formatInvalidPagination(String operation) {
+        return MessageFormat.format(INVALID_PAGINATION_FOR_OPERATION, operation);
     }
 }

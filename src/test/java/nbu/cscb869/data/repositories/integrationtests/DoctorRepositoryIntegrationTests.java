@@ -64,7 +64,7 @@ class DoctorRepositoryIntegrationTests {
     private Patient createPatient(String egn, String name, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
         Patient patient = new Patient();
         patient.setEgn(egn);
-        patient.setName(name); // FIX: Set the patient's name
+        patient.setName(name);
         patient.setGeneralPractitioner(generalPractitioner);
         patient.setLastInsurancePaymentDate(lastInsurancePaymentDate);
         patient.setKeycloakId(TestDataUtils.generateKeycloakId());
@@ -151,7 +151,7 @@ class DoctorRepositoryIntegrationTests {
     void findPatientsByGeneralPractitioner_WithPatients_ReturnsPaged_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Zero", doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Test Patient", doctor, LocalDate.now());
         patientRepository.save(patient);
 
         Page<Patient> result = doctorRepository.findPatientsByGeneralPractitioner(doctor, PageRequest.of(0, 1));
@@ -164,7 +164,7 @@ class DoctorRepositoryIntegrationTests {
     void findPatientCountByGeneralPractitioner_WithPatients_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient One", doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Test Patient", doctor, LocalDate.now());
         patientRepository.save(patient);
 
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
@@ -177,7 +177,7 @@ class DoctorRepositoryIntegrationTests {
     void findVisitCountByDoctor_WithVisits_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Green");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Two", doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Test Patient", doctor, LocalDate.now());
         patient = patientRepository.save(patient);
         Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
         diagnosis = diagnosisRepository.save(diagnosis);
@@ -194,7 +194,7 @@ class DoctorRepositoryIntegrationTests {
     void findDoctorsWithMostSickLeaves_WithSickLeaves_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Lee");
         doctor = doctorRepository.save(doctor);
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Patient Three", doctor, LocalDate.now());
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), "Test Patient", doctor, LocalDate.now());
         patient = patientRepository.save(patient);
         Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
         diagnosis = diagnosisRepository.save(diagnosis);

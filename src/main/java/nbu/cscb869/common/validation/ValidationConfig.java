@@ -1,42 +1,40 @@
 package nbu.cscb869.common.validation;
 
-public class ValidationConfig {
-    // Name lengths
+import java.time.LocalTime;
+
+public final class ValidationConfig {
+
+    // Name validation
     public static final int NAME_MIN_LENGTH = 2;
     public static final int NAME_MAX_LENGTH = 100;
-    public static final int SPECIALTY_NAME_MAX_LENGTH = 50;
+
+    // EGN validation
+    public static final String EGN_REGEX = "\\d{10}";
+
+    // Unique ID validation
+    public static final int UNIQUE_ID_MIN_LENGTH = 5;
+    public static final int UNIQUE_ID_MAX_LENGTH = 20;
+    public static final String UNIQUE_ID_REGEX = "[a-zA-Z0-9]+";
+
+    // Specialty validation
+    public static final int SPECIALTY_NAME_MAX_LENGTH = 100;
+
+    // Diagnosis validation
     public static final int DIAGNOSIS_NAME_MAX_LENGTH = 100;
 
-    // Unique ID number
-    public static final int UNIQUE_ID_MIN_LENGTH = 5;
-    public static final int UNIQUE_ID_MAX_LENGTH = 10;
-    public static final String UNIQUE_ID_REGEX = "^[A-Za-z0-9]{" + UNIQUE_ID_MIN_LENGTH + "," + UNIQUE_ID_MAX_LENGTH + "}$";
-
-    // Description
+    // Description validation
     public static final int DESCRIPTION_MAX_LENGTH = 500;
 
-    // Dosage and frequency
+    // Dosage and Frequency validation
     public static final int DOSAGE_MAX_LENGTH = 50;
-    public static final int FREQUENCY_MAX_LENGTH = 100;
+    public static final int FREQUENCY_MAX_LENGTH = 50;
 
-    // Instructions
-    public static final int INSTRUCTIONS_MAX_LENGTH = 500;
-
-    // Sick leave duration
+    // Sick Leave validation
     public static final int DURATION_MIN_DAYS = 1;
-    public static final int DURATION_MAX_DAYS = 30;
 
-    // EGN
-    public static final int EGN_LENGTH = 10;
-    public static final String EGN_REGEX = "^\\d{" + EGN_LENGTH + "}$";
-
-    // Email
-    public static final int EMAIL_MIN_LENGTH = 5;
-    public static final int EMAIL_MAX_LENGTH = 255;
-    public static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
-    public static final int PASSWORD_MIN_LENGTH = 6;
-    public static final int PASSWORD_MAX_LENGTH = 100;
-    public static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{6,}$";
+    // Visit validation
+    public static final LocalTime VISIT_START_TIME = LocalTime.of(9, 0);
+    public static final LocalTime VISIT_END_TIME = LocalTime.of(17, 0);
 
     private ValidationConfig() {
         throw new IllegalStateException("Utility class");

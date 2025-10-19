@@ -14,6 +14,7 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VisitUpdateDTO {
+    @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long id;
 
     @NotNull(message = ErrorMessages.DATE_NOT_NULL)
@@ -32,6 +33,7 @@ public class VisitUpdateDTO {
     @NotNull(message = ErrorMessages.ID_NOT_NULL)
     private Long diagnosisId;
 
-    private SickLeaveCreateDTO sickLeave;
-    private TreatmentCreateDTO treatment;
+    // FIX: Use UpdateDTOs to handle existing child entities
+    private SickLeaveUpdateDTO sickLeave;
+    private TreatmentUpdateDTO treatment;
 }

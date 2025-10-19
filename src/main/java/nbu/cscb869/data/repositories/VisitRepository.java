@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository for managing {@link Visit} entities with soft delete support.
+ * Repository for managing {@link Visit} entities.
  */
 public interface VisitRepository extends JpaRepository<Visit, Long> {
     /**
@@ -97,11 +97,11 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     Page<Visit> findByPatientOrDoctorFilter(@Param("filter") String filter, Pageable pageable);
 
     /**
-     * Retrieves a visit by doctor, date, and time, respecting soft delete.
+     * Retrieves a visit by doctor, date, and time.
      * @param doctor the doctor associated with the visit
      * @param visitDate the date of the visit
      * @param visitTime the time of the visit
-     * @return an optional containing the visit if found and not deleted
+     * @return an optional containing the visit if found
      */
     @Query("SELECT v FROM Visit v WHERE v.doctor = :doctor AND v.visitDate = :visitDate AND v.visitTime = :visitTime")
     Optional<Visit> findByDoctorAndDateTime(@Param("doctor") Doctor doctor,

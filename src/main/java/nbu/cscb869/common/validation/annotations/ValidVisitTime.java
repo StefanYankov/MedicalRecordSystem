@@ -13,7 +13,9 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidVisitTime {
-    String message() default "Visit time must be between 9:00 and 17:00 in 30-minute slots";
+    // This message now only applies if the 30-minute slot rule fails.
+    // The working hours rule is handled dynamically inside the validator.
+    String message() default "Visit time must be in 30-minute slots (e.g., 09:00, 09:30).";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

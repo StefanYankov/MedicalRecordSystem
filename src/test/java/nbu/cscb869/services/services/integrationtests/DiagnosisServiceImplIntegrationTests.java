@@ -77,26 +77,31 @@ class DiagnosisServiceImplIntegrationTests {
     @BeforeEach
     void setUp() {
         visitRepository.deleteAll();
-        patientRepository.deleteAll();
-        doctorRepository.deleteAll();
-        diagnosisRepository.deleteAll();
 
-        testDoctor = new Doctor();
-        testDoctor.setName("Dr. House");
-        testDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        testDoctor.setKeycloakId(TestDataUtils.generateKeycloakId());
-        testDoctor.setGeneralPractitioner(true);
-        doctorRepository.save(testDoctor);
+        testDoctor = doctorRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Doctor d = new Doctor();
+            d.setName("Dr. House");
+            d.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+            d.setKeycloakId(TestDataUtils.generateKeycloakId());
+            d.setGeneralPractitioner(true);
+            return doctorRepository.save(d);
+        });
 
-        testPatient = new Patient();
-        testPatient.setName("Test Patient");
-        testPatient.setEgn(TestDataUtils.generateValidEgn());
-        testPatient.setGeneralPractitioner(testDoctor);
-        testPatient.setKeycloakId(TestDataUtils.generateKeycloakId());
-        patientRepository.save(testPatient);
+        testPatient = patientRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Patient p = new Patient();
+            p.setName("Test Patient");
+            p.setEgn(TestDataUtils.generateValidEgn());
+            p.setGeneralPractitioner(testDoctor);
+            p.setKeycloakId(TestDataUtils.generateKeycloakId());
+            return patientRepository.save(p);
+        });
 
-        testDiagnosis = Diagnosis.builder().name("Flu").description("Viral infection").build();
-        diagnosisRepository.save(testDiagnosis);
+        testDiagnosis = diagnosisRepository.findByName("Flu").orElseGet(() -> {
+            Diagnosis d = new Diagnosis();
+            d.setName("Flu");
+            d.setDescription("Viral infection");
+            return diagnosisRepository.save(d);
+        });
     }
 
     @AfterEach
@@ -153,7 +158,12 @@ class DiagnosisServiceImplIntegrationTests {
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
     void delete_AsAdmin_ShouldSucceed_HappyPath() {
-        long diagnosisId = testDiagnosis.getId();
+        // Create a new diagnosis to delete to avoid affecting other tests
+        Diagnosis toDelete = new Diagnosis();
+        toDelete.setName("To Delete");
+        toDelete = diagnosisRepository.save(toDelete);
+        long diagnosisId = toDelete.getId();
+
         diagnosisService.delete(diagnosisId);
         assertFalse(diagnosisRepository.findById(diagnosisId).isPresent());
     }
@@ -193,19 +203,14 @@ class DiagnosisServiceImplIntegrationTests {
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
     void getAll_AsDoctorWithFilter_ShouldReturnFilteredPage_HappyPath() throws ExecutionException, InterruptedException {
-        // ARRANGE
-        // To test an @Async method within a @Transactional test, we must manually commit the setup data.
-        // This makes the data visible to the separate thread used by the @Async method.
+        // ARRANGE: This test commits, so it must create its own isolated data.
+        Diagnosis allergy = new Diagnosis();
+        allergy.setName("Allergy");
+        allergy.setDescription("Immune system response");
+        diagnosisRepository.save(allergy);
 
-        // 1. Save the entity and explicitly flush it to the database.
-        Diagnosis allergy = Diagnosis.builder().name("Allergy").description("Immune system response").build();
-        diagnosisRepository.saveAndFlush(allergy);
-
-        // 2. End the current transaction and flag it for commit.
         TestTransaction.flagForCommit();
         TestTransaction.end();
-
-        // 3. Start a new transaction for the actual test execution.
         TestTransaction.start();
 
         // ACT
@@ -214,16 +219,13 @@ class DiagnosisServiceImplIntegrationTests {
 
         // ASSERT
         assertEquals(1, result.getTotalElements());
-        assertEquals("Allergy", result.getContent().getFirst().getName());
+        assertEquals("Allergy", result.getContent().get(0).getName());
     }
 
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_PATIENT")
     void getAll_AsPatient_ShouldBeDenied_ErrorCase() {
-        // ARRANGE
         CompletableFuture<Page<DiagnosisViewDTO>> future = diagnosisService.getAll(0, 10, "name", true, null);
-
-        // ACT & ASSERT
         ExecutionException exception = assertThrows(ExecutionException.class, future::get, "Expected ExecutionException to be thrown");
         assertInstanceOf(AccessDeniedException.class, exception.getCause(), "Expected cause to be AccessDeniedException");
     }
@@ -237,7 +239,7 @@ class DiagnosisServiceImplIntegrationTests {
         visitRepository.save(visit);
         Page<nbu.cscb869.data.dto.PatientDiagnosisDTO> result = diagnosisService.getPatientsByDiagnosis(testDiagnosis.getId(), 0, 10);
         assertEquals(1, result.getTotalElements());
-        assertEquals(testPatient.getName(), result.getContent().getFirst().getPatient().getName());
+        assertEquals(testPatient.getName(), result.getContent().get(0).getPatient().getName());
     }
 
     @Test
@@ -265,7 +267,7 @@ class DiagnosisServiceImplIntegrationTests {
         List<nbu.cscb869.data.dto.DiagnosisVisitCountDTO> result = diagnosisService.getMostFrequentDiagnoses();
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
-        assertEquals("Flu", result.getFirst().getDiagnosis().getName());
-        assertEquals(2, result.getFirst().getVisitCount());
+        assertEquals("Flu", result.get(0).getDiagnosis().getName());
+        assertEquals(2, result.get(0).getVisitCount());
     }
 }
