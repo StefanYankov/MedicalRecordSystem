@@ -22,6 +22,20 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://keycloak:8080/realms/medical-realm
+  mail:
+    host: smtp.sendgrid.net
+    port: 587
+    username: apikey
+    password: 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
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+app:
+  mail:
+    from: no-reply@your-azure-domain.com
 server:
   port: 8080
 cloudinary:
@@ -34,3 +48,8 @@ keycloak:
   admin-client-id: admin-cli
   admin-username: admin
   admin-password: admin
+sendgrid:
+  api:
+    key: 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
+  from:
+    email: no-reply@your-azure-domain.com

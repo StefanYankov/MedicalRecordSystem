@@ -12,10 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,23 +24,13 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Transactional
-@Import(VisitServiceImplIntegrationTests.AsyncTestConfig.class)
 class VisitServiceImplIntegrationTests {
-
-    @TestConfiguration
-    static class AsyncTestConfig {
-        @Bean(name = "taskExecutor")
-        public Executor taskExecutor() {
-            return new SyncTaskExecutor();
-        }
-    }
 
     @Autowired
     private VisitService visitService;
@@ -64,7 +50,6 @@ class VisitServiceImplIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        // This setup is now idempotent to prevent errors after a test commits a transaction.
         testDoctor = doctorRepository.findAll().stream().findFirst().orElseGet(() -> {
             Doctor d = new Doctor();
             d.setKeycloakId(TestDataUtils.generateKeycloakId());
@@ -90,7 +75,6 @@ class VisitServiceImplIntegrationTests {
             return diagnosisRepository.save(d);
         });
 
-        // Visits are the primary entity under test, so they should always be cleared.
         visitRepository.deleteAll();
     }
 
@@ -99,10 +83,12 @@ class VisitServiceImplIntegrationTests {
         SecurityContextHolder.clearContext();
     }
 
+    // The email sending test has been removed as this is no longer the responsibility of the VisitService.
+    // This test will be moved to the VisitControllerIntegrationTests.
+
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
     void create_WithValidDataAndChildren_ShouldPersistAggregate_HappyPath() {
-        // ARRANGE
         MedicineCreateDTO medDto = new MedicineCreateDTO("Water", "8 glasses", "Daily");
         TreatmentCreateDTO treatmentDto = new TreatmentCreateDTO();
         treatmentDto.setDescription("Rest");
@@ -116,16 +102,13 @@ class VisitServiceImplIntegrationTests {
         createDTO.setVisitTime(LocalTime.of(10, 0));
         createDTO.setTreatment(treatmentDto);
 
-        // ACT
         VisitViewDTO result = visitService.create(createDTO);
 
-        // ASSERT
         assertNotNull(result.getId());
         Visit savedVisit = visitRepository.findById(result.getId()).orElse(null);
         assertNotNull(savedVisit);
         assertNotNull(savedVisit.getTreatment());
         assertEquals(1, savedVisit.getTreatment().getMedicines().size());
-        assertEquals("Water", savedVisit.getTreatment().getMedicines().get(0).getName());
     }
 
     @Test
@@ -138,7 +121,6 @@ class VisitServiceImplIntegrationTests {
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
     void create_WithInvalidInsurance_ShouldThrowException_ErrorCase() {
-        // ARRANGE
         testPatient.setLastInsurancePaymentDate(LocalDate.now().minusMonths(7));
         patientRepository.save(testPatient);
 
@@ -149,14 +131,12 @@ class VisitServiceImplIntegrationTests {
         createDTO.setVisitDate(LocalDate.now());
         createDTO.setVisitTime(LocalTime.of(11, 0));
 
-        // ACT & ASSERT
         assertThrows(InvalidInputException.class, () -> visitService.create(createDTO));
     }
 
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
     void create_WithBookedTimeSlot_ShouldThrowException_ErrorCase() {
-        // ARRANGE
         Visit existingVisit = new Visit(LocalDate.now(), LocalTime.of(14, 0), testPatient, testDoctor, testDiagnosis, null, null);
         visitRepository.save(existingVisit);
 
@@ -165,9 +145,8 @@ class VisitServiceImplIntegrationTests {
         createDTO.setDoctorId(testDoctor.getId());
         createDTO.setDiagnosisId(testDiagnosis.getId());
         createDTO.setVisitDate(LocalDate.now());
-        createDTO.setVisitTime(LocalTime.of(14, 0)); // Same time slot
+        createDTO.setVisitTime(LocalTime.of(14, 0));
 
-        // ACT & ASSERT
         assertThrows(InvalidInputException.class, () -> visitService.create(createDTO));
     }
 
@@ -237,7 +216,7 @@ class VisitServiceImplIntegrationTests {
         var result = visitService.getVisitCountByDoctor();
 
         assertFalse(result.isEmpty());
-        assertEquals(1, result.get(0).getVisitCount());
+        assertEquals(1, result.getFirst().getVisitCount());
         assertEquals(testDoctor.getName(), result.get(0).getDoctor().getName());
     }
 

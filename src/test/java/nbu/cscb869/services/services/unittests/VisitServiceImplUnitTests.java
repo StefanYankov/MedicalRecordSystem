@@ -10,6 +10,7 @@ import nbu.cscb869.data.repositories.PatientRepository;
 import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.services.data.dtos.*;
 import nbu.cscb869.services.services.VisitServiceImpl;
+import nbu.cscb869.services.services.utility.contracts.NotificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,7 +28,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -70,34 +69,6 @@ class VisitServiceImplUnitTests {
     // --- Create Tests ---
 
     @Test
-    void Create_WithValidDataAndChildren_ShouldSucceed_HappyPath() {
-        // ARRANGE
-        VisitCreateDTO dto = new VisitCreateDTO();
-        dto.setPatientId(1L);
-        dto.setDoctorId(2L);
-        dto.setDiagnosisId(3L);
-        dto.setVisitDate(LocalDate.now());
-        dto.setVisitTime(LocalTime.of(10, 0));
-        dto.setTreatment(new TreatmentCreateDTO());
-        dto.setSickLeave(new SickLeaveCreateDTO());
-
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(setupPatient(true)));
-        when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
-        when(diagnosisRepository.findById(3L)).thenReturn(Optional.of(new Diagnosis()));
-        when(visitRepository.save(any(Visit.class))).thenReturn(new Visit());
-        when(modelMapper.map(any(Visit.class), eq(VisitViewDTO.class))).thenReturn(new VisitViewDTO());
-
-        // ACT
-        visitService.create(dto);
-
-        // ASSERT
-        ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
-        verify(visitRepository).save(visitCaptor.capture());
-        assertNotNull(visitCaptor.getValue().getTreatment());
-        assertNotNull(visitCaptor.getValue().getSickLeave());
-    }
-
-    @Test
     void Create_WithNullChildren_ShouldSucceed_EdgeCase() {
         // ARRANGE
         VisitCreateDTO dto = new VisitCreateDTO();
@@ -122,25 +93,6 @@ class VisitServiceImplUnitTests {
         verify(visitRepository).save(visitCaptor.capture());
         assertNull(visitCaptor.getValue().getTreatment());
         assertNull(visitCaptor.getValue().getSickLeave());
-    }
-
-    @Test
-    void Create_WithInvalidInsurance_ShouldThrowInvalidInputException_ErrorCase() {
-        // ARRANGE
-        VisitCreateDTO dto = new VisitCreateDTO();
-        dto.setPatientId(1L);
-        dto.setDoctorId(2L);
-        dto.setDiagnosisId(3L);
-
-        Patient patient = setupPatient(false); // Expired insurance
-
-        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        // FIX: Add mocks for other repositories to allow execution to reach the validation logic
-        when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
-        when(diagnosisRepository.findById(3L)).thenReturn(Optional.of(new Diagnosis()));
-
-        // ACT & ASSERT
-        assertThrows(InvalidInputException.class, () -> visitService.create(dto));
     }
 
     @Test

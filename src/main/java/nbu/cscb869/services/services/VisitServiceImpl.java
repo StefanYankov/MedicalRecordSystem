@@ -76,6 +76,9 @@ public class VisitServiceImpl implements VisitService {
 
         Visit savedVisit = visitRepository.save(visit);
         logger.info("Created {} with ID: {}", ENTITY_NAME, savedVisit.getId());
+
+        // Removed: notificationService.sendVisitConfirmation(savedVisit);
+
         return modelMapper.map(savedVisit, VisitViewDTO.class);
     }
 

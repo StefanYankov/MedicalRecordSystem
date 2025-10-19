@@ -13,6 +13,9 @@ spring:
         schema_management:
           skip_missing_table_drops: true
     show-sql: true
+  mail:
+    host: localhost
+    port: 1025
 testcontainers:
   mysql:
     database: test_db
@@ -35,3 +38,6 @@ keycloak:
   resource: test-client                 # Dummy value
   credentials:
     secret: test-secret                 # Dummy value
+app:
+  mail:
+    from: test@medical-system.com

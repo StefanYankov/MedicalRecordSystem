@@ -64,6 +64,10 @@ dependencies {
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.aspectj:aspectjweaver'
 
+    // Messaging
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'com.sendgrid:sendgrid-java:4.10.3'
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'

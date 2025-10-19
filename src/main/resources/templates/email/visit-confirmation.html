@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Visit Confirmation</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+    <p>Dear <span th:text="${patientName}">Patient Name</span>,</p>
+    <p>
+        Your visit with <b th:text="${doctorName}">Doctor Name</b> on
+        <b th:text="${visitDate}">Visit Date</b> at <b th:text="${visitTime}">Visit Time</b>
+        has been successfully booked.
+    </p>
+    <p>
+        Thank you,<br/>
+        <em>The Medical Record System Team</em>
+    </p>
+</body>
+</html>
