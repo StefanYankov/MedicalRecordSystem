@@ -11,4 +11,6 @@ public class PatientViewDTO {
     private String egn;
     private LocalDate lastInsurancePaymentDate;
     private Long generalPractitionerId;
+    private String generalPractitionerName;
+    private String keycloakId;
 }

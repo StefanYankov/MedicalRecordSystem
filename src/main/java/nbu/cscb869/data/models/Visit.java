@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import nbu.cscb869.common.validation.ErrorMessages;
 import nbu.cscb869.data.base.BaseEntity;
+import nbu.cscb869.data.models.enums.VisitStatus;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -42,8 +43,7 @@ public class Visit extends BaseEntity {
     private Doctor doctor;
 
     @ManyToOne
-    @NotNull
-    @JoinColumn(name = "diagnosis_id", nullable = false)
+    @JoinColumn(name = "diagnosis_id") // Made nullable for wellness check-ups
     private Diagnosis diagnosis;
 
     @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, optional = true)
@@ -51,6 +51,14 @@ public class Visit extends BaseEntity {
 
     @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, optional = true)
     private Treatment treatment;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private VisitStatus status;
+
+    @Lob // Use @Lob for potentially long text fields
+    @Column(name = "notes")
+    private String notes;
 
     public boolean isSickLeaveIssued() {
         return sickLeave != null;

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Doctor Dashboard</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-5">Doctor Dashboard</h1>
+        <p class="lead">Welcome, <span th:text="${user.fullName}">Doctor</span>!</p>
+        <hr/>
+        <h2>Today's Appointments</h2>
+        <p>This section will display your appointments for today.</p>
+        <hr/>
+        <h2>Patient Search</h2>
+        <p>This section will contain a form to search for any patient in the system.</p>
+    </div>
+</div>
+</body>
+</html>

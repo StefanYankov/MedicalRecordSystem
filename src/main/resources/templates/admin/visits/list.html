@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Manage Visits</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Manage Visits</h1>
+        <hr/>
+
+        <!-- Search Form -->
+        <form th:action="@{/admin/visits}" method="get" class="mb-3">
+            <div class="input-group">
+                <input type="text" name="filter" class="form-control" placeholder="Search by Patient EGN or Doctor Unique ID..." th:value="${filter}">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Doctor</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="visit : ${visits.content}">
+                        <td th:text="${#temporals.format(visit.visitDate, 'dd-MMM-yyyy')}"></td>
+                        <td th:text="${visit.patient.name}"></td>
+                        <td th:text="${visit.doctor.name}"></td>
+                        <td><span class="badge" th:classappend="${visit.status.name() == 'COMPLETED'} ? 'badge-success' : 'badge-info'" th:text="${visit.status}"></span></td>
+                        <td>
+                            <a th:href="@{/admin/visits/edit/{id}(id=${visit.id})}" class="btn btn-sm btn-warning">Edit</a>
+                            <form th:action="@{/admin/visits/delete/{id}(id=${visit.id})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination Controls -->
+                <nav aria-label="Page navigation" th:if="${!visits.empty}">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item" th:classappend="${visits.first} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/visits(page=${visits.number - 1}, size=${visits.size}, filter=${filter})}">Previous</a>
+                        </li>
+                        <li class="page-item" th:each="i : ${#numbers.sequence(0, visits.totalPages - 1)}" th:classappend="${i == visits.number} ? 'active' : ''">
+                            <a class="page-link" th:href="@{/admin/visits(page=${i}, size=${visits.size}, filter=${filter})}" th:text="${i + 1}"></a>
+                        </li>
+                        <li class="page-item" th:classappend="${visits.last} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/visits(page=${visits.number + 1}, size=${visits.size}, filter=${filter})}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

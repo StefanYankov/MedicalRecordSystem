@@ -5,7 +5,6 @@ import com.cloudinary.Uploader;
 import nbu.cscb869.common.exceptions.ImageProcessingException;
 import nbu.cscb869.common.validation.ErrorMessages;
 import nbu.cscb869.services.services.utility.CloudinaryService;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,6 +14,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,14 +31,15 @@ class CloudinaryServiceUnitTests {
     private CloudinaryService cloudinaryService;
 
     @Test
-    void UploadImage_ValidFile_ReturnsSecureUrl_HappyPath() throws IOException {
+    void UploadImage_ValidFile_ReturnsSecureUrl_HappyPath() throws Exception {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "content".getBytes());
         Map<String, String> uploadResult = Map.of("secure_url", "https://test.cloud.com/image.jpg");
         Uploader mockUploader = mock(Uploader.class);
         when(cloudinary.uploader()).thenReturn(mockUploader);
         when(mockUploader.upload(any(byte[].class), anyMap())).thenReturn(uploadResult);
 
-        String result = cloudinaryService.uploadImage(file);
+        CompletableFuture<String> resultFuture = cloudinaryService.uploadImage(file);
+        String result = resultFuture.get();
 
         assertEquals("https://test.cloud.com/image.jpg", result);
         verify(mockUploader).upload(any(byte[].class), anyMap());

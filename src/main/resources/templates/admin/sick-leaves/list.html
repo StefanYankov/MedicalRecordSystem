@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Manage Sick Leaves</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Manage Sick Leaves</h1>
+        <p class="mb-4">Here you can manage all sick leaves in the system.</p>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sick Leaves List</h6>
+            </div>
+            <div class="card-body">
+                <a th:href="@{/admin/sick-leaves/create}" class="btn btn-primary mb-3">Add New Sick Leave</a>
+
+                <div th:if="${sickLeaves.isEmpty()}" class="alert alert-info">
+                    No sick leaves found.
+                </div>
+                <div th:unless="${sickLeaves.isEmpty()}" class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Start Date</th>
+                            <th>Duration (Days)</th>
+                            <th>Visit ID</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="sickLeave : ${sickLeaves.content}">
+                            <td th:text="${sickLeave.id}"></td>
+                            <td th:text="${#temporals.format(sickLeave.startDate, 'dd-MM-yyyy')}"></td>
+                            <td th:text="${sickLeave.durationDays}"></td>
+                            <td th:text="${sickLeave.visitId}"></td>
+                            <td>
+                                <a th:href="@{/admin/sick-leaves/edit/{id}(id=${sickLeave.id})}" class="btn btn-sm btn-warning">Edit</a>
+                                <a th:href="@{/admin/sick-leaves/delete/{id}(id=${sickLeave.id})}" class="btn btn-sm btn-danger">Delete</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Pagination Controls -->
+                    <nav aria-label="Page navigation" th:if="${!sickLeaves.empty}">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item" th:classappend="${sickLeaves.first} ? 'disabled' : ''">
+                                <a class="page-link" th:href="@{/admin/sick-leaves(page=${sickLeaves.number - 1}, size=${sickLeaves.size})}">Previous</a>
+                            </li>
+                            <li class="page-item" th:each="i : ${#numbers.sequence(0, sickLeaves.totalPages - 1)}" th:classappend="${i == sickLeaves.number} ? 'active' : ''">
+                                <a class="page-link" th:href="@{/admin/sick-leaves(page=${i}, size=${sickLeaves.size})}" th:text="${i + 1}"></a>
+                            </li>
+                            <li class="page-item" th:classappend="${sickLeaves.last} ? 'disabled' : ''">
+                                <a class="page-link" th:href="@{/admin/sick-leaves(page=${sickLeaves.number + 1}, size=${sickLeaves.size})}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -19,7 +19,6 @@ public class PatientUpdateDTO {
     @NotNull
     private Long id;
 
-    // This field is for admin use, to re-link a patient to a different keycloak user.
     private String keycloakId;
 
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)

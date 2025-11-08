@@ -11,6 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,11 +29,11 @@ class CloudinaryServiceIntegrationTests {
     private CloudinaryService cloudinaryService;
 
     @Test
-    void UploadImage_ValidFile_ReturnsSecureUrl_HappyPath() throws IOException {
+    void UploadImage_ValidFile_ReturnsSecureUrl_HappyPath() throws IOException, ExecutionException, InterruptedException {
         ClassPathResource resource = new ClassPathResource("test-image.jpg");
         MockMultipartFile file = new MockMultipartFile(
                 "image", "test-image.jpg", "image/jpeg", resource.getInputStream());
-        String url = cloudinaryService.uploadImage(file);
+        String url = cloudinaryService.uploadImage(file).get();
 
         assertNotNull(url);
         assertTrue(url.contains("duntro9y8"));
@@ -41,11 +42,11 @@ class CloudinaryServiceIntegrationTests {
     }
 
     @Test
-    void DeleteImage_ValidPublicId_Succeeds_HappyPath() throws IOException {
+    void DeleteImage_ValidPublicId_Succeeds_HappyPath() throws IOException, ExecutionException, InterruptedException {
         ClassPathResource resource = new ClassPathResource("test-image.jpg");
         MockMultipartFile file = new MockMultipartFile(
                 "image", "test-image.jpg", "image/jpeg", resource.getInputStream());
-        String url = cloudinaryService.uploadImage(file);
+        String url = cloudinaryService.uploadImage(file).get();
         String publicId = cloudinaryService.getPublicIdFromUrl(url);
 
         cloudinaryService.deleteImage(publicId);

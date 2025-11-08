@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/doctor-layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Application Pending</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card text-center">
+                    <div class="card-header">
+                        <h3>Application Received</h3>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Thank You, <span th:text="${#authentication.principal.fullName}">Doctor</span>!</h5>
+                        <p class="card-text">Your application to join the medical system has been received and is currently pending administrator approval.</p>
+                        <p class="card-text">You will be notified once your application has been reviewed. Until then, you will have limited access to the system.</p>
+                        <hr>
+                        <h5>Contact Administrator</h5>
+                        <p>If you have any urgent inquiries, you can send a message to the system administrator.</p>
+                        <!-- Placeholder for a future messaging system -->
+                        <form>
+                            <div class="form-group">
+                                <textarea class="form-control" rows="3" placeholder="Your message..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-secondary" disabled>Send Message (Feature Coming Soon)</button>
+                        </form>
+                    </div>
+                    <div class="card-footer text-muted">
+                        Please check back later.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -296,4 +296,21 @@ class DoctorRepositoryUnitTests {
         assertEquals(5, result.getContent().size());
         verify(doctorRepository).findPatientsByGeneralPractitioner(eq(doctor), any(Pageable.class));
     }
+
+    @Test
+    void FindByKeycloakId_WithExistingId_ShouldReturnDoctor_HappyPath() {
+        // Arrange
+        String keycloakId = "test-keycloak-id";
+        Doctor doctor = new Doctor();
+        doctor.setKeycloakId(keycloakId);
+        when(doctorRepository.findByKeycloakId(keycloakId)).thenReturn(Optional.of(doctor));
+
+        // Act
+        Optional<Doctor> foundDoctor = doctorRepository.findByKeycloakId(keycloakId);
+
+        // Assert
+        assertTrue(foundDoctor.isPresent());
+        assertEquals(keycloakId, foundDoctor.get().getKeycloakId());
+        verify(doctorRepository).findByKeycloakId(keycloakId);
+    }
 }

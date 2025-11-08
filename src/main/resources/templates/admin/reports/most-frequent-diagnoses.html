@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Most Frequent Diagnoses</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Most Frequent Diagnoses</h1>
+        <p class="mb-4">This report shows the diagnoses that are most frequently recorded in visits.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Diagnoses by Frequency</h6>
+            </div>
+            <div class="card-body">
+                <div th:if="${diagnoses.isEmpty()}" class="alert alert-info">
+                    No diagnosis data found.
+                </div>
+                <div th:unless="${diagnoses.isEmpty()}" class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                        <tr>
+                            <th>Diagnosis Name</th>
+                            <th>Number of Visits</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="diag : ${diagnoses}">
+                            <td th:text="${diag.diagnosis.name}"></td>
+                            <td th:text="${diag.visitCount}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

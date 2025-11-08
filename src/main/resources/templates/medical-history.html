@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>My Medical History</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-5">My Medical History</h1>
+        <p class="lead">Here you can review all your past visits and diagnoses.</p>
+
+        <div th:if="${visitPage.empty}" class="alert alert-info" role="alert">
+            You have no recorded medical visits yet.
+        </div>
+
+        <div th:unless="${visitPage.empty}">
+            <!-- Page size selector -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <form th:action="@{/profile/history}" method="get" class="form-inline">
+                        <label for="size" class="mr-2">Items per page:</label>
+                        <select id="size" name="size" class="form-control form-control-sm" onchange="this.form.submit()">
+                            <option th:each="s : ${#numbers.sequence(5, 25, 5)}" th:value="${s}" th:text="${s}" th:selected="${s == visitPage.size}"></option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Visit Date</th>
+                    <th>Doctor</th>
+                    <th>Diagnosis</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="visit : ${visitPage.content}">
+                    <td th:text="${visit.visitDate}"></td>
+                    <td th:text="${visit.doctorName}"></td>
+                    <td th:text="${visit.diagnosisName != null ? visit.diagnosisName : 'N/A'}"></td>
+                    <td th:text="${visit.status}"></td>
+                    <td>
+                        <a th:href="@{/visits/{id}(id=${visit.visitId})}" class="btn btn-sm btn-info">View Details</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <!-- Pagination Controls -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" th:classappend="${visitPage.first} ? 'disabled' : ''">
+                        <a class="page-link" th:href="@{/profile/history(page=${visitPage.number - 1}, size=${visitPage.size})}">Previous</a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, visitPage.totalPages - 1)}" th:classappend="${i == visitPage.number} ? 'active' : ''">
+                        <a class="page-link" th:href="@{/profile/history(page=${i}, size=${visitPage.size})}" th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${visitPage.last} ? 'disabled' : ''">
+                        <a class="page-link" th:href="@{/profile/history(page=${visitPage.number + 1}, size=${visitPage.size})}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+</body>
+</html>

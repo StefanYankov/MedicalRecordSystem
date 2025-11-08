@@ -1,0 +1,43 @@
+@startuml
+title Doctor Documents Visit Flow (Corrected)
+
+|Doctor|
+start
+:Logs into the system;
+:Navigates to their daily schedule;
+:Selects a 'SCHEDULED' visit;
+:Clicks "Document Visit";
+
+|System|
+:Displays form with Patient/Time pre-filled;
+:Shows fields for Diagnosis, Notes, Treatment, Sick Leave;
+
+|Doctor|
+if (Patient is healthy?) then (yes)
+  :Adds descriptive notes (e.g., "Annual check-up, all clear");
+else (no)
+  :Selects a primary Diagnosis;
+  if (Treatment is required?) then (yes)
+    :Adds Treatment details and Medicines;
+  endif
+  if (Sick Leave is required?) then (yes)
+    :Adds Sick Leave start date and duration;
+  endif
+endif
+
+:Submits the documentation form;
+
+|System|
+if (System validation passes?) then (yes)
+  :Updates the existing 'Visit' entity;
+  :Sets Visit status to 'COMPLETED';
+  :Saves associated 'Treatment' and/or 'SickLeave';
+  :Displays "Visit documentation saved" message;
+else (no)
+  :Displays form again with validation errors;
+endif
+
+|Doctor|
+stop
+
+@enduml

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Manage Diagnoses</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Manage Diagnoses</h1>
+        <p class="mb-4">Here you can manage all diagnoses in the system.</p>
+
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Diagnoses List</h6>
+            </div>
+            <div class="card-body">
+                <a th:href="@{/admin/diagnoses/create}" class="btn btn-primary mb-3">Add New Diagnosis</a>
+
+                <div th:if="${diagnoses.isEmpty()}" class="alert alert-info">
+                    No diagnoses found.
+                </div>
+                <div th:unless="${diagnoses.isEmpty()}" class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="diagnosis : ${diagnoses.content}">
+                            <td th:text="${diagnosis.id}"></td>
+                            <td th:text="${diagnosis.name}"></td>
+                            <td th:text="${diagnosis.description}"></td>
+                            <td>
+                                <a th:href="@{/admin/diagnoses/edit/{id}(id=${diagnosis.id})}" class="btn btn-sm btn-warning">Edit</a>
+                                <a th:href="@{/admin/diagnoses/delete/{id}(id=${diagnosis.id})}" class="btn btn-sm btn-danger">Delete</a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Pagination Controls -->
+                    <nav aria-label="Page navigation" th:if="${!diagnoses.empty}">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item" th:classappend="${diagnoses.first} ? 'disabled' : ''">
+                                <a class="page-link" th:href="@{/admin/diagnoses(page=${diagnoses.number - 1}, size=${diagnoses.size}, filter=${filter})}">Previous</a>
+                            </li>
+                            <li class="page-item" th:each="i : ${#numbers.sequence(0, diagnoses.totalPages - 1)}" th:classappend="${i == diagnoses.number} ? 'active' : ''">
+                                <a class="page-link" th:href="@{/admin/diagnoses(page=${i}, size=${diagnoses.size}, filter=${filter})}" th:text="${i + 1}"></a>
+                            </li>
+                            <li class="page-item" th:classappend="${diagnoses.last} ? 'disabled' : ''">
+                                <a class="page-link" th:href="@{/admin/diagnoses(page=${diagnoses.number + 1}, size=${diagnoses.size}, filter=${filter})}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

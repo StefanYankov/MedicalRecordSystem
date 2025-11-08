@@ -3,6 +3,7 @@ package nbu.cscb869.data.repositories.unittests;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,43 @@ class VisitRepositoryUnitTests {
             sickLeave.setVisit(visit);
         }
         return visit;
+    }
+
+    @Test
+    void FindByPatientOrderByVisitDateDescVisitTimeDesc_WhenCalled_ShouldReturnPagedResults() {
+        // Arrange
+        Patient patient = createPatient(TestDataUtils.generateValidEgn(), null, LocalDate.now());
+        Visit visit1 = createVisit(patient, null, null, LocalDate.now().minusDays(1), LocalTime.of(10, 0), null);
+        Visit visit2 = createVisit(patient, null, null, LocalDate.now(), LocalTime.of(9, 0), null);
+        Page<Visit> page = new PageImpl<>(List.of(visit2, visit1));
+        when(visitRepository.findByPatientOrderByVisitDateDescVisitTimeDesc(eq(patient), any(Pageable.class))).thenReturn(page);
+
+        // Act
+        Page<Visit> result = visitRepository.findByPatientOrderByVisitDateDescVisitTimeDesc(patient, PageRequest.of(0, 5));
+
+        // Assert
+        assertEquals(2, result.getTotalElements());
+        verify(visitRepository).findByPatientOrderByVisitDateDescVisitTimeDesc(eq(patient), any(Pageable.class));
+    }
+
+    @Test
+    void FindByDoctorAndStatusAndVisitDateBetween_WhenCalled_ShouldReturnFilteredResults() {
+        // Arrange
+        Doctor doctor = createDoctor("DOC123", false, "Dr. Who");
+        Visit visit = createVisit(null, doctor, null, LocalDate.now().plusDays(1), LocalTime.of(14, 0), null);
+        visit.setStatus(VisitStatus.SCHEDULED);
+        Page<Visit> page = new PageImpl<>(List.of(visit));
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now().plusDays(5);
+        when(visitRepository.findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(eq(doctor), eq(VisitStatus.SCHEDULED), eq(startDate), eq(endDate), any(Pageable.class))).thenReturn(page);
+
+        // Act
+        Page<Visit> result = visitRepository.findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(doctor, VisitStatus.SCHEDULED, startDate, endDate, PageRequest.of(0, 5));
+
+        // Assert
+        assertEquals(1, result.getTotalElements());
+        assertEquals(VisitStatus.SCHEDULED, result.getContent().get(0).getStatus());
+        verify(visitRepository).findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(eq(doctor), eq(VisitStatus.SCHEDULED), eq(startDate), eq(endDate), any(Pageable.class));
     }
 
     @Test
@@ -367,4 +405,5 @@ class VisitRepositoryUnitTests {
         assertEquals(patient1.getEgn(), result.get().getPatient().getEgn());
         verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)));
     }
+
 }

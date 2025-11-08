@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Logout Successful</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container text-center">
+        <div class="mt-5">
+            <h2>You have been successfully logged out.</h2>
+            <p class="lead">Thank you for using the Medical Record System.</p>
+            <div class="mt-4">
+                <a th:href="@{/}" class="btn btn-primary">Return to Home Page</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -39,4 +39,10 @@ public interface SickLeaveRepository extends JpaRepository<SickLeave, Long> {
     @Query("SELECT new nbu.cscb869.data.dto.DoctorSickLeaveCountDTO(v.doctor, COUNT(s)) " +
             "FROM SickLeave s JOIN s.visit v GROUP BY v.doctor ORDER BY COUNT(s) DESC")
     List<DoctorSickLeaveCountDTO> findDoctorsWithMostSickLeaves();
+
+    /**
+     * Returns the number of entities available.
+     * @return the number of entities.
+     */
+    long count();
 }

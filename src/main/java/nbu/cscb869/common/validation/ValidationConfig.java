@@ -8,9 +8,6 @@ public final class ValidationConfig {
     public static final int NAME_MIN_LENGTH = 2;
     public static final int NAME_MAX_LENGTH = 100;
 
-    // EGN validation
-    public static final String EGN_REGEX = "\\d{10}";
-
     // Unique ID validation
     public static final int UNIQUE_ID_MIN_LENGTH = 5;
     public static final int UNIQUE_ID_MAX_LENGTH = 20;

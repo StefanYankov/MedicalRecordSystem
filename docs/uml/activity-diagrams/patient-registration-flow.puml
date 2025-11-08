@@ -1,0 +1,36 @@
+@startuml
+title Patient Registration & First Login Flow
+
+|User|
+start
+:Visits application;
+:Clicks "Login" or "Register";
+
+|Our Application|
+:Redirects user to Keycloak;
+
+|Keycloak|
+if (User has Keycloak account?) then (no)
+  :User fills out registration form;
+  :User verifies email;
+  :Account created in Keycloak;
+endif
+:User logs in with credentials;
+:Redirects back to Our Application with auth token;
+
+|Our Application|
+:Receives user's auth token (JWT);
+:Extracts Keycloak User ID and email;
+
+if (Patient exists in DB for this Keycloak ID?) then (no, first login)
+  :Creates new 'Patient' entity;
+  :Links Patient to Keycloak User ID;
+  :Saves new Patient to database;
+else (yes, returning user)
+  :Loads existing Patient from database;
+endif
+
+|User|
+:Sees their personalized dashboard/profile;
+stop
+@enduml

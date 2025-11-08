@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Patients by GP</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Patients by General Practitioner</h1>
+        <p class="mb-4">This report shows a list of patients assigned to a specific General Practitioner.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Select a General Practitioner</h6>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/admin/reports/patients-by-gp}" method="get" class="form-inline mb-4">
+                    <div class="form-group mr-2">
+                        <label for="gpId" class="mr-2">General Practitioner:</label>
+                        <select id="gpId" name="gpId" class="form-control" onchange="this.form.submit()">
+                            <option value="">-- Select a GP --</option>
+                            <option th:each="doctor : ${doctors}" th:if="${doctor.isGeneralPractitioner}"
+                                    th:value="${doctor.id}" th:text="${doctor.name}"
+                                    th:selected="${selectedGpId != null && selectedGpId == doctor.id}"></option>
+                        </select>
+                    </div>
+                </form>
+
+                <div th:if="${patients != null}">
+                    <h4 class="h5 mt-4 text-gray-800">Patients for Selected GP</h4>
+                    <div th:if="${patients.isEmpty()}" class="alert alert-info">
+                        No patients found for the selected General Practitioner.
+                    </div>
+                    <div th:unless="${patients.isEmpty()}" class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>EGN</th>
+                                <th>Last Insurance Payment</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="patient : ${patients.content}">
+                                <td th:text="${patient.name}"></td>
+                                <td th:text="${patient.egn}"></td>
+                                <td th:text="${#temporals.format(patient.lastInsurancePaymentDate, 'dd-MM-yyyy')}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Pagination Controls -->
+                        <nav aria-label="Page navigation" th:if="${!patients.empty}">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item" th:classappend="${patients.first} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-gp(gpId=${selectedGpId}, page=${patients.number - 1}, size=${patients.size})}">Previous</a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, patients.totalPages - 1)}" th:classappend="${i == patients.number} ? 'active' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-gp(gpId=${selectedGpId}, page=${i}, size=${patients.size})}" th:text="${i + 1}"></a>
+                                </li>
+                                <li class="page-item" th:classappend="${patients.last} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-gp(gpId=${selectedGpId}, page=${patients.number + 1}, size=${patients.size})}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <hr th:if="${patients != null}">
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

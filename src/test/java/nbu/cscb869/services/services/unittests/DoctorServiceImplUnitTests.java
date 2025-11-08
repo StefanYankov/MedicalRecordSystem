@@ -63,8 +63,6 @@ class DoctorServiceImplUnitTests {
     @InjectMocks
     private DoctorServiceImpl doctorService;
 
-    // --- Create Tests ---
-
     @Test
     void create_WithValidDataAndImage_ShouldSucceed_HappyPath() {
         // ARRANGE
@@ -84,7 +82,7 @@ class DoctorServiceImplUnitTests {
         when(mockImage.isEmpty()).thenReturn(false);
         when(doctorRepository.findByUniqueIdNumber(anyString())).thenReturn(Optional.empty());
         when(specialtyRepository.findByName("Cardiology")).thenReturn(Optional.of(specialty));
-        when(cloudinaryService.uploadImage(mockImage)).thenReturn("http://image.url");
+        when(cloudinaryService.uploadImage(mockImage)).thenReturn(CompletableFuture.completedFuture("http://image.url"));
         when(modelMapper.map(createDTO, Doctor.class)).thenReturn(doctor);
         when(doctorRepository.save(any(Doctor.class))).thenReturn(doctor);
         when(modelMapper.map(doctor, DoctorViewDTO.class)).thenReturn(expectedView);
@@ -144,8 +142,8 @@ class DoctorServiceImplUnitTests {
         when(mockImage.isEmpty()).thenReturn(false);
         when(doctorRepository.findByUniqueIdNumber(anyString())).thenReturn(Optional.empty());
         when(modelMapper.map(createDTO, Doctor.class)).thenReturn(new Doctor());
-        // Throw an unchecked exception, as the service's catch block handles generic Exception
-        when(cloudinaryService.uploadImage(mockImage)).thenThrow(new RuntimeException("Upload failed"));
+        // The service should handle the failed future and throw a domain-specific exception
+        when(cloudinaryService.uploadImage(mockImage)).thenReturn(CompletableFuture.failedFuture(new IOException("Upload failed")));
 
         // ACT & ASSERT
         assertThrows(InvalidInputException.class, () -> doctorService.create(createDTO, mockImage));
@@ -277,7 +275,7 @@ class DoctorServiceImplUnitTests {
         assertThrows(InvalidDoctorException.class, () -> doctorService.delete(1L));
     }
 
-    // --- GetById/GetByUniqueIdNumber Tests ---
+    // --- GetById/GetByUniqueIdNumber/GetByKeycloakId Tests ---
 
     @Test
     void getById_WithExistingId_ShouldReturnDoctor_HappyPath() {
@@ -287,7 +285,7 @@ class DoctorServiceImplUnitTests {
         DoctorViewDTO expectedView = new DoctorViewDTO();
         expectedView.setId(1L);
 
-        when(doctorRepository.findById(1L)).thenReturn(Optional.of(doctor));
+        when(doctorRepository.findByIdWithSpecialties(1L)).thenReturn(Optional.of(doctor));
         when(modelMapper.map(doctor, DoctorViewDTO.class)).thenReturn(expectedView);
 
         // ACT
@@ -305,7 +303,7 @@ class DoctorServiceImplUnitTests {
 
     @Test
     void getById_WithNonExistentId_ShouldThrowEntityNotFoundException_ErrorCase() {
-        when(doctorRepository.findById(99L)).thenReturn(Optional.empty());
+        when(doctorRepository.findByIdWithSpecialties(99L)).thenReturn(Optional.empty());
         assertThrows(EntityNotFoundException.class, () -> doctorService.getById(99L));
     }
 
@@ -323,6 +321,52 @@ class DoctorServiceImplUnitTests {
 
         assertNotNull(result);
         assertEquals("12345", result.getUniqueIdNumber());
+    }
+
+    @Test
+    void getByKeycloakId_WithExistingId_ShouldReturnDoctor_HappyPath() {
+        // ARRANGE
+        String keycloakId = "test-keycloak-id";
+        Doctor doctor = new Doctor();
+        doctor.setKeycloakId(keycloakId);
+        DoctorViewDTO expectedView = new DoctorViewDTO();
+        expectedView.setKeycloakId(keycloakId);
+
+        when(doctorRepository.findByKeycloakId(keycloakId)).thenReturn(Optional.of(doctor));
+        when(modelMapper.map(doctor, DoctorViewDTO.class)).thenReturn(expectedView);
+
+        // ACT
+        DoctorViewDTO result = doctorService.getByKeycloakId(keycloakId);
+
+        // ASSERT
+        assertNotNull(result);
+        assertEquals(keycloakId, result.getKeycloakId());
+        verify(doctorRepository).findByKeycloakId(keycloakId);
+    }
+
+    @Test
+    void getByKeycloakId_WithNonExistentId_ShouldThrowEntityNotFoundException_ErrorCase() {
+        // ARRANGE
+        String keycloakId = "non-existent-id";
+        when(doctorRepository.findByKeycloakId(keycloakId)).thenReturn(Optional.empty());
+
+        // ACT & ASSERT
+        assertThrows(EntityNotFoundException.class, () -> doctorService.getByKeycloakId(keycloakId));
+        verify(doctorRepository).findByKeycloakId(keycloakId);
+    }
+
+    @Test
+    void getByKeycloakId_WithNullId_ShouldThrowInvalidInputException_EdgeCase() {
+        // ACT & ASSERT
+        assertThrows(InvalidInputException.class, () -> doctorService.getByKeycloakId(null));
+        verify(doctorRepository, never()).findByKeycloakId(any());
+    }
+
+    @Test
+    void getByKeycloakId_WithBlankId_ShouldThrowInvalidInputException_EdgeCase() {
+        // ACT & ASSERT
+        assertThrows(InvalidInputException.class, () -> doctorService.getByKeycloakId("   "));
+        verify(doctorRepository, never()).findByKeycloakId(any());
     }
 
     // --- GetAllAsync Tests ---
@@ -460,6 +504,68 @@ class DoctorServiceImplUnitTests {
         // ASSERT
         assertNotNull(result);
         // Verify with matchers as well
+        verify(doctorRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    // --- FindAllBySpecialty Tests ---
+
+    @Test
+    void findAllBySpecialty_WhenSpecialtyExists_ShouldReturnDoctorPage_HappyPath() {
+        // ARRANGE
+        Long specialtyId = 1L;
+        Specialty specialty = new Specialty();
+        specialty.setId(specialtyId);
+
+        Doctor doctor = new Doctor();
+        doctor.setId(1L);
+        Page<Doctor> doctorPage = new PageImpl<>(List.of(doctor));
+        DoctorViewDTO doctorViewDTO = new DoctorViewDTO();
+
+        when(specialtyRepository.findById(specialtyId)).thenReturn(Optional.of(specialty));
+        when(doctorRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(doctorPage);
+        when(modelMapper.map(doctor, DoctorViewDTO.class)).thenReturn(doctorViewDTO);
+
+        // ACT
+        Page<DoctorViewDTO> result = doctorService.findAllBySpecialty(specialtyId, 0, 10, "name", true);
+
+        // ASSERT
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(specialtyRepository).findById(specialtyId);
+        verify(doctorRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void findAllBySpecialty_WhenSpecialtyDoesNotExist_ShouldThrowEntityNotFoundException_ErrorCase() {
+        // ARRANGE
+        Long specialtyId = 99L;
+        when(specialtyRepository.findById(specialtyId)).thenReturn(Optional.empty());
+
+        // ACT & ASSERT
+        assertThrows(EntityNotFoundException.class, () -> doctorService.findAllBySpecialty(specialtyId, 0, 10, "name", true));
+        verify(specialtyRepository).findById(specialtyId);
+        verify(doctorRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void findAllBySpecialty_WhenNoDoctorsForSpecialty_ShouldReturnEmptyPage_EdgeCase() {
+        // ARRANGE
+        Long specialtyId = 1L;
+        Specialty specialty = new Specialty();
+        specialty.setId(specialtyId);
+
+        Page<Doctor> emptyPage = Page.empty();
+
+        when(specialtyRepository.findById(specialtyId)).thenReturn(Optional.of(specialty));
+        when(doctorRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);
+
+        // ACT
+        Page<DoctorViewDTO> result = doctorService.findAllBySpecialty(specialtyId, 0, 10, "name", true);
+
+        // ASSERT
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(specialtyRepository).findById(specialtyId);
         verify(doctorRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 }

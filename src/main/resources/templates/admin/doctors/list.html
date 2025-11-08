@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Admin: Manage Doctors</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Manage Doctors</h1>
+        <hr/>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Unique ID</th>
+                        <th>GP</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="doctor : ${doctors.content}">
+                        <td th:text="${doctor.id}"></td>
+                        <td th:text="${doctor.name}"></td>
+                        <td th:text="${doctor.uniqueIdNumber}"></td>
+                        <td>
+                            <span th:if="${doctor.isGeneralPractitioner}" class="badge badge-success">Yes</span>
+                            <span th:unless="${doctor.isGeneralPractitioner}" class="badge badge-secondary">No</span>
+                        </td>
+                        <td>
+                            <span th:if="${doctor.approved}" class="badge badge-success">Approved</span>
+                            <span th:unless="${doctor.approved}" class="badge badge-warning">Pending Approval</span>
+                        </td>
+                        <td>
+                            <a th:href="@{/admin/doctors/edit/{id}(id=${doctor.id})}" class="btn btn-sm btn-warning">Edit</a>
+                            <form th:action="@{/admin/doctors/delete/{id}(id=${doctor.id})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination Controls -->
+                <nav aria-label="Page navigation" th:if="${!doctors.empty}">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item" th:classappend="${doctors.first} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/doctors(page=${doctors.number - 1}, size=${doctors.size})}">Previous</a>
+                        </li>
+                        <li class="page-item" th:each="i : ${#numbers.sequence(0, doctors.totalPages - 1)}" th:classappend="${i == doctors.number} ? 'active' : ''">
+                            <a class="page-link" th:href="@{/admin/doctors(page=${i}, size=${doctors.size})}" th:text="${i + 1}"></a>
+                        </li>
+                        <li class="page-item" th:classappend="${doctors.last} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/doctors(page=${doctors.number + 1}, size=${doctors.size})}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

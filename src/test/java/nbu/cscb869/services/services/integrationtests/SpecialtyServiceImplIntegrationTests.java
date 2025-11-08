@@ -15,15 +15,18 @@ import nbu.cscb869.services.services.contracts.SpecialtyService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +38,23 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Import(SpecialtyServiceImplIntegrationTests.AsyncTestConfig.class)
+@Import({SpecialtyServiceImplIntegrationTests.AsyncTestConfig.class, SpecialtyServiceImplIntegrationTests.TestConfig.class})
 class SpecialtyServiceImplIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
 
     @TestConfiguration
     static class AsyncTestConfig {

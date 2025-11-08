@@ -4,9 +4,9 @@ import java.text.MessageFormat;
 
 public class ErrorMessages {
 
-    // TODO: re-organise
 
     public static final String UNIQUE_ID_NOT_BLANK = "Unique ID number cannot be blank";
+    public static final String DOCTOR_UNIQUE_ID_INVALID_FORMAT = "Unique ID must be between 5 and 20 alphanumeric characters.";
     public static final String UNIQUE_ID_PATTERN = "Unique ID number must be {0}-{1} alphanumeric characters";
     public static final String EGN_NOT_BLANK = "EGN cannot be blank";
     public static final String EGN_INVALID = "Invalid EGN format or checksum";

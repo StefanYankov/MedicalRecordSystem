@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Visit Details</title>
+</head>
+<body>
+<div id="content">
+    <div class="container">
+        <h1 class="mt-4">Visit Details</h1>
+        <hr/>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Visit on <span th:text="${#temporals.format(visit.visitDate, 'dd-MMM-yyyy')}"></span> at <span th:text="${#temporals.format(visit.visitTime, 'HH:mm')}"></span></h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Status:</strong> <span class="badge badge-primary" th:text="${visit.status}"></span></p>
+                <p><strong>Doctor:</strong> <span th:text="${visit.doctor.name}"></span></p>
+                <p><strong>Patient:</strong> <span th:text="${visit.patient.name}"></span></p>
+
+                <div th:if="${visit.diagnosis != null}">
+                    <hr>
+                    <h5>Diagnosis</h5>
+                    <p><strong>Condition:</strong> <span th:text="${visit.diagnosis.name}"></span></p>
+                    <p><strong>Description:</strong> <span th:text="${visit.diagnosis.description}"></span></p>
+                </div>
+
+                <div th:if="${visit.notes != null and !visit.notes.isEmpty()}">
+                    <hr>
+                    <h5>Doctor's Notes</h5>
+                    <p th:text="${visit.notes}"></p>
+                </div>
+
+                <div th:if="${visit.treatment != null}">
+                    <hr>
+                    <h5>Treatment</h5>
+                    <p><strong>Description:</strong> <span th:text="${visit.treatment.description}"></span></p>
+                    <div th:if="${visit.treatment.medicines != null and !visit.treatment.medicines.isEmpty()}">
+                        <h6>Medicines</h6>
+                        <ul>
+                            <li th:each="med : ${visit.treatment.medicines}">
+                                <span th:text="${med.name}"></span> - <span th:text="${med.dosage}"></span>, <span th:text="${med.frequency}"></span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div th:if="${visit.sickLeave != null}">
+                    <hr>
+                    <h5>Sick Leave</h5>
+                    <p><strong>Start Date:</strong> <span th:text="${#temporals.format(visit.sickLeave.startDate, 'dd-MMM-yyyy')}"></span></p>
+                    <p><strong>Duration:</strong> <span th:text="${visit.sickLeave.durationDays}"></span> days</p>
+                </div>
+
+                <hr>
+                <a th:href="@{/profile/history}" class="btn btn-secondary">Back to Medical History</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

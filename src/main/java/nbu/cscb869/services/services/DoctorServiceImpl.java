@@ -13,6 +13,7 @@ import nbu.cscb869.data.models.Specialty;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.SpecialtyRepository;
 import nbu.cscb869.data.repositories.VisitRepository;
+import nbu.cscb869.data.specifications.DoctorSpecification;
 import nbu.cscb869.services.data.dtos.*;
 import nbu.cscb869.services.services.contracts.DoctorService;
 import nbu.cscb869.services.services.utility.CloudinaryService;
@@ -25,7 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -61,9 +62,24 @@ public class DoctorServiceImpl implements DoctorService {
         this.cloudinaryService = cloudinaryService;
     }
 
+    /** {@inheritDoc} */
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
+    public DoctorViewDTO createDoctor(DoctorCreateDTO dto) {
+        return create(dto, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public DoctorViewDTO updateDoctor(DoctorUpdateDTO dto) {
+        return update(dto, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    @Deprecated
     public DoctorViewDTO create(DoctorCreateDTO dto, MultipartFile image) {
         validateDtoNotNull(dto, "create");
         logger.debug("Creating {} with unique ID: {}", ENTITY_NAME, dto.getUniqueIdNumber());
@@ -73,18 +89,20 @@ public class DoctorServiceImpl implements DoctorService {
         }
 
         Doctor doctor = modelMapper.map(dto, Doctor.class);
-        doctor.setKeycloakId(dto.getKeycloakId()); // Explicitly set Keycloak ID
+        doctor.setKeycloakId(dto.getKeycloakId());
+        doctor.setApproved(false); // Explicitly set to false for all new applications
         setSpecialtiesByNames(dto.getSpecialties(), doctor);
         handleImageUpload(doctor, image, dto.getUniqueIdNumber());
 
         doctorRepository.save(doctor);
-        logger.info("Created {} with ID: {}", ENTITY_NAME, doctor.getId());
+        logger.info("Created {} with ID: {}. Awaiting admin approval.", ENTITY_NAME, doctor.getId());
         return modelMapper.map(doctor, DoctorViewDTO.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
+    @Deprecated
     public DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image) {
         if (dto == null) {
             logger.error("Cannot update {}: DTO is null", ENTITY_NAME);
@@ -99,28 +117,36 @@ public class DoctorServiceImpl implements DoctorService {
         Doctor doctor = doctorRepository.findById(dto.getId())
                 .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatDoctorNotFoundById(dto.getId())));
 
-        if (!doctor.getUniqueIdNumber().equals(dto.getUniqueIdNumber()) &&
-                doctorRepository.findByUniqueIdNumber(dto.getUniqueIdNumber()).isPresent()) {
-            throw new InvalidDoctorException(ExceptionMessages.formatDoctorUniqueIdExists(dto.getUniqueIdNumber()));
+        if (dto.isDeleteImage() && doctor.getImageUrl() != null) {
+            cloudinaryService.deleteImage(cloudinaryService.getPublicIdFromUrl(doctor.getImageUrl()));
+            doctor.setImageUrl(null);
+        }
+
+        if (dto.getUniqueIdNumber() != null && !doctor.getUniqueIdNumber().equals(dto.getUniqueIdNumber())) {
+             if(doctorRepository.findByUniqueIdNumber(dto.getUniqueIdNumber()).isPresent()) {
+                throw new InvalidDoctorException(ExceptionMessages.formatDoctorUniqueIdExists(dto.getUniqueIdNumber()));
+             }
+             doctor.setUniqueIdNumber(dto.getUniqueIdNumber());
         }
 
         // Update only provided fields
         if (dto.getName() != null) doctor.setName(dto.getName());
-        if (dto.getUniqueIdNumber() != null) doctor.setUniqueIdNumber(dto.getUniqueIdNumber());
         if (dto.getSpecialties() != null) {
             doctor.getSpecialties().clear();
             setSpecialtiesByNames(dto.getSpecialties(), doctor);
         }
-        handleImageUpload(doctor, image, dto.getUniqueIdNumber());
+        // The isApproved flag CANNOT be changed through this method.
+
+        handleImageUpload(doctor, image, doctor.getUniqueIdNumber());
 
         doctorRepository.save(doctor);
         logger.info("Updated {} with ID: {}", ENTITY_NAME, doctor.getId());
         return modelMapper.map(doctor, DoctorViewDTO.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN')")
     public void delete(Long id) {
         validateIdNotNull(id, "delete");
         logger.debug("Deleting {} with ID: {}", ENTITY_NAME, id);
@@ -142,20 +168,22 @@ public class DoctorServiceImpl implements DoctorService {
         logger.info("Deleted {} with ID: {}", ENTITY_NAME, id);
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    @Transactional(readOnly = true)
     public DoctorViewDTO getById(Long id) {
         validateIdNotNull(id, "getById");
         logger.debug("Retrieving {} with ID: {}", ENTITY_NAME, id);
 
-        Doctor doctor = doctorRepository.findById(id)
+        Doctor doctor = doctorRepository.findByIdWithSpecialties(id)
                 .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatDoctorNotFoundById(id)));
-        logger.info("Retrieved {} with ID: {}", ENTITY_NAME, id);
+
+        logger.info("Retrieved {} with ID: {}. Specialties: {}", ENTITY_NAME, id, doctor.getSpecialties().stream().map(Specialty::getName).collect(Collectors.toSet()));
         return modelMapper.map(doctor, DoctorViewDTO.class);
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     public DoctorViewDTO getByUniqueIdNumber(String uniqueIdNumber) {
         validateUniqueIdNotNullOrEmpty(uniqueIdNumber, "getByUniqueIdNumber");
         logger.debug("Retrieving {} with unique ID: {}", ENTITY_NAME, uniqueIdNumber);
@@ -166,9 +194,9 @@ public class DoctorServiceImpl implements DoctorService {
         return modelMapper.map(doctor, DoctorViewDTO.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     @Async
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     public CompletableFuture<Page<DoctorViewDTO>> getAllAsync(int page, int size, String orderBy, boolean ascending, String filter) {
         validatePagination(page, size, "getAllAsync");
         logger.debug("Retrieving all {}: page={}, size={}, orderBy={}, ascending={}, filter={}",
@@ -184,8 +212,8 @@ public class DoctorServiceImpl implements DoctorService {
         return CompletableFuture.completedFuture(result);
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     public Page<DoctorViewDTO> findByCriteria(Specification<Doctor> spec, int page, int size, String orderBy, boolean ascending) {
         validatePagination(page, size, "findByCriteria");
         logger.debug("Retrieving {} by criteria: page={}, size={}, orderBy={}, ascending={}",
@@ -199,8 +227,22 @@ public class DoctorServiceImpl implements DoctorService {
         return result;
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    public Page<DoctorViewDTO> findAllBySpecialty(Long specialtyId, int page, int size, String sortBy, boolean asc) {
+        validateIdNotNull(specialtyId, "findAllBySpecialty");
+        logger.debug("Finding all doctors by specialty ID: {}", specialtyId);
+
+        Specialty specialty = specialtyRepository.findById(specialtyId)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSpecialtyNotFoundById(specialtyId)));
+
+        Specification<Doctor> spec = DoctorSpecification.hasSpecialty(specialty);
+
+        return findByCriteria(spec, page, size, sortBy, asc);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public Page<PatientViewDTO> getPatientsByGeneralPractitioner(Long generalPractitionerId, int page, int size) {
         validateIdNotNull(generalPractitionerId, "getPatientsByGeneralPractitioner");
         validatePagination(page, size, "getPatientsByGeneralPractitioner");
@@ -220,8 +262,8 @@ public class DoctorServiceImpl implements DoctorService {
         return result;
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
     public List<DoctorPatientCountDTO> getPatientCountByGeneralPractitioner() {
         logger.debug("Retrieving patient count by General Practitioner");
         List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
@@ -229,8 +271,8 @@ public class DoctorServiceImpl implements DoctorService {
         return result;
     }
 
+    /** {@inheritDoc} */
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
     public List<DoctorVisitCountDTO> getVisitCount() {
         logger.debug("Retrieving visit count by Doctor");
         List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
@@ -239,7 +281,6 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public Page<VisitViewDTO> getVisitsByPeriod(Long doctorId, LocalDate startDate, LocalDate endDate, int page, int size) {
         validateParamsNotNull(doctorId, startDate, endDate, "getVisitsByPeriod");
         validatePagination(page, size, "getVisitsByPeriod");
@@ -257,12 +298,75 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN')")
     public List<DoctorSickLeaveCountDTO> getDoctorsWithMostSickLeaves() {
         logger.debug("Retrieving doctors with most sick leaves");
         List<DoctorSickLeaveCountDTO> result = doctorRepository.findDoctorsWithMostSickLeaves();
         logger.info("Retrieved {} doctors with sick leave counts", result.size());
         return result;
+    }
+
+    @Override
+    public DoctorViewDTO getByKeycloakId(String keycloakId) {
+        if (keycloakId == null || keycloakId.isBlank()) {
+            throw new InvalidInputException("Keycloak ID cannot be null or blank.");
+        }
+        logger.debug("Retrieving {} by Keycloak ID: {}", ENTITY_NAME, keycloakId);
+        Doctor doctor = doctorRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatDoctorNotFoundByKeycloakId(keycloakId)));
+        logger.info("Retrieved {} with Keycloak ID: {}", ENTITY_NAME, keycloakId);
+        return modelMapper.map(doctor, DoctorViewDTO.class);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public void deleteDoctorImage(Long doctorId) {
+        validateIdNotNull(doctorId, "deleteDoctorImage");
+        logger.debug("Deleting image for doctor ID: {}", doctorId);
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatDoctorNotFoundById(doctorId)));
+
+        if (doctor.getImageUrl() != null) {
+            cloudinaryService.deleteImage(cloudinaryService.getPublicIdFromUrl(doctor.getImageUrl()));
+            doctor.setImageUrl(null);
+            doctorRepository.save(doctor);
+            logger.info("Successfully deleted image for doctor ID: {}", doctorId);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Page<DoctorViewDTO> getUnapprovedDoctors(int page, int size) {
+        validatePagination(page, size, "getUnapprovedDoctors");
+        logger.debug("Retrieving unapproved doctors: page={}, size={}", page, size);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+        Page<Doctor> unapprovedDoctors = doctorRepository.findByIsApproved(false, pageable);
+
+        Page<DoctorViewDTO> result = unapprovedDoctors.map(doctor -> modelMapper.map(doctor, DoctorViewDTO.class));
+        logger.info("Retrieved {} unapproved doctors.", result.getTotalElements());
+        return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public void approveDoctor(Long doctorId) {
+        validateIdNotNull(doctorId, "approveDoctor");
+        logger.debug("Attempting to approve doctor with ID: {}", doctorId);
+
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatDoctorNotFoundById(doctorId)));
+
+        if (doctor.isApproved()) {
+            logger.warn("Doctor with ID {} is already approved.", doctorId);
+            throw new InvalidDoctorException(ExceptionMessages.formatDoctorAlreadyApproved(doctorId));
+        }
+
+        doctor.setApproved(true);
+        doctorRepository.save(doctor);
+
+        logger.info("Successfully approved doctor with ID: {}.", doctorId);
     }
 
     private void validateDtoNotNull(Object dto, String operation) {
@@ -322,11 +426,12 @@ public class DoctorServiceImpl implements DoctorService {
     private void handleImageUpload(Doctor doctor, MultipartFile image, String uniqueIdNumber) {
         if (image != null && !image.isEmpty()) {
             try {
-                String imageUrl = cloudinaryService.uploadImage(image);
+                String imageUrl = cloudinaryService.uploadImage(image).get(); // .get() blocks and waits for the async result
                 doctor.setImageUrl(imageUrl);
                 logger.info("Uploaded image for {} with unique ID: {}", ENTITY_NAME, uniqueIdNumber);
-            } catch (Exception e) {
+            } catch (InterruptedException | ExecutionException e) {
                 logger.error("Failed to upload image for {} with unique ID {}: {}", ENTITY_NAME, uniqueIdNumber, e.getMessage());
+                Thread.currentThread().interrupt(); // Restore the interrupted status
                 throw new InvalidInputException(ExceptionMessages.formatFailedToCreateDoctor(e.getMessage()));
             }
         }

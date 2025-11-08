@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="form-fields">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" id="name" th:field="*{name}" required>
+    </div>
+    <div class="form-group">
+        <label for="uniqueIdNumber">Unique ID Number</label>
+        <input type="text" class="form-control" id="uniqueIdNumber" th:field="*{uniqueIdNumber}" required>
+    </div>
+    <div class="form-check mb-3">
+        <input type="checkbox" class="form-check-input" id="isGeneralPractitioner" th:field="*{generalPractitioner}">
+        <label class="form-check-label" for="isGeneralPractitioner">Is General Practitioner</label>
+    </div>
+
+    <!-- Dual List Box for Specialties -->
+    <div class="form-group">
+        <label>Specialties</label>
+        <div class="row">
+            <div class="col-5">
+                <label for="availableSpecialties">Available</label>
+                <select id="availableSpecialties" multiple class="form-control" style="height: 200px;">
+                    <option th:each="spec : ${availableSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                </select>
+            </div>
+            <div class="col-2 d-flex flex-column justify-content-center align-items-center">
+                <button type="button" id="addSpecialty" class="btn btn-secondary mb-2">&gt;</button>
+                <button type="button" id="removeSpecialty" class="btn btn-secondary">&lt;</button>
+            </div>
+            <div class="col-5">
+                <label for="specialties">Assigned</label>
+                <select id="specialties" th:field="*{specialties}" multiple class="form-control" style="height: 200px;">
+                    <option th:each="spec : ${assignedSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="imageFile">Profile Image</label>
+        <input type="file" class="form-control-file" id="imageFile" name="imageFile">
+    </div>
+
+    <script>
+        document.getElementById('addSpecialty').addEventListener('click', function() {
+            moveOptions('availableSpecialties', 'specialties');
+        });
+
+        document.getElementById('removeSpecialty').addEventListener('click', function() {
+            moveOptions('specialties', 'availableSpecialties');
+        });
+
+        function moveOptions(sourceId, destId) {
+            const source = document.getElementById(sourceId);
+            const dest = document.getElementById(destId);
+            Array.from(source.selectedOptions).forEach(option => {
+                dest.appendChild(option);
+            });
+        }
+
+        // Before submitting the form, select all options in the 'assigned' box
+        document.querySelector('form').addEventListener('submit', function() {
+            const assigned = document.getElementById('specialties');
+            Array.from(assigned.options).forEach(option => {
+                option.selected = true;
+            });
+        });
+    </script>
+</div>
+</html>

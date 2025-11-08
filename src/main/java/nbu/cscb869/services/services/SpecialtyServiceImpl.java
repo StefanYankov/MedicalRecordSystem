@@ -37,13 +37,6 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     private final DoctorRepository doctorRepository;
     private final ModelMapper modelMapper;
 
-    /**
-     * Constructs a new SpecialtyServiceImpl with the specified dependencies.
-     *
-     * @param specialtyRepository the repository for specialty entities
-     * @param doctorRepository    the repository for doctor entities
-     * @param modelMapper         the ModelMapper for DTO conversions
-     */
     public SpecialtyServiceImpl(SpecialtyRepository specialtyRepository, DoctorRepository doctorRepository, ModelMapper modelMapper) {
         this.specialtyRepository = specialtyRepository;
         this.doctorRepository = doctorRepository;
@@ -76,8 +69,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         validateIdNotNull(dto.getId(), "update");
         logger.debug("Updating {} with ID: {}", ENTITY_NAME, dto.getId());
 
-        Specialty specialty = specialtyRepository.findById(dto.getId())
-                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSpecialtyNotFoundByName("with ID: " + dto.getId())));
+        Specialty specialty = getSpecialtyEntityById(dto.getId());
 
         specialtyRepository.findByName(dto.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(dto.getId())) {
@@ -100,8 +92,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
         validateIdNotNull(id, "delete");
         logger.debug("Deleting {} with ID: {}", ENTITY_NAME, id);
 
-        Specialty specialty = specialtyRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSpecialtyNotFoundByName("with ID: " + id)));
+        Specialty specialty = getSpecialtyEntityById(id);
 
         if (doctorRepository.existsBySpecialtiesContains(specialty)) {
             throw new EntityInUseException(ExceptionMessages.formatSpecialtyInUse(id));
@@ -114,14 +105,20 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     /** {@inheritDoc} */
     @Override
     public SpecialtyViewDTO getById(Long id) {
-        validateIdNotNull(id, "getById");
-        logger.debug("Retrieving {} with ID: {}", ENTITY_NAME, id);
+        return modelMapper.map(getSpecialtyEntityById(id), SpecialtyViewDTO.class);
+    }
 
-        Specialty specialty = specialtyRepository.findById(id)
+    /**
+     * Retrieves a Specialty entity by its ID. This is not exposed on the interface
+     * and is intended for internal use where the managed entity is required.
+     * @param id The ID of the specialty.
+     * @return The managed Specialty entity.
+     */
+    public Specialty getSpecialtyEntityById(Long id) {
+        validateIdNotNull(id, "getSpecialtyEntityById");
+        logger.debug("Retrieving {} entity with ID: {}", ENTITY_NAME, id);
+        return specialtyRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSpecialtyNotFoundByName("with ID: " + id)));
-
-        logger.info("Retrieved {} with ID: {}", ENTITY_NAME, id);
-        return modelMapper.map(specialty, SpecialtyViewDTO.class);
     }
 
     /** {@inheritDoc} */

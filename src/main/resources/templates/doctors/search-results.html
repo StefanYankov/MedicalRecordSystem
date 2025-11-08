@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title th:text="'Doctors - ' + ${specialtyName}">Search Results</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-4">Doctors Specializing In <span th:text="${specialtyName}">Cardiology</span></h1>
+        <hr/>
+        <div class="card">
+            <div class="card-header">
+                Search Results
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Unique ID</th>
+                        <th>Specialties</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="doctor : ${doctors}">
+                        <td th:text="${doctor.name}">Dr. John Doe</td>
+                        <td th:text="${doctor.uniqueIdNumber}">DOC123</td>
+                        <td>
+                            <span th:each="spec, iterStat : ${doctor.specialties}" th:text="${spec.name} + (${!iterStat.last} ? ', ' : '')"></span>
+                        </td>
+                        <td>
+                            <a th:href="@{/visits/schedule/{id}(id=${doctor.id})}" class="btn btn-primary btn-sm">Schedule Visit</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(doctors)}">
+                        <td colspan="4" class="text-center">No doctors found for this specialty.</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <a th:href="@{/}" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

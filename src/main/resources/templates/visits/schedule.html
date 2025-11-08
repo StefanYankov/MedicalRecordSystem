@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title th:text="'Schedule Visit - ' + ${doctor.name}"></title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h2 class="mt-4" th:text="'Schedule a Visit with ' + ${doctor.name}"></h2>
+        <hr/>
+
+        <!-- Date Selection Form (Initial View) -->
+        <div th:if="${timeSlots == null}" class="card">
+            <div class="card-header">
+                Step 1: Check Availability
+            </div>
+            <div class="card-body">
+                <form th:action="@{/visits/schedule/{id}(id=${doctor.id})}" method="get">
+                    <div class="form-group">
+                        <label for="date">Select a Date:</label>
+                        <input type="date" id="date" name="date" class="form-control" required th:min="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd')}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Check Availability</button>
+                    <a th:href="@{/}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- Time Selection Form (After Date is Selected) -->
+        <div th:if="${timeSlots != null}" class="card">
+            <div class="card-header">
+                Step 2: Select a Time
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Available Slots for <span th:text="${#temporals.format(selectedDate, 'dd-MMM-yyyy')}"></span></h5>
+                <form th:action="@{/visits/schedule}" th:object="${visitData}" method="post">
+                    <!-- Hidden inputs to carry over the required data -->
+                    <input type="hidden" name="doctorId" th:value="${doctor.id}"/>
+                    <input type="hidden" name="visitDate" th:value="${selectedDate}"/>
+
+                    <div class="form-group">
+                        <label for="visitTime">Select a Time:</label>
+                        <select id="visitTime" name="visitTime" class="form-control" required>
+                            <option value="" disabled selected>-- Select an available time --</option>
+                            <th:block th:each="slot : ${timeSlots}">
+                                <option th:value="${slot.time}"
+                                        th:text="${#temporals.format(slot.time, 'HH:mm')}"
+                                        th:disabled="${!slot.isAvailable()}"
+                                        th:classappend="${!slot.isAvailable()} ? 'text-muted bg-light' : ''">
+                                </option>
+                            </th:block>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Book Visit</button>
+                    <a th:href="@{/visits/schedule/{id}(id=${doctor.id})}" class="btn btn-secondary">Change Date</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

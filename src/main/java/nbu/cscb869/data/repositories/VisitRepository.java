@@ -2,10 +2,12 @@ package nbu.cscb869.data.repositories;
 
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
+import nbu.cscb869.data.dto.MonthSickLeaveCountDTO;
 import nbu.cscb869.data.models.Diagnosis;
 import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +23,7 @@ import java.util.Optional;
  * Repository for managing {@link Visit} entities.
  */
 public interface VisitRepository extends JpaRepository<Visit, Long> {
+
     /**
      * Retrieves a page of visits for a specific patient.
      * @param patient the patient whose visits are to be retrieved
@@ -30,12 +33,46 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     Page<Visit> findByPatient(Patient patient, Pageable pageable);
 
     /**
+     * Retrieves a page of all visits for a specific patient, ordered by date and time descending.
+     * @param patient the patient whose visits are to be retrieved
+     * @param pageable pagination information
+     * @return a page of visit entities
+     */
+    Page<Visit> findByPatientOrderByVisitDateDescVisitTimeDesc(Patient patient, Pageable pageable);
+
+    /**
      * Retrieves a page of visits for a specific doctor.
      * @param doctor the doctor whose visits are to be retrieved
      * @param pageable pagination information
      * @return a page of visit entities
      */
     Page<Visit> findByDoctor(Doctor doctor, Pageable pageable);
+
+    /**
+     * Retrieves a list of visits for a specific doctor by their ID.
+     * @param doctorId the ID of the doctor whose visits are to be retrieved
+     * @return a list of visit entities
+     */
+    List<Visit> findByDoctorId(Long doctorId);
+
+    /**
+     * Checks if a visit exists for a given patient and doctor.
+     * @param patientId The ID of the patient.
+     * @param doctorId The ID of the doctor.
+     * @return true if a visit exists, false otherwise.
+     */
+    boolean existsByPatientIdAndDoctorId(Long patientId, Long doctorId);
+
+    /**
+     * Retrieves a page of visits for a specific doctor with a given status and within a date range.
+     * @param doctor the doctor whose visits are to be retrieved
+     * @param status the status of the visits to retrieve
+     * @param startDate the start date of the range (inclusive)
+     * @param endDate the end date of the range (inclusive)
+     * @param pageable pagination information
+     * @return a page of visit entities
+     */
+    Page<Visit> findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(Doctor doctor, VisitStatus status, LocalDate startDate, LocalDate endDate, Pageable pageable);
 
     /**
      * Retrieves a page of visits within a specified date range.
@@ -107,4 +144,12 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     Optional<Visit> findByDoctorAndDateTime(@Param("doctor") Doctor doctor,
                                             @Param("visitDate") LocalDate visitDate,
                                             @Param("visitTime") LocalTime visitTime);
+
+    /**
+     * Retrieves the month with the most issued sick leaves.
+     * @return a list of DTOs with the month and the count of sick leaves.
+     */
+    @Query("SELECT new nbu.cscb869.data.dto.MonthSickLeaveCountDTO(MONTH(sl.startDate), COUNT(sl)) " +
+            "FROM SickLeave sl GROUP BY MONTH(sl.startDate) ORDER BY COUNT(sl) DESC")
+    List<MonthSickLeaveCountDTO> findMostFrequentSickLeaveMonth();
 }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Patient Count by GP</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Patient Count by General Practitioner</h1>
+        <p class="mb-4">This report shows the total number of patients registered with each General Practitioner.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Patient Counts</h6>
+            </div>
+            <div class="card-body">
+                <div th:if="${gpCounts.isEmpty()}" class="alert alert-info">
+                    No General Practitioners with assigned patients found.
+                </div>
+                <div th:unless="${gpCounts.isEmpty()}" class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                        <tr>
+                            <th>General Practitioner</th>
+                            <th>Patient Count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="gpCount : ${gpCounts}">
+                            <td th:text="${gpCount.doctor.name}"></td>
+                            <td th:text="${gpCount.patientCount}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

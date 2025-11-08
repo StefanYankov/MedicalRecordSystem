@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="form-fields">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" id="name" th:field="*{name}" required>
+    </div>
+    <div class="form-group">
+        <label for="egn">EGN</label>
+        <input type="text" class="form-control" id="egn" th:field="*{egn}" required>
+    </div>
+    <div class="form-group">
+        <label for="generalPractitionerId">General Practitioner</label>
+        <select class="form-control" id="generalPractitionerId" th:field="*{generalPractitionerId}">
+            <option th:each="doc : ${doctors}" th:value="${doc.id}" th:text="${doc.name}"></option>
+        </select>
+    </div>
+</div>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Admin: Manage Specialties</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-5">Manage Specialties</h1>
+        <a th:href="@{/admin/specialties/create}" class="btn btn-primary mb-3">Create New Specialty</a>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="spec : ${specialties}">
+                <td th:text="${spec.id}"></td>
+                <td th:text="${spec.name}"></td>
+                <td th:text="${spec.description}"></td>
+                <td>
+                    <a th:href="@{/admin/specialties/edit/{id}(id=${spec.id})}" class="btn btn-sm btn-warning">Edit</a>
+                    <form th:action="@{/admin/specialties/delete/{id}(id=${spec.id})}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

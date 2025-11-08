@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Create Sick Leave</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Create New Sick Leave</h1>
+        <p class="mb-4">Fill in the details below to create a new sick leave.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sick Leave Details</h6>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/admin/sick-leaves/create}" th:object="${sickLeave}" method="post">
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" th:field="*{startDate}" th:classappend="${#fields.hasErrors('startDate')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('startDate')}" th:errors="*{startDate}"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="durationDays">Duration (Days)</label>
+                        <input type="number" class="form-control" id="durationDays" th:field="*{durationDays}" th:classappend="${#fields.hasErrors('durationDays')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('durationDays')}" th:errors="*{durationDays}"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="visitId">Visit</label>
+                        <select class="form-control" id="visitId" th:field="*{visitId}" th:classappend="${#fields.hasErrors('visitId')} ? 'is-invalid' : ''">
+                            <option value="">Select a Visit</option>
+                            <option th:each="visit : ${visits}" th:value="${visit.id}" th:text="${visit.patient.name + ' - ' + visit.doctor.name + ' (' + #temporals.format(visit.visitDate, 'dd-MM-yyyy') + ' ' + #temporals.format(visit.visitTime, 'HH:mm') + ')'}"></option>
+                        </select>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('visitId')}" th:errors="*{visitId}"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Sick Leave</button>
+                    <a th:href="@{/admin/sick-leaves}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

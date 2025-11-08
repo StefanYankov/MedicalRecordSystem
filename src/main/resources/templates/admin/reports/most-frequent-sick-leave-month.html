@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Most Frequent Sick Leave Month</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Most Frequent Sick Leave Month</h1>
+        <p class="mb-4">This report shows the month with the highest number of issued sick leaves.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Most Frequent Month</h6>
+            </div>
+            <div class="card-body">
+                <div th:if="${sickLeaveMonths.isEmpty()}" class="alert alert-info">
+                    No sick leaves found.
+                </div>
+                <div th:unless="${sickLeaveMonths.isEmpty()}" class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Sick Leave Count</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="sickLeaveMonth : ${sickLeaveMonths}">
+                            <td th:text="${T(java.time.Month).of(sickLeaveMonth.month)}"></td>
+                            <td th:text="${sickLeaveMonth.sickLeaveCount}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

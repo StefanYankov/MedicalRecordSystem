@@ -16,13 +16,16 @@ public class DoctorCreateDTO {
             message = ErrorMessages.NAME_SIZE)
     private String name;
 
-    @NotBlank(message = ErrorMessages.UNIQUE_ID_NOT_BLANK)
-    @Size(min = ValidationConfig.UNIQUE_ID_MIN_LENGTH, max = ValidationConfig.UNIQUE_ID_MAX_LENGTH)
-    @Pattern(regexp = ValidationConfig.UNIQUE_ID_REGEX, message = ErrorMessages.UNIQUE_ID_PATTERN)
+    @NotBlank(message = ErrorMessages.DOCTOR_UNIQUE_ID_INVALID_FORMAT)
+    @Size(min = ValidationConfig.UNIQUE_ID_MIN_LENGTH, max = ValidationConfig.UNIQUE_ID_MAX_LENGTH, message = ErrorMessages.DOCTOR_UNIQUE_ID_INVALID_FORMAT)
+    @Pattern(regexp = ValidationConfig.UNIQUE_ID_REGEX, message = ErrorMessages.DOCTOR_UNIQUE_ID_INVALID_FORMAT)
     private String uniqueIdNumber;
 
-    private Set<String> specialties; // Optional, validated in service
+    private Set<String> specialties;
 
-    @NotBlank(message = ErrorMessages.KEYCLOAK_ID_NOT_BLANK)
+    private Boolean isGeneralPractitioner;
+
+    private Boolean isApproved;
+
     private String keycloakId;
 }

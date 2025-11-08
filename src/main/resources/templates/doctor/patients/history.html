@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/doctor-layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Patient Medical History</title>
+</head>
+<body>
+<div th:fragment="content">
+    <h2 class="mb-4">Medical History for <span th:text="${patient.name}"></span></h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Patient Details
+        </div>
+        <div class="card-body">
+            <p><strong>EGN:</strong> <span th:text="${patient.egn}"></span></p>
+            <p><strong>General Practitioner:</strong> <span th:text="${patient.generalPractitioner != null} ? ${patient.generalPractitioner.name} : 'N/A'"></span></p>
+            <p><strong>Last Insurance Payment:</strong> <span th:text="${patient.lastInsurancePaymentDate}"></span></p>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Visits History</h3>
+
+    <div th:if="${patient.visits.isEmpty()}" class="alert alert-info" role="alert">
+        No visits found for this patient.
+    </div>
+
+    <div th:unless="${patient.visits.isEmpty()}">
+        <div th:each="visit : ${patient.visits}" class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Visit on <span th:text="${visit.visitDate}"></span> at <span th:text="${visit.visitTime}"></span></h5>
+                <a th:if="${visit.doctor.id == loggedInDoctorId}" th:href="@{/doctor/visits/{id}/document(id=${visit.id})}" class="btn btn-primary btn-sm">Document Visit</a>
+            </div>
+            <div class="card-body">
+                <p><strong>Doctor:</strong> <span th:text="${visit.doctor.name}"></span></p>
+                <p><strong>Status:</strong> <span th:text="${visit.status}"></span></p>
+                <p th:if="${visit.notes}"><strong>Notes:</strong> <span th:text="${visit.notes}"></span></p>
+
+                <div th:if="${visit.diagnosis}" class="mt-3">
+                    <h6>Diagnosis:</h6>
+                    <p><strong>Name:</strong> <span th:text="${visit.diagnosis.name}"></span></p>
+                    <p><strong>Description:</strong> <span th:text="${visit.diagnosis.description}"></span></p>
+                </div>
+
+                <div th:if="${visit.treatment}" class="mt-3">
+                    <h6>Treatment:</h6>
+                    <p><strong>Instructions:</strong> <span th:text="${visit.treatment.instructions}"></span></p>
+                    <ul class="list-group list-group-flush" th:if="${visit.treatment.medicines != null and !visit.treatment.medicines.isEmpty()}">
+                        <li th:each="medicine : ${visit.treatment.medicines}" class="list-group-item">
+                            <span th:text="${medicine.name}"></span> - <span th:text="${medicine.dosage}"></span> (<span th:text="${medicine.frequency}"></span>)
+                        </li>
+                    </ul>
+                </div>
+
+                <div th:if="${visit.sickLeave}" class="mt-3">
+                    <h6>Sick Leave:</h6>
+                    <p><strong>Start Date:</strong> <span th:text="${visit.sickLeave.startDate}"></span></p>
+                    <p><strong>Duration (days):</strong> <span th:text="${visit.sickLeave.durationDays}"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

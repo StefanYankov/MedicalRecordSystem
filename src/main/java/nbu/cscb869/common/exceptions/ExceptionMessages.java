@@ -7,6 +7,7 @@ import java.time.LocalTime;
 public final class ExceptionMessages {
     public static final String DOCTOR_NOT_FOUND_BY_ID = "Doctor not found with ID: {0}";
     public static final String DOCTOR_NOT_FOUND_BY_UNIQUE_ID = "Doctor not found with unique ID: {0}";
+    public static final String SPECIALTY_NOT_FOUND_BY_ID = "Specialty not found with ID: {0}";
     public static final String SPECIALTY_NOT_FOUND_BY_NAME = "Specialty not found with name: {0}";
     public static final String DOCTOR_UNIQUE_ID_EXISTS = "A doctor with unique ID {0} already exists";
     public static final String INVALID_DTO_NULL = "{0} must not be null";
@@ -46,9 +47,15 @@ public final class ExceptionMessages {
 
     public static final String VISIT_TIME_BOOKED = "Visit time {0} on {1} is already booked for this doctor.";
     public static final String VISIT_OUTSIDE_WORKING_HOURS = "Visit time must be between {0} and {1}.";
+    public static final String VISIT_NOT_SCHEDULED = "Only scheduled visits can be documented.";
     public static final String PATIENT_INSURANCE_INVALID = "Patient with ID {0} has not paid health insurance in the last 6 months.";
     public static final String PATIENT_ACCESS_DENIED = "Patients can only access their own records.";
     public static final String INVALID_PAGINATION_FOR_OPERATION = "Invalid pagination parameters for operation ''{0}''.";
+    public static final String DOCTOR_NOT_FOUND_BY_KEYCLOAK_ID = "Doctor not found with Keycloak ID: {0}";
+    public static final String DOCTOR_ALREADY_APPROVED = "Doctor with ID {0} is already approved.";
+    public static final String AUTHENTICATION_REQUIRED = "Authentication required.";
+    public static final String INVALID_PRINCIPAL_TYPE = "Invalid principal type for patient authorization.";
+    public static final String UNAUTHORIZED_ACCESS = "Unauthorized access.";
 
 
     private ExceptionMessages() {
@@ -62,6 +69,10 @@ public final class ExceptionMessages {
 
     public static String formatDoctorNotFoundByUniqueId(String uniqueId) {
         return MessageFormat.format(DOCTOR_NOT_FOUND_BY_UNIQUE_ID, uniqueId);
+    }
+
+    public static String formatSpecialtyNotFoundById(Long id) {
+        return MessageFormat.format(SPECIALTY_NOT_FOUND_BY_ID, id);
     }
 
     public static String formatSpecialtyNotFoundByName(String name) {
@@ -206,5 +217,13 @@ public final class ExceptionMessages {
 
     public static String formatInvalidPagination(String operation) {
         return MessageFormat.format(INVALID_PAGINATION_FOR_OPERATION, operation);
+    }
+
+    public static String formatDoctorNotFoundByKeycloakId(String keycloakId) {
+        return MessageFormat.format(DOCTOR_NOT_FOUND_BY_KEYCLOAK_ID, keycloakId);
+    }
+
+    public static String formatDoctorAlreadyApproved(Long doctorId) {
+        return MessageFormat.format(DOCTOR_ALREADY_APPROVED, doctorId);
     }
 }

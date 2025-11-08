@@ -23,6 +23,7 @@ public class DoctorUpdateDTO {
     @Pattern(regexp = ValidationConfig.UNIQUE_ID_REGEX, message = ErrorMessages.UNIQUE_ID_PATTERN)
     private String uniqueIdNumber;
 
-    // TODO: NB! check if long ids is not a better approach
-    private Set<String> specialties; // Optional
+    private Set<String> specialties;
+    private boolean isGeneralPractitioner;
+    private boolean deleteImage;
 }

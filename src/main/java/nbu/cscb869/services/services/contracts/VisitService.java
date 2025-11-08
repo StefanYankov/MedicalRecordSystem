@@ -5,7 +5,10 @@ import nbu.cscb869.common.exceptions.InvalidDTOException;
 import nbu.cscb869.common.exceptions.InvalidInputException;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
+import nbu.cscb869.data.dto.MonthSickLeaveCountDTO;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.services.data.dtos.VisitCreateDTO;
+import nbu.cscb869.services.data.dtos.VisitDocumentationDTO;
 import nbu.cscb869.services.data.dtos.VisitUpdateDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,7 @@ public interface VisitService {
 
     /**
      * Creates a new visit, validating scheduling and patient insurance status.
+     * This method is intended for Admins or Doctors who can provide full visit details.
      * @param dto the DTO containing visit creation data.
      * @return the created visit's view DTO.
      * @throws InvalidDTOException if the DTO is null or invalid.
@@ -31,6 +35,15 @@ public interface VisitService {
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     VisitViewDTO create(VisitCreateDTO dto);
+
+    /**
+     * Schedules a new visit for the currently authenticated patient.
+     * This method is the secure entry point for patients.
+     * @param dto The DTO containing the scheduling request details (doctor, date, time).
+     * @return The newly scheduled visit's view DTO.
+     */
+    @PreAuthorize("hasRole('PATIENT')")
+    VisitViewDTO scheduleNewVisitByPatient(VisitCreateDTO dto);
 
     /**
      * Updates an existing visit, validating scheduling and patient insurance status.
@@ -42,6 +55,22 @@ public interface VisitService {
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     VisitViewDTO update(VisitUpdateDTO dto);
+
+    /**
+     * Adds clinical documentation to an existing 'SCHEDULED' visit.
+     * @param visitId The ID of the visit to document.
+     * @param dto The DTO containing the clinical findings (diagnosis, notes, treatment, etc.).
+     * @return The updated visit's view DTO.
+     */
+    @PreAuthorize("hasRole('DOCTOR')")
+    VisitViewDTO documentVisit(Long visitId, VisitDocumentationDTO dto);
+
+    /**
+     * Allows a patient to cancel their own scheduled visit.
+     * @param visitId The ID of the visit to cancel.
+     */
+    @PreAuthorize("hasRole('PATIENT')")
+    void cancelVisit(Long visitId);
 
     /**
      * Deletes a visit by ID. This will also delete any associated treatment or sick leave.
@@ -114,8 +143,21 @@ public interface VisitService {
      * @param size the number of items per page.
      * @return a page of visit view DTOs.
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     Page<VisitViewDTO> getVisitsByDoctorAndDateRange(Long doctorId, LocalDate startDate, LocalDate endDate, int page, int size);
+
+    /**
+     * Retrieves a paginated list of visits for a specific doctor, status, and date range.
+     * @param doctorId  the ID of the doctor.
+     * @param status    the status of the visits to retrieve.
+     * @param startDate the start date (inclusive).
+     * @param endDate   the end date (inclusive).
+     * @param page      the page number (0-based).
+     * @param size      the number of items per page.
+     * @return a page of visit view DTOs.
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
+    Page<VisitViewDTO> getVisitsByDoctorAndStatusAndDateRange(Long doctorId, VisitStatus status, LocalDate startDate, LocalDate endDate, int page, int size);
 
     /**
      * Retrieves visit counts grouped by doctor.
@@ -130,4 +172,11 @@ public interface VisitService {
      */
     @PreAuthorize("hasRole('ADMIN')")
     List<DiagnosisVisitCountDTO> getMostFrequentDiagnoses();
+
+    /**
+     * Retrieves the month with the most issued sick leaves.
+     * @return a list of DTOs with the month and the count of sick leaves.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    List<MonthSickLeaveCountDTO> getMostFrequentSickLeaveMonth();
 }

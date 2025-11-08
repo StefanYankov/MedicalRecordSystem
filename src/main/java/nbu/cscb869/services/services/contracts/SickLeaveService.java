@@ -76,4 +76,10 @@ public interface SickLeaveService {
      */
     @PreAuthorize("hasRole('ADMIN')")
     List<YearMonthSickLeaveCountDTO> getMonthsWithMostSickLeaves();
+
+    /**
+     * Retrieves the total count of sick leaves.
+     * @return the total number of sick leaves.
+     */
+    long getTotalSickLeavesCount();
 }

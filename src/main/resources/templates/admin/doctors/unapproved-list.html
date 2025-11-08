@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Unapproved Doctors</title>
+</head>
+<body>
+<div th:fragment="content">
+    <h2 class="mb-4">Unapproved Doctors</h2>
+
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+        <p th:text="${errorMessage}"></p>
+    </div>
+    <div th:if="${successMessage}" class="alert alert-success" role="alert">
+        <p th:text="${successMessage}"></p>
+    </div>
+
+    <div th:if="${doctors.empty}" class="alert alert-info" role="alert">
+        No unapproved doctors found.
+    </div>
+
+    <div th:unless="${doctors.empty}">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Unique ID Number</th>
+                <th>General Practitioner</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="doctor : ${doctors.content}">
+                <td th:text="${doctor.id}"></td>
+                <td th:text="${doctor.name}"></td>
+                <td th:text="${doctor.uniqueIdNumber}"></td>
+                <td>
+                    <span th:if="${doctor.generalPractitioner}" class="badge bg-success">Yes</span>
+                    <span th:unless="${doctor.generalPractitioner}" class="badge bg-secondary">No</span>
+                </td>
+                <td>
+                    <form th:action="@{/admin/doctors/{id}/approve(id=${doctor.id})}" method="post">
+                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination Controls -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                <li class="page-item" th:classappend="${doctors.first} ? 'disabled'">
+                    <a class="page-link" th:href="@{/admin/doctors/unapproved(page=${doctors.number - 1}, size=${doctors.size})}">Previous</a>
+                </li>
+                <li class="page-item" th:each="i : ${#numbers.sequence(0, doctors.totalPages - 1)}" th:classappend="${i == doctors.number} ? 'active'">
+                    <a class="page-link" th:href="@{/admin/doctors/unapproved(page=${i}, size=${doctors.size})}" th:text="${i + 1}"></a>
+                </li>
+                <li class="page-item" th:classappend="${doctors.last} ? 'disabled'">
+                    <a class="page-link" th:href="@{/admin/doctors/unapproved(page=${doctors.number + 1}, size=${doctors.size})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+</body>
+</html>

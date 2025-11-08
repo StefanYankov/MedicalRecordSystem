@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Patients by Diagnosis</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Patients by Diagnosis</h1>
+        <p class="mb-4">This report shows a list of patients who have been diagnosed with a specific condition.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Select a Diagnosis</h6>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/admin/reports/patients-by-diagnosis}" method="get" class="form-inline mb-4">
+                    <div class="form-group mr-2">
+                        <label for="diagnosisId" class="mr-2">Diagnosis:</label>
+                        <select id="diagnosisId" name="diagnosisId" class="form-control" onchange="this.form.submit()">
+                            <option value="">-- Select a Diagnosis --</option>
+                            <option th:each="diag : ${diagnoses}" th:value="${diag.id}" th:text="${diag.name}" th:selected="${diag.id == selectedDiagnosisId}"></option>
+                        </select>
+                    </div>
+                </form>
+
+                <div th:if="${visits != null}">
+                    <h4 class="h5 mt-4 text-gray-800">Patients with Selected Diagnosis</h4>
+                    <div th:if="${visits.isEmpty()}" class="alert alert-info">
+                        No patients found for the selected diagnosis.
+                    </div>
+                    <div th:unless="${visits.isEmpty()}" class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                            <tr>
+                                <th>Patient Name</th>
+                                <th>Patient EGN</th>
+                                <th>Visit Date</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="visit : ${visits.content}">
+                                <td th:text="${visit.patient.name}"></td>
+                                <td th:text="${visit.patient.egn}"></td>
+                                <td th:text="${#temporals.format(visit.visitDate, 'dd-MMM-yyyy')}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Pagination Controls -->
+                        <nav aria-label="Page navigation" th:if="${!visits.empty}">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item" th:classappend="${visits.first} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-diagnosis(diagnosisId=${selectedDiagnosisId}, page=${visits.number - 1}, size=${visits.size})}">Previous</a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, visits.totalPages - 1)}" th:classappend="${i == visits.number} ? 'active' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-diagnosis(diagnosisId=${selectedDiagnosisId}, page=${i}, size=${visits.size})}" th:text="${i + 1}"></a>
+                                </li>
+                                <li class="page-item" th:classappend="${visits.last} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/patients-by-diagnosis(diagnosisId=${selectedDiagnosisId}, page=${visits.number + 1}, size=${visits.size})}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <hr th:if="${visits != null}">
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

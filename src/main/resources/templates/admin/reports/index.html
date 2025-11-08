@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Reports</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Reports</h1>
+        <hr/>
+        <div class="list-group">
+            <a th:href="@{/admin/diagnoses}" class="list-group-item list-group-item-action">Manage Diagnoses</a>
+            <a th:href="@{/admin/reports/patients-by-diagnosis}" class="list-group-item list-group-item-action">Patients by Diagnosis</a>
+            <a th:href="@{/admin/reports/most-frequent-diagnoses}" class="list-group-item list-group-item-action">Most Frequent Diagnoses</a>
+            <a th:href="@{/admin/reports/patients-by-gp}" class="list-group-item list-group-item-action">Patients by General Practitioner</a>
+            <a th:href="@{/admin/reports/patient-count-by-gp}" class="list-group-item list-group-item-action">Patient Count by General Practitioner</a>
+            <a th:href="@{/admin/reports/visit-count-by-doctor}" class="list-group-item list-group-item-action">Visit Count by Doctor</a>
+            <a th:href="@{/admin/reports/visits-by-period}" class="list-group-item list-group-item-action">Visits by Period</a>
+            <a th:href="@{/admin/reports/visits-by-doctor-and-period}" class="list-group-item list-group-item-action">Visits by Doctor and Period</a>
+            <a th:href="@{/admin/reports/most-frequent-sick-leave-month}" class="list-group-item list-group-item-action">Most Frequent Sick Leave Month</a>
+            <a th:href="@{/admin/reports/doctors-with-most-sick-leaves}" class="list-group-item list-group-item-action">Doctors with Most Sick Leaves</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

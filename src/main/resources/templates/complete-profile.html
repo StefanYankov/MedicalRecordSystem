@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Complete Your Profile</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mt-5">
+                    <div class="card-header text-center">
+                        <h2>Complete Your Patient Profile</h2>
+                        <p>Welcome! Please provide the following information to finish setting up your account.</p>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/profile/complete}" th:object="${patient}" method="post">
+                            <div class="form-group">
+                                <label for="egn">EGN (Unified Civil Number)</label>
+                                <input type="text" class="form-control" id="egn" th:field="*{egn}" placeholder="Enter your EGN" required>
+                                <!-- You can add a th:if to display validation errors here -->
+                            </div>
+                            <div class="form-group">
+                                <label for="gp">Select Your General Practitioner</label>
+                                <select class="form-control" id="gp" th:field="*{generalPractitionerId}" required>
+                                    <option value="" disabled selected>-- Please choose a doctor --</option>
+                                    <option th:each="doctor : ${generalPractitioners}"
+                                            th:value="${doctor.id}"
+                                            th:text="${doctor.name}"></option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Save and Continue</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

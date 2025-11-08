@@ -1,0 +1,48 @@
+@startuml
+title Medical Record System - Use Cases
+
+left to right direction
+
+actor "Administrator" as Admin
+actor "Doctor" as Doctor
+actor "Patient" as Patient
+
+rectangle "Medical Record System" {
+  usecase "Manage Doctors" as UC_ManageDoctors
+  usecase "Manage Patients" as UC_ManagePatients
+  usecase "Manage Diagnoses" as UC_ManageDiagnoses
+  usecase "Manage Visits (Admin)" as UC_ManageVisitsAdmin
+
+  usecase "Document Visit" as UC_DocumentVisit
+  usecase "Cancel Own Visit" as UC_CancelVisitDoctor
+  usecase "View Patient Records" as UC_ViewPatientRecords
+  usecase "View Own Schedule" as UC_ViewSchedule
+
+  usecase "View Own Profile" as UC_ViewProfile
+  usecase "Edit Own Profile" as UC_EditProfile
+  usecase "View Own Visit History" as UC_ViewVisitHistory
+  usecase "Cancel Own Visit" as UC_CancelVisitPatient
+
+  usecase "Generate System Reports" as UC_GenerateReports
+}
+
+' Admin Use Cases
+Admin -- UC_ManageDoctors
+Admin -- UC_ManagePatients
+Admin -- UC_ManageDiagnoses
+Admin -- UC_ManageVisitsAdmin
+Admin -- UC_GenerateReports
+
+' Doctor Use Cases
+Doctor -- UC_DocumentVisit
+Doctor -- UC_CancelVisitDoctor
+Doctor -- UC_ViewPatientRecords
+Doctor -- UC_ViewSchedule
+
+' Patient Use Cases
+Patient -- UC_ViewProfile
+Patient -- UC_EditProfile
+Patient -- UC_ViewVisitHistory
+Patient -- UC_CancelVisitPatient
+
+@enduml

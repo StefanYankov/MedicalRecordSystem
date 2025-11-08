@@ -2,31 +2,38 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:mysql://mysql:3306/medical_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+    url: jdbc:mysql://localhost:3306/medical_db?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
     username: root
-    password: nbuDBpass
+    password: nbuDBp4ss
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      initialization-fail-timeout: 60000
-      connection-timeout: 30000
-      maximum-pool-size: 10
   jpa:
+    # This is now considered a best practice. It prevents the N+1 query problem
+    # that can occur when lazy-loaded collections are accessed during view rendering.
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
   security:
     oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8081/realms/medical-system
+        registration:
+          keycloak:
+            client-id: medical-record-system
+            client-secret: ${KEYCLOAK_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid, profile, email
       resourceserver:
         jwt:
-          issuer-uri: http://keycloak:8080/realms/medical-realm
+          issuer-uri: http://localhost:8081/realms/medical-system
   mail:
     host: smtp.sendgrid.net
     port: 587
     username: apikey
-    password: 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
+    password: ${SENDGRID_API_KEY}
     properties:
       mail:
         smtp:
@@ -35,21 +42,16 @@ spring:
             enable: true
 app:
   mail:
-    from: no-reply@your-azure-domain.com
+    from: no-reply@medical-system.com
+  base-url: http://localhost:8080
+
 server:
   port: 8080
+  error:
+    whitelabel:
+      enabled: false
+
 cloudinary:
-  cloud-name: Medicine-app
-  api-key: 916245136867445
-  api-secret: 04s3evY6JbCtD5M8wMdKHcD8tgU
-keycloak:
-  auth-server-url: http://keycloak:8080/auth
-  realm: medical-realm
-  admin-client-id: admin-cli
-  admin-username: admin
-  admin-password: admin
-sendgrid:
-  api:
-    key: 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
-  from:
-    email: no-reply@your-azure-domain.com
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}

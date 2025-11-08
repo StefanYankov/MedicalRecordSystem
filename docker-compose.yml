@@ -5,7 +5,7 @@ services:
       MYSQL_ROOT_PASSWORD: nbuDBpass
       MYSQL_DATABASE: medical_db
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
@@ -13,40 +13,42 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0.2
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_HEALTH_ENABLED: true
-    command: start-dev
+      KC_DB: dev-file
+      # This sets the backend hostname for inter-container communication
+      KC_HOSTNAME: keycloak
+    # The --hostname flag sets the public-facing URL for browser redirects
+    command: start-dev --import-realm --hostname=localhost:8081
     ports:
       - "8081:8080"
-      - "9000:9000"
     volumes:
       - ./keycloak:/opt/keycloak/data/import
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-  app:
+      - keycloak-data:/opt/keycloak/data
+
+  medical-record-system:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
-      - CLOUDINARY_CLOUD_NAME=Medicine-app
-      - CLOUDINARY_API_KEY=916245136867445
-      - CLOUDINARY_API_SECRET=04s3evY6JbCtD5M8wMdKHcD8tgU
-      - SPRING_PROFILES_ACTIVE=dev
+      # These variables are sourced from the .env file in the project root
+      KEYCLOAK_CLIENT_SECRET: "${KEYCLOAK_CLIENT_SECRET}"
+      SENDGRID_API_KEY: "${SENDGRID_API_KEY}"
+      CLOUDINARY_CLOUD_NAME: "${CLOUDINARY_CLOUD_NAME}"
+      CLOUDINARY_API_KEY: "${CLOUDINARY_API_KEY}"
+      CLOUDINARY_API_SECRET: "${CLOUDINARY_API_SECRET}"
     depends_on:
       mysql:
         condition: service_healthy
       keycloak:
-        condition: service_healthy
-    restart: on-failure
+        condition: service_started
+
 volumes:
   mysql-data:
+  keycloak-data:

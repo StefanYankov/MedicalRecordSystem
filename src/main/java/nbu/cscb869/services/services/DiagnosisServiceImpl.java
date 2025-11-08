@@ -176,4 +176,11 @@ public class DiagnosisServiceImpl implements DiagnosisService {
     public List<DiagnosisVisitCountDTO> getMostFrequentDiagnoses() {
         return diagnosisRepository.findMostFrequentDiagnoses();
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getTotalDiagnosesCount() {
+        logger.debug("Retrieving total count of diagnoses.");
+        return diagnosisRepository.count();
+    }
 }

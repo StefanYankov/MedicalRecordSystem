@@ -2,12 +2,10 @@ package nbu.cscb869;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
-@EnableJpaRepositories(basePackages = "nbu.cscb869.data.repositories")
-@EnableJpaAuditing
+@EnableAsync
 public class MedicalRecordSystemApplication {
 
     public static void main(String[] args) {

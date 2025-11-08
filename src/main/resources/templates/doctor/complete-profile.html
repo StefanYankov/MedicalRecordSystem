@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/doctor-layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Complete Your Profile</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mt-5">
+                    <div class="card-header">
+                        <h2 class="text-center">Complete Your Doctor Profile</h2>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/doctor/profile/complete}" th:object="${doctor}" method="post">
+
+                            <!-- Global Error -->
+                            <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-danger">
+                                <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
+                            </div>
+
+                            <!-- Name (Read-Only) -->
+                            <div class="form-group mb-3">
+                                <label>Full Name</label>
+                                <p class="form-control-plaintext" th:text="${fullName}">Name from Keycloak</p>
+                                <input type="hidden" th:field="*{name}" />
+                            </div>
+
+                            <!-- UIN -->
+                            <div class="form-group mb-3">
+                                <label for="uniqueIdNumber">Unique Identification Number (UIN)</label>
+                                <input type="text" id="uniqueIdNumber" th:field="*{uniqueIdNumber}" class="form-control"
+                                       th:classappend="${#fields.hasErrors('uniqueIdNumber')} ? 'is-invalid' : ''"/>
+                                <div th:if="${#fields.hasErrors('uniqueIdNumber')}" class="invalid-feedback"
+                                     th:errors="*{uniqueIdNumber}"></div>
+                            </div>
+
+                            <!-- Dual List Box for Specialties -->
+                            <div class="form-group">
+                                <label>Specialties</label>
+                                <div class="row">
+                                    <div class="col-5">
+                                        <label for="availableSpecialties">Available</label>
+                                        <select id="availableSpecialties" multiple class="form-control" style="height: 200px;">
+                                            <option th:each="spec : ${availableSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                                        </select>
+                                    </div>
+                                    <div class="col-2 d-flex flex-column justify-content-center align-items-center">
+                                        <button type="button" id="addSpecialty" class="btn btn-secondary mb-2">&gt;</button>
+                                        <button type="button" id="removeSpecialty" class="btn btn-secondary">&lt;</button>
+                                    </div>
+                                    <div class="col-5">
+                                        <label for="specialties">Assigned</label>
+                                        <select id="specialties" th:field="*{specialties}" multiple class="form-control" style="height: 200px;">
+                                            <option th:each="spec : ${assignedSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- General Practitioner -->
+                            <div class="form-check mb-3">
+                                <input type="checkbox" id="isGeneralPractitioner" th:field="*{isGeneralPractitioner}" class="form-check-input"/>
+                                <label for="isGeneralPractitioner" class="form-check-label">Are you a General Practitioner?</label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Submit Application</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('addSpecialty').addEventListener('click', function() {
+            moveOptions('availableSpecialties', 'specialties');
+        });
+
+        document.getElementById('removeSpecialty').addEventListener('click', function() {
+            moveOptions('specialties', 'availableSpecialties');
+        });
+
+        function moveOptions(sourceId, destId) {
+            const source = document.getElementById(sourceId);
+            const dest = document.getElementById(destId);
+            Array.from(source.selectedOptions).forEach(option => {
+                dest.appendChild(option);
+            });
+        }
+
+        // Before submitting the form, select all options in the 'assigned' box
+        document.querySelector('form').addEventListener('submit', function() {
+            const assigned = document.getElementById('specialties');
+            Array.from(assigned.options).forEach(option => {
+                option.selected = true;
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

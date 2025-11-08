@@ -16,7 +16,6 @@ import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -25,9 +24,25 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for managing {@link nbu.cscb869.data.models.Doctor} entities.
- * Provides CRUD operations and doctor-related queries with role-based access control.
+ * Provides CRUD operations and doctor-related queries.
  */
 public interface DoctorService {
+
+    /**
+     * Creates a new doctor from a DTO, without an image.
+     *
+     * @param dto The DTO containing the new doctor's information.
+     * @return The created doctor's view DTO.
+     */
+    DoctorViewDTO createDoctor(DoctorCreateDTO dto);
+
+    /**
+     * Updates an existing doctor from a DTO, without an image.
+     *
+     * @param dto The DTO containing the updated doctor's information.
+     * @return The updated doctor's view DTO.
+     */
+    DoctorViewDTO updateDoctor(DoctorUpdateDTO dto);
 
     /**
      * Creates a new doctor with the provided DTO and optional image.
@@ -38,8 +53,9 @@ public interface DoctorService {
      * @throws InvalidDoctorException if the unique ID number already exists
      * @throws EntityNotFoundException if specialties are not found
      * @throws InvalidInputException if image upload fails
+     * @deprecated Use {@link #createDoctor(DoctorCreateDTO)} and handle image separately.
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @Deprecated
     DoctorViewDTO create(DoctorCreateDTO dto, MultipartFile image);
 
     /**
@@ -51,8 +67,9 @@ public interface DoctorService {
      * @throws EntityNotFoundException if the doctor or specialties are not found
      * @throws InvalidDoctorException if the unique ID number is already in use
      * @throws InvalidInputException if image upload fails
+     * @deprecated Use {@link #updateDoctor(DoctorUpdateDTO)} and handle image separately.
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @Deprecated
     DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image);
 
     /**
@@ -62,7 +79,6 @@ public interface DoctorService {
      * @throws EntityNotFoundException if the doctor is not found
      * @throws InvalidDoctorException if the doctor is a general practitioner with active patients
      */
-    @PreAuthorize("hasRole('ADMIN')")
     void delete(Long id);
 
     /**
@@ -72,7 +88,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the doctor is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     DoctorViewDTO getById(Long id);
 
     /**
@@ -82,7 +97,6 @@ public interface DoctorService {
      * @throws InvalidDTOException if the unique ID number is null or empty
      * @throws EntityNotFoundException if the doctor is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     DoctorViewDTO getByUniqueIdNumber(String uniqueIdNumber);
 
     /**
@@ -95,7 +109,6 @@ public interface DoctorService {
      * @return a CompletableFuture containing a page of doctor view DTOs
      * @throws InvalidDTOException if pagination parameters are invalid
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     @Async
     CompletableFuture<Page<DoctorViewDTO>> getAllAsync(int page, int size, String orderBy, boolean ascending, String filter);
 
@@ -109,8 +122,19 @@ public interface DoctorService {
      * @return a page of doctor view DTOs
      * @throws InvalidInputException if pagination parameters are invalid
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     Page<DoctorViewDTO> findByCriteria(Specification<Doctor> spec, int page, int size, String orderBy, boolean ascending);
+
+    /**
+     * Finds all doctors belonging to a specific specialty.
+     *
+     * @param specialtyId The ID of the specialty.
+     * @param page        The page number (0-based).
+     * @param size        The number of items per page.
+     * @param sortBy      The field to sort by.
+     * @param asc         Whether to sort in ascending order.
+     * @return A {@link Page} of {@link DoctorViewDTO} objects.
+     */
+    Page<DoctorViewDTO> findAllBySpecialty(Long specialtyId, int page, int size, String sortBy, boolean asc);
 
     /**
      * Retrieves patients assigned to a specific general practitioner with pagination.
@@ -119,24 +143,21 @@ public interface DoctorService {
      * @param size the number of items per page
      * @return a page of patient view DTOs
      * @throws InvalidDTOException if the general practitioner ID is null
-     * @throws EntityNotFoundException if the general practitioner is not found
-     * @throws InvalidDoctorException if the doctor is not a general practitioner
+     * @throws EntityNotFoundException if the general practitioner is not found.
+     * @throws InvalidDoctorException if the doctor is not a general practitioner.
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     Page<PatientViewDTO> getPatientsByGeneralPractitioner(Long generalPractitionerId, int page, int size);
 
     /**
      * Retrieves patient counts for general practitioners.
-     * @return a list of DTOs containing general practitioners and their patient counts
+     * @return a list of DTOs containing general practitioners and their patient counts.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     List<DoctorPatientCountDTO> getPatientCountByGeneralPractitioner();
 
     /**
      * Retrieves visit counts for doctors.
-     * @return a list of DTOs containing doctors and their visit counts
+     * @return a list of DTOs containing doctors and their visit counts.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     List<DoctorVisitCountDTO> getVisitCount();
 
     /**
@@ -149,14 +170,43 @@ public interface DoctorService {
      * @return a CompletableFuture containing a page of visit view DTOs
      * @throws InvalidDTOException if parameters are null
      * @throws InvalidInputException if the date range is invalid
-     * @throws EntityNotFoundException if the doctor is not found
+     * @throws EntityNotFoundException if the doctor is not found.
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     Page<VisitViewDTO> getVisitsByPeriod(Long doctorId, LocalDate startDate, LocalDate endDate, int page, int size);
     /**
      * Retrieves doctors with the highest sick leave counts.
-     * @return a list of DTOs containing doctors and their sick leave counts
+     * @return a list of DTOs containing doctors and their sick leave counts.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     List<DoctorSickLeaveCountDTO> getDoctorsWithMostSickLeaves();
+
+    /**
+     * Retrieves a doctor by their Keycloak user ID.
+     * @param keycloakId the user's unique Keycloak ID (sub)
+     * @return the doctor's view DTO
+     * @throws InvalidInputException if the keycloakId is null or blank
+     * @throws EntityNotFoundException if the doctor is not found.
+     */
+    DoctorViewDTO getByKeycloakId(String keycloakId);
+
+    /**
+     * Deletes the profile image for a specific doctor.
+     * @param doctorId the ID of the doctor whose image should be deleted.
+     */
+    void deleteDoctorImage(Long doctorId);
+
+    /**
+     * Retrieves a paginated list of unapproved doctors.
+     * @param page the page number (0-based).
+     * @param size the number of items per page.
+     * @return a page of DoctorViewDTOs for unapproved doctors.
+     */
+    Page<DoctorViewDTO> getUnapprovedDoctors(int page, int size);
+
+    /**
+     * Approves a doctor by setting their isApproved flag to true and assigning the DOCTOR role in Keycloak.
+     * @param doctorId The ID of the doctor to approve.
+     * @throws EntityNotFoundException if the doctor is not found.
+     * @throws InvalidDoctorException if the doctor is already approved.
+     */
+    void approveDoctor(Long doctorId);
 }

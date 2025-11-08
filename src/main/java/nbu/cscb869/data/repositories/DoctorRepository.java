@@ -19,11 +19,25 @@ import java.util.Optional;
 
 public interface DoctorRepository extends JpaRepository<Doctor, Long>, JpaSpecificationExecutor<Doctor> {
     /**
+     * Finds a Doctor by their unique Keycloak ID.
+     * @param keycloakId the user's unique Keycloak ID (sub)
+     * @return an Optional containing the Doctor if found, otherwise empty.
+     */
+    Optional<Doctor> findByKeycloakId(String keycloakId);
+
+    /**
      * Finds a doctor by unique ID number
      * @param uniqueIdNumber the doctor's unique ID number
      * @return an optional containing the doctor if found
      */
     Optional<Doctor> findByUniqueIdNumber(String uniqueIdNumber);
+
+    /**
+     * Finds a doctor by their exact name.
+     * @param name the name to search for
+     * @return an Optional containing the found doctor, or empty if not found
+     */
+    Optional<Doctor> findByName(String name);
 
     /**
      * Retrieves a page of non-deleted doctors by unique ID number containing the filter.
@@ -84,4 +98,20 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long>, JpaSpecif
      * @return true if the specialty is in use, false otherwise
      */
     boolean existsBySpecialtiesContains(Specialty specialty);
+
+    /**
+     * Finds a doctor by ID and eagerly fetches the associated specialties collection.
+     * @param id the ID of the doctor to find.
+     * @return an Optional containing the Doctor with initialized specialties if found.
+     */
+    @Query("SELECT d FROM Doctor d LEFT JOIN FETCH d.specialties WHERE d.id = :id")
+    Optional<Doctor> findByIdWithSpecialties(@Param("id") Long id);
+
+    /**
+     * Retrieves a page of doctors based on their approval status.
+     * @param isApproved boolean indicating approval status.
+     * @param pageable pagination information.
+     * @return a page of Doctor entities.
+     */
+    Page<Doctor> findByIsApproved(boolean isApproved, Pageable pageable);
 }

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/public_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Document Visit</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-4">Document Visit</h1>
+        <hr/>
+        <div class="card bg-light mb-3">
+            <div class="card-header">Visit Details</div>
+            <div class="card-body">
+                <p class="card-text"><strong>Patient:</strong> <span th:text="${visit.patient.name}"></span></p>
+                <p class="card-text"><strong>Date:</strong> <span th:text="${visit.visitDate}"></span></p>
+                <p class="card-text"><strong>Time:</strong> <span th:text="${visit.visitTime}"></span></p>
+            </div>
+        </div>
+
+        <form th:action="@{/visit/document/{id}(id=${visit.id})}" th:object="${documentation}" method="post">
+            <input type="hidden" th:field="*{visitId}"/>
+
+            <h4>Clinical Findings</h4>
+            <div class="form-group">
+                <label for="diagnosis">Diagnosis</label>
+                <select class="form-control" id="diagnosis" th:field="*{diagnosisId}">
+                    <option value="">Select a Diagnosis (optional)</option>
+                    <option th:each="diag : ${allDiagnoses}" th:value="${diag.id}" th:text="${diag.name}"></option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Visit Notes</label>
+                <textarea class="form-control" id="notes" rows="3" placeholder="Enter clinical notes..." th:field="*{notes}"></textarea>
+            </div>
+
+            <hr/>
+
+            <h4>Treatment Plan</h4>
+            <div class="form-group">
+                <label for="treatmentDescription">Treatment Description</label>
+                <textarea class="form-control" id="treatmentDescription" rows="2" placeholder="e.g., Rest, fluids, etc." th:field="*{treatment.description}"></textarea>
+            </div>
+            <!-- A more complex medicine entry form will be added later -->
+
+            <hr/>
+
+            <h4>Sick Leave</h4>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="sickLeaveStartDate">Start Date</label>
+                    <input type="date" class="form-control" id="sickLeaveStartDate" th:field="*{sickLeave.startDate}">
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="sickLeaveDuration">Duration (in days)</label>
+                    <input type="number" class="form-control" id="sickLeaveDuration" placeholder="e.g., 5" th:field="*{sickLeave.durationDays}">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save Documentation</button>
+            <a th:href="@{/schedule}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>

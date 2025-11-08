@@ -49,4 +49,10 @@ public interface DiagnosisRepository extends JpaRepository<Diagnosis, Long> {
      */
     @Query("SELECT d FROM Diagnosis d WHERE LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%')) ORDER BY d.name")
     Page<Diagnosis> findByNameContainingIgnoreCase(@Param("name") String name, Pageable pageable);
+
+    /**
+     * Returns the number of entities available.
+     * @return the number of entities.
+     */
+    long count();
 }

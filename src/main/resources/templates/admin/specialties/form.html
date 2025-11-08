@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title th:text="${specialty.id == null} ? 'Create Specialty' : 'Edit Specialty'">Specialty Form</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-5" th:text="${specialty.id == null} ? 'Create New Specialty' : 'Edit Specialty'">Specialty Form</h1>
+        <form th:object="${specialty}" th:action="${specialty.id == null} ? @{/admin/specialties/create} : @{/admin/specialties/edit/{id}(id=${specialty.id})}" method="post">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" th:field="*{name}" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea class="form-control" id="description" th:field="*{description}" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

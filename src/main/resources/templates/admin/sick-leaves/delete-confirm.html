@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Confirm Delete Sick Leave</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Confirm Sick Leave Deletion</h1>
+        <p class="mb-4">Are you sure you want to delete this sick leave? This action cannot be undone.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Sick Leave Details</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>ID:</strong> <span th:text="${sickLeave.id}"></span></p>
+                <p><strong>Start Date:</strong> <span th:text="${#temporals.format(sickLeave.startDate, 'dd-MM-yyyy')}"></span></p>
+                <p><strong>Duration:</strong> <span th:text="${sickLeave.durationDays}"></span> days</p>
+                <p><strong>Visit ID:</strong> <span th:text="${sickLeave.visitId}"></span></p>
+
+                <form th:action="@{/admin/sick-leaves/delete/{id}(id=${sickLeave.id})}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                    <a th:href="@{/admin/sick-leaves}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/public_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>My Profile</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <h1 class="mt-4">My Profile</h1>
+        <hr/>
+        <div th:if="${patient != null}" class="card">
+            <div class="card-body">
+                <h5 class="card-title" th:text="${patient.name}">Patient Name</h5>
+                <div class="card-text">
+                    <p><strong>EGN:</strong> <span th:text="${patient.egn}">1234567890</span></p>
+                    <p><strong>Last Insurance Payment:</strong> <span th:text="${patient.lastInsurancePaymentDate}">2024-01-01</span></p>
+                    <!-- We will add more details like GP name later -->
+                </div>
+                <!-- We will add an 'Edit Profile' button here later -->
+            </div>
+        </div>
+        <div th:if="${patient == null}" class="alert alert-warning">
+            Could not retrieve patient profile information.
+        </div>
+    </div>
+</div>
+</body>
+</html>

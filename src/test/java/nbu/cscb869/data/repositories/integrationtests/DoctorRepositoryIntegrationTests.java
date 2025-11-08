@@ -125,6 +125,22 @@ class DoctorRepositoryIntegrationTests {
     }
 
     @Test
+    void findByKeycloakId_WithExistingId_ReturnsDoctor_HappyPath() {
+        // ARRANGE
+        String keycloakId = TestDataUtils.generateKeycloakId();
+        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Keycloak Test");
+        doctor.setKeycloakId(keycloakId);
+        doctorRepository.save(doctor);
+
+        // ACT
+        Optional<Doctor> found = doctorRepository.findByKeycloakId(keycloakId);
+
+        // ASSERT
+        assertTrue(found.isPresent());
+        assertEquals(keycloakId, found.get().getKeycloakId());
+    }
+
+    @Test
     void findByUniqueIdNumberContaining_WithMatch_ReturnsPaged_HappyPath() {
         Doctor doctor = createDoctor("DOC123", true, "Dr. Bob White");
         doctorRepository.save(doctor);
@@ -267,6 +283,18 @@ class DoctorRepositoryIntegrationTests {
     }
 
     @Test
+    void findByKeycloakId_WithNonExistentId_ReturnsEmpty_ErrorCase() {
+        // ARRANGE
+        String nonExistentKeycloakId = "non-existent-keycloak-id";
+
+        // ACT
+        Optional<Doctor> found = doctorRepository.findByKeycloakId(nonExistentKeycloakId);
+
+        // ASSERT
+        assertFalse(found.isPresent());
+    }
+
+    @Test
     void findByUniqueIdNumberContaining_WithNoMatch_ReturnsEmptyPage_ErrorCase() {
         Page<Doctor> result = doctorRepository.findByUniqueIdNumberContaining("XYZ", PageRequest.of(0, 1));
 
@@ -350,4 +378,5 @@ class DoctorRepositoryIntegrationTests {
         assertEquals(5, result.getTotalElements());
         assertEquals(5, result.getContent().size());
     }
+
 }

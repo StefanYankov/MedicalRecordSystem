@@ -37,6 +37,13 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Page<Patient> findByGeneralPractitioner(Doctor generalPractitioner, Pageable pageable);
 
     /**
+     * Retrieves a list of all patients assigned to a specific general practitioner.
+     * @param generalPractitioner the general practitioner to filter by
+     * @return a list of patient entities
+     */
+    List<Patient> findByGeneralPractitioner(Doctor generalPractitioner);
+
+    /**
      * Retrieves a list of general practitioners with their patient counts.
      * @return a list of DTOs with doctor and patient count
      */

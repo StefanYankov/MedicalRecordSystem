@@ -39,6 +39,10 @@ public class Doctor extends BaseEntity {
     @Column(name = "is_general_practitioner", nullable = false)
     private boolean isGeneralPractitioner;
 
+    @Column(name = "is_approved", nullable = false)
+    @Builder.Default
+    private boolean isApproved = false;
+
     @Column(nullable = false, unique = true)
     private String keycloakId;
 

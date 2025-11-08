@@ -8,14 +8,13 @@ import nbu.cscb869.services.data.dtos.DiagnosisCreateDTO;
 import nbu.cscb869.services.data.dtos.DiagnosisUpdateDTO;
 import nbu.cscb869.services.data.dtos.DiagnosisViewDTO;
 import org.springframework.data.domain.Page;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Service interface for managing {@link nbu.cscb869.data.models.Diagnosis} entities.
- * Provides CRUD operations and diagnosis-related queries with role-based access control.
+ * Provides CRUD operations and diagnosis-related queries.
  */
 public interface DiagnosisService {
     /**
@@ -25,7 +24,6 @@ public interface DiagnosisService {
      * @throws InvalidDTOException if the DTO is null or invalid
      * @throws InvalidDTOException if the diagnosis name already exists
      */
-    @PreAuthorize("hasRole('ADMIN')")
     DiagnosisViewDTO create(DiagnosisCreateDTO dto);
 
     /**
@@ -36,7 +34,6 @@ public interface DiagnosisService {
      * @throws EntityNotFoundException if the diagnosis is not found
      * @throws InvalidDTOException if the diagnosis name already exists
      */
-    @PreAuthorize("hasRole('ADMIN')")
     DiagnosisViewDTO update(DiagnosisUpdateDTO dto);
 
     /**
@@ -46,7 +43,6 @@ public interface DiagnosisService {
      * @throws EntityNotFoundException if the diagnosis is not found
      * @throws InvalidDTOException if the diagnosis is referenced in active visits
      */
-    @PreAuthorize("hasRole('ADMIN')")
     void delete(Long id);
 
     /**
@@ -56,7 +52,6 @@ public interface DiagnosisService {
      * @throws InvalidDTOException if the ID is null
      * @throws EntityNotFoundException if the diagnosis is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     DiagnosisViewDTO getById(Long id);
 
     /**
@@ -66,7 +61,6 @@ public interface DiagnosisService {
      * @throws InvalidDTOException if the name is null or empty
      * @throws EntityNotFoundException if the diagnosis is not found
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     DiagnosisViewDTO getByName(String name);
 
     /**
@@ -79,7 +73,6 @@ public interface DiagnosisService {
      * @return a CompletableFuture containing a page of diagnosis view DTOs
      * @throws InvalidDTOException if pagination parameters are invalid
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     CompletableFuture<Page<DiagnosisViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter);
 
     /**
@@ -91,13 +84,17 @@ public interface DiagnosisService {
      * @throws InvalidDTOException if the diagnosis ID is null
      * @throws EntityNotFoundException if the diagnosis is not found
      */
-    @PreAuthorize("hasRole('ADMIN')")
     Page<PatientDiagnosisDTO> getPatientsByDiagnosis(Long diagnosisId, int page, int size);
 
     /**
      * Retrieves the most frequently diagnosed conditions.
      * @return a list of DTOs with diagnoses and their visit counts
      */
-    @PreAuthorize("hasRole('ADMIN')")
     List<DiagnosisVisitCountDTO> getMostFrequentDiagnoses();
+
+    /**
+     * Retrieves the total count of diagnoses.
+     * @return the total number of diagnoses.
+     */
+    long getTotalDiagnosesCount();
 }

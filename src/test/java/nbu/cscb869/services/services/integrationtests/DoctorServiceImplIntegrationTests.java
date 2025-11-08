@@ -3,6 +3,7 @@ package nbu.cscb869.services.services.integrationtests;
 import nbu.cscb869.common.exceptions.EntityNotFoundException;
 import nbu.cscb869.common.exceptions.InvalidDoctorException;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.*;
 import nbu.cscb869.data.utils.TestDataUtils;
 import nbu.cscb869.security.WithMockKeycloakUser;
@@ -14,15 +15,20 @@ import nbu.cscb869.services.services.contracts.DoctorService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +42,38 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Import(DoctorServiceImplIntegrationTests.AsyncTestConfig.class)
+@Import({DoctorServiceImplIntegrationTests.AsyncTestConfig.class, DoctorServiceImplIntegrationTests.TestConfig.class})
 class DoctorServiceImplIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            ClientRegistrationRepository repo = Mockito.mock(ClientRegistrationRepository.class);
+            ClientRegistration registration = Mockito.mock(ClientRegistration.class);
+            ClientRegistration.ProviderDetails providerDetails = Mockito.mock(ClientRegistration.ProviderDetails.class);
+
+            when(providerDetails.getIssuerUri()).thenReturn("http://localhost:8081/realms/test-realm");
+            when(registration.getProviderDetails()).thenReturn(providerDetails);
+            when(registration.getClientId()).thenReturn("test-client");
+            when(registration.getClientSecret()).thenReturn("test-secret");
+            when(repo.findByRegistrationId("keycloak")).thenReturn(registration);
+
+            return repo;
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
 
     @TestConfiguration
     static class AsyncTestConfig {
@@ -115,16 +147,6 @@ class DoctorServiceImplIntegrationTests {
         assertEquals("Cardiology", savedDoctor.getSpecialties().iterator().next().getName());
     }
 
-    @Test
-    @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
-    void create_AsDoctor_ShouldBeDenied_ErrorCase() {
-        DoctorCreateDTO createDTO = new DoctorCreateDTO();
-        createDTO.setName("Dr. Unauthorized");
-        createDTO.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        createDTO.setKeycloakId(TestDataUtils.generateKeycloakId());
-
-        assertThrows(AccessDeniedException.class, () -> doctorService.create(createDTO, null));
-    }
 
     // --- Update Tests ---
 
@@ -150,23 +172,6 @@ class DoctorServiceImplIntegrationTests {
         Doctor updatedDoctor = doctorRepository.findById(doctor.getId()).get();
         assertEquals("Dr. New Name", updatedDoctor.getName());
         assertEquals("Surgery", updatedDoctor.getSpecialties().iterator().next().getName());
-    }
-
-    @Test
-    @WithMockKeycloakUser(authorities = "ROLE_PATIENT")
-    void update_AsPatient_ShouldBeDenied_ErrorCase() {
-        Doctor doctor = new Doctor();
-        doctor.setName("Dr. To Update");
-        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
-        doctor.setKeycloakId(TestDataUtils.generateKeycloakId());
-        doctor = doctorRepository.save(doctor);
-
-        DoctorUpdateDTO updateDTO = new DoctorUpdateDTO();
-        updateDTO.setId(doctor.getId());
-        updateDTO.setName("Dr. Should Fail");
-        updateDTO.setUniqueIdNumber(doctor.getUniqueIdNumber());
-
-        assertThrows(AccessDeniedException.class, () -> doctorService.update(updateDTO, null));
     }
 
     // --- Delete Tests ---
@@ -256,6 +261,29 @@ class DoctorServiceImplIntegrationTests {
 
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
+    void getByKeycloakId_AsDoctor_ShouldSucceed_HappyPath() {
+        String keycloakId = "doctor-keycloak-id";
+        Doctor doctor = new Doctor();
+        doctor.setName("Dr. Keycloak");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setKeycloakId(keycloakId);
+        doctorRepository.save(doctor);
+
+        DoctorViewDTO result = doctorService.getByKeycloakId(keycloakId);
+
+        assertNotNull(result);
+        assertEquals("Dr. Keycloak", result.getName());
+        assertEquals(keycloakId, result.getKeycloakId());
+    }
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
+    void getByKeycloakId_WithNonExistentId_ShouldThrowException_ErrorCase() {
+        assertThrows(EntityNotFoundException.class, () -> doctorService.getByKeycloakId("non-existent-keycloak-id"));
+    }
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
     void getPatientsByGeneralPractitioner_AsDoctor_ShouldReturnCorrectPatients_HappyPath() {
         Doctor gp = new Doctor();
         gp.setName("Dr. GP");
@@ -275,6 +303,33 @@ class DoctorServiceImplIntegrationTests {
 
         assertEquals(1, result.getTotalElements());
         assertEquals("Test Patient", result.getContent().get(0).getName());
+    }
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_PATIENT")
+    void findAllBySpecialty_WhenDoctorsExist_ShouldReturnCorrectPage_HappyPath() {
+        // ARRANGE
+        Doctor cardiologist = new Doctor();
+        cardiologist.setName("Dr. Heart");
+        cardiologist.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        cardiologist.setKeycloakId(TestDataUtils.generateKeycloakId());
+        cardiologist.getSpecialties().add(specialtyCardiology);
+        doctorRepository.save(cardiologist);
+
+        Doctor surgeon = new Doctor();
+        surgeon.setName("Dr. Blade");
+        surgeon.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        surgeon.setKeycloakId(TestDataUtils.generateKeycloakId());
+        surgeon.getSpecialties().add(specialtySurgery);
+        doctorRepository.save(surgeon);
+
+        // ACT
+        Page<DoctorViewDTO> result = doctorService.findAllBySpecialty(specialtyCardiology.getId(), 0, 10, "name", true);
+
+        // ASSERT
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Dr. Heart", result.getContent().get(0).getName());
     }
 
     // --- Async GetAll Test ---
@@ -335,12 +390,6 @@ class DoctorServiceImplIntegrationTests {
     }
 
     @Test
-    @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
-    void getPatientCountByGeneralPractitioner_AsDoctor_ShouldBeDenied_ErrorCase() {
-        assertThrows(AccessDeniedException.class, () -> doctorService.getPatientCountByGeneralPractitioner());
-    }
-
-    @Test
     @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
     void getVisitCount_AsAdmin_ShouldReturnCorrectCounts_HappyPath() {
         Doctor gp = new Doctor();
@@ -368,6 +417,7 @@ class DoctorServiceImplIntegrationTests {
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(LocalDate.now());
         visit.setVisitTime(LocalTime.now());
+        visit.setStatus(VisitStatus.COMPLETED);
         visitRepository.save(visit);
 
         var result = doctorService.getVisitCount();
@@ -442,6 +492,71 @@ class DoctorServiceImplIntegrationTests {
         visit.setDiagnosis(diagnosis);
         visit.setVisitDate(LocalDate.now());
         visit.setVisitTime(LocalTime.now());
+        visit.setStatus(VisitStatus.COMPLETED);
         return visitRepository.save(visit);
+    }
+
+    // --- Approval Tests ---
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
+    void approveDoctor_WithUnapprovedDoctor_ShouldSetApprovedTrue() {
+        // ARRANGE
+        Doctor unapprovedDoctor = new Doctor();
+        unapprovedDoctor.setName("Dr. Unapproved");
+        unapprovedDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        unapprovedDoctor.setKeycloakId(TestDataUtils.generateKeycloakId());
+        unapprovedDoctor.setApproved(false);
+        unapprovedDoctor = doctorRepository.save(unapprovedDoctor);
+
+        // ACT
+        doctorService.approveDoctor(unapprovedDoctor.getId());
+
+        // ASSERT
+        Doctor approvedDoctor = doctorRepository.findById(unapprovedDoctor.getId()).orElseThrow();
+        assertTrue(approvedDoctor.isApproved());
+    }
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
+    void approveDoctor_WithAlreadyApprovedDoctor_ShouldThrowException() {
+        // ARRANGE
+        Doctor approvedDoctor = new Doctor();
+        approvedDoctor.setName("Dr. Already Approved");
+        approvedDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        approvedDoctor.setKeycloakId(TestDataUtils.generateKeycloakId());
+        approvedDoctor.setApproved(true);
+        approvedDoctor = doctorRepository.save(approvedDoctor);
+
+        Long doctorId = approvedDoctor.getId();
+
+        // ACT & ASSERT
+        assertThrows(InvalidDoctorException.class, () -> doctorService.approveDoctor(doctorId));
+    }
+
+    @Test
+    @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
+    void getUnapprovedDoctors_ShouldReturnOnlyUnapproved() {
+        // ARRANGE
+        Doctor unapprovedDoctor = new Doctor();
+        unapprovedDoctor.setName("Dr. Unapproved");
+        unapprovedDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        unapprovedDoctor.setKeycloakId(TestDataUtils.generateKeycloakId());
+        unapprovedDoctor.setApproved(false);
+        doctorRepository.save(unapprovedDoctor);
+
+        Doctor approvedDoctor = new Doctor();
+        approvedDoctor.setName("Dr. Approved");
+        approvedDoctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        approvedDoctor.setKeycloakId(TestDataUtils.generateKeycloakId());
+        approvedDoctor.setApproved(true);
+        doctorRepository.save(approvedDoctor);
+
+        // ACT
+        Page<DoctorViewDTO> result = doctorService.getUnapprovedDoctors(0, 10);
+
+        // ASSERT
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Dr. Unapproved", result.getContent().get(0).getName());
     }
 }

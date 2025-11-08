@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Insurance Status Invalid</title>
+</head>
+<body>
+<div th:fragment="content">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <div class="alert alert-danger mt-5">
+                    <h4 class="alert-heading">Action Required: Health Insurance Status</h4>
+                    <p>We were unable to confirm that your health insurance has been paid for the last six months. The system returned the following message:</p>
+                    <p><strong th:text="${errorMessage}">Patient has not paid health insurance.</strong></p>
+                    <hr>
+                    <p class="mb-0">
+                        Please verify your status on the official National Health Insurance Fund (NHIF) website.
+                        Please note that updates to your status may take some time to be reflected in our system (e.g., 24-48 hours).
+                    </p>
+                </div>
+                <div class="mt-4">
+                    <a href="https://www.nhif.bg/" target="_blank" class="btn btn-primary">Check Status on NHIF.bg</a>
+                    <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

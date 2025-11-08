@@ -1,0 +1,25 @@
+@startuml
+title Doctor Cancels Visit
+
+start
+
+:Doctor navigates to schedule;
+:Selects a 'SCHEDULED' visit;
+
+if (Is Doctor authorized for this visit?) then (yes)
+  :Doctor clicks 'Cancel' button;
+  :System updates Visit status to 'CANCELLED_BY_DOCTOR';
+  :System records cancellation reason;
+
+  fork
+    :System sends cancellation email to Patient;
+  fork again
+    :System displays confirmation to Doctor;
+  end fork
+
+else (no)
+  :Display 'Access Denied' error;
+endif
+
+stop
+@enduml

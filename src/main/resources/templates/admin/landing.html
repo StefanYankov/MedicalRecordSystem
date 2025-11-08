@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Admin Home</title>
+</head>
+<body>
+<div id="content">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">Administrator Homepage</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">Welcome, Admin!</h3>
+                </div>
+                <div class="card-body">
+                    <p>From this central hub, you can manage all aspects of the Medical Record System.</p>
+                    <p>Use the sidebar on the left to navigate to the different management sections:</p>
+                    <ul>
+                        <li><strong>Dashboard:</strong> View key metrics and recent activity.</li>
+                        <li><strong>Doctors:</strong> Manage doctor profiles and specialties.</li>
+                        <li><strong>Patients:</strong> Manage patient records and insurance status.</li>
+                        <li><strong>Visits:</strong> View, edit, and delete visit records.</li>
+                        <li><strong>Reports:</strong> Generate and view system-wide reports.</li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    You have full access to view and edit all information in the system.
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

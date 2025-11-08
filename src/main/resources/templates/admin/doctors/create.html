@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Create Doctor</title>
+</head>
+<body>
+<div id="content">
+    <!-- Content Header (Page header) -->
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">Create New Doctor</h1>
+                </div><!-- /.col -->
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a th:href="@{/admin}">Admin</a></li>
+                        <li class="breadcrumb-item"><a th:href="@{/admin/doctors}">Doctors</a></li>
+                        <li class="breadcrumb-item active">Create</li>
+                    </ol>
+                </div><!-- /.col -->
+            </div><!-- /.row -->
+        </div><!-- /.container-fluid -->
+    </div>
+    <!-- /.content-header -->
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title">Doctor Details</h3>
+                        </div>
+                        <!-- /.card-header -->
+                        <!-- form start -->
+                        <form th:action="@{/admin/doctors/create}" th:object="${doctor}" method="post">
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label for="name">Full Name</label>
+                                    <input type="text" class="form-control" id="name" placeholder="Enter full name" th:field="*{name}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="uniqueIdNumber">Unique ID Number</label>
+                                    <input type="text" class="form-control" id="uniqueIdNumber" placeholder="Enter unique ID number" th:field="*{uniqueIdNumber}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('uniqueIdNumber')}" th:errors="*{uniqueIdNumber}"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="keycloakId">Keycloak User ID</label>
+                                    <input type="text" class="form-control" id="keycloakId" placeholder="Enter Keycloak User ID" th:field="*{keycloakId}" th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('keycloakId')}" th:errors="*{keycloakId}"></div>
+                                </div>
+                            </div>
+                            <!-- /.card-body -->
+
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <a th:href="@{/admin/doctors}" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- /.card -->
+                </div>
+            </div>
+        </div><!--/. container-fluid -->
+    </section>
+    <!-- /.content -->
+</div>
+</body>
+</html>

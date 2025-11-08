@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Our Doctors</title>
+</head>
+<body>
+<div id="content">
+    <div class="container">
+        <h1 class="mt-5">Our Doctors</h1>
+        <p class="lead">Meet our team of dedicated medical professionals.</p>
+
+        <div class="row">
+            <div class="col-md-4 mb-4" th:each="doctor : ${doctors.content}">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="${doctor.name}"></h5>
+                        <p class="card-text">
+                            <span th:each="spec : ${doctor.specialties}" class="badge badge-info mr-1" th:text="${spec}"></span>
+                        </p>
+                        <a th:href="@{/visits/schedule/{id}(id=${doctor.id})}" class="btn btn-primary">Book an Appointment</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <nav aria-label="Page navigation" th:if="${!doctors.empty}">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" th:classappend="${doctors.first} ? 'disabled' : ''">
+                    <a class="page-link" th:href="@{/doctors(page=${doctors.number - 1}, size=${doctors.size})}">Previous</a>
+                </li>
+                <li class="page-item" th:each="i : ${#numbers.sequence(0, doctors.totalPages - 1)}" th:classappend="${i == doctors.number} ? 'active' : ''">
+                    <a class="page-link" th:href="@{/doctors(page=${i}, size=${doctors.size})}" th:text="${i + 1}"></a>
+                </li>
+                <li class="page-item" th:classappend="${doctors.last} ? 'disabled' : ''">
+                    <a class="page-link" th:href="@{/doctors(page=${doctors.number + 1}, size=${doctors.size})}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+</body>
+</html>

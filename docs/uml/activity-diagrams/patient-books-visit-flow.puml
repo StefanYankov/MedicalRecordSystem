@@ -1,0 +1,42 @@
+@startuml
+title Patient Books Visit Flow
+
+|Patient|
+start
+:Logs into the system;
+:Navigates to "Book Appointment";
+:Selects a Doctor and a Date;
+
+|System|
+:Fetches and displays available time slots for the selected Doctor/Date;
+
+|Patient|
+:Selects an available time slot;
+:Clicks "Confirm Booking";
+
+|System|
+if (Is slot still available?) then (yes)
+  :Creates new 'Visit' entity;
+  :Sets Visit status to 'SCHEDULED';
+  :Saves new Visit to database;
+
+  fork
+    |Notification Service|
+    :Sends confirmation email to Patient;
+  fork again
+    |Notification Service|
+    :Sends notification email to Doctor;
+  end fork
+
+  |System|
+  :Displays "Booking Confirmed" message to Patient;
+
+else (no, slot just taken)
+  :Displays "Slot no longer available" error;
+  :Refreshes available time slots;
+endif
+
+|Patient|
+stop
+
+@enduml

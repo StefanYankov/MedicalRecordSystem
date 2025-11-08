@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${errorTitle ?: 'Error'}">Error</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}" />
+</head>
+<body>
+<div class="container text-center my-5">
+    <h1 class="display-1" th:text="${statusCode ?: 'Error'}">Error Code</h1>
+    <h2 th:text="${errorTitle ?: 'Something Went Wrong'}">Error Title</h2>
+    <p class="lead" th:text="${errorMessage ?: 'An unexpected error has occurred.'}">An error message.</p>
+    <a th:href="@{/}" class="btn btn-primary mt-3">Go to Homepage</a>
+</div>
+
+<!-- Stack trace for development, only shown if the model contains it -->
+<div th:if="${stackTrace != null}" class="container mt-4 text-start">
+    <div class="card">
+        <div class="card-header">
+            Stack Trace (for Development)
+        </div>
+        <div class="card-body">
+            <pre style="white-space: pre-wrap; max-height: 400px; overflow-y: auto; background-color: #f8f9fa; padding: 1rem; border-radius: 0.25rem;" th:text="${stackTrace}"></pre>
+        </div>
+    </div>
+</div>
+</body>
+</html>

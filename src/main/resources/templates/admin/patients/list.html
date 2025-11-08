@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Manage Patients</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Manage Patients</h1>
+        <hr/>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>EGN</th>
+                        <th>GP</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="patient : ${patients.content}">
+                        <td th:text="${patient.id}"></td>
+                        <td th:text="${patient.name}"></td>
+                        <td th:text="${patient.egn}"></td>
+                        <td th:text="${patient.generalPractitionerName}"></td>
+                        <td>
+                            <a th:href="@{/admin/patients/edit/{id}(id=${patient.id})}" class="btn btn-sm btn-warning">Edit</a>
+                            <form th:action="@{/admin/patients/delete/{id}(id=${patient.id})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- Pagination Controls -->
+                <nav aria-label="Page navigation" th:if="${!patients.empty}">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item" th:classappend="${patients.first} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/patients(page=${patients.number - 1}, size=${patients.size})}">Previous</a>
+                        </li>
+                        <li class="page-item" th:each="i : ${#numbers.sequence(0, patients.totalPages - 1)}" th:classappend="${i == patients.number} ? 'active' : ''">
+                            <a class="page-link" th:href="@{/admin/patients(page=${i}, size=${patients.size})}" th:text="${i + 1}"></a>
+                        </li>
+                        <li class="page-item" th:classappend="${patients.last} ? 'disabled' : ''">
+                            <a class="page-link" th:href="@{/admin/patients(page=${patients.number + 1}, size=${patients.size})}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

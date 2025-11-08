@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Report: Visits by Doctor and Period</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="h3 mb-2 text-gray-800">Report: Visits by Doctor and Period</h1>
+        <p class="mb-4">This report shows a list of visits for a specific doctor within a specified date range.</p>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Select Doctor and Date Range</h6>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/admin/reports/visits-by-doctor-and-period}" method="get" class="form-inline mb-4">
+                    <div class="form-group mr-2">
+                        <label for="doctorId" class="mr-2">Doctor:</label>
+                        <select id="doctorId" name="doctorId" class="form-control">
+                            <option value="">-- Select a Doctor --</option>
+                            <option th:each="doctor : ${doctors}" 
+                                    th:value="${doctor.id}" 
+                                    th:text="${doctor.name}"
+                                    th:selected="${selectedDoctorId != null && selectedDoctorId == doctor.id}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group mr-2">
+                        <label for="startDate" class="mr-2">Start Date:</label>
+                        <input type="date" id="startDate" name="startDate" class="form-control" th:value="${startDate}">
+                    </div>
+                    <div class="form-group mr-2">
+                        <label for="endDate" class="mr-2">End Date:</label>
+                        <input type="date" id="endDate" name="endDate" class="form-control" th:value="${endDate}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Report</button>
+                </form>
+
+                <div th:if="${visits != null}">
+                    <h4 class="h5 mt-4 text-gray-800">Visits</h4>
+                    <div th:if="${visits.isEmpty()}" class="alert alert-info">
+                        No visits found for the selected doctor and period.
+                    </div>
+                    <div th:unless="${visits.isEmpty()}" class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Diagnosis</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="visit : ${visits.content}">
+                                <td th:text="${#temporals.format(visit.visitDate, 'dd-MM-yyyy')}"></td>
+                                <td th:text="${#temporals.format(visit.visitTime, 'HH:mm')}"></td>
+                                <td th:text="${visit.patient.name}"></td>
+                                <td th:text="${visit.diagnosis.name}"></td>
+                                <td th:text="${visit.status}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Pagination Controls -->
+                        <nav aria-label="Page navigation" th:if="${!visits.empty}">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item" th:classappend="${visits.first} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/visits-by-doctor-and-period(doctorId=${selectedDoctorId}, startDate=${startDate}, endDate=${endDate}, page=${visits.number - 1}, size=${visits.size})}">Previous</a>
+                                </li>
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, visits.totalPages - 1)}" th:classappend="${i == visits.number} ? 'active' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/visits-by-doctor-and-period(doctorId=${selectedDoctorId}, startDate=${startDate}, endDate=${endDate}, page=${i}, size=${visits.size})}" th:text="${i + 1}"></a>
+                                </li>
+                                <li class="page-item" th:classappend="${visits.last} ? 'disabled' : ''">
+                                    <a class="page-link" th:href="@{/admin/reports/visits-by-doctor-and-period(doctorId=${selectedDoctorId}, startDate=${startDate}, endDate=${endDate}, page=${visits.number + 1}, size=${visits.size})}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <hr th:if="${visits != null}">
+                <a th:href="@{/admin/reports}" class="btn btn-secondary">Back to Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

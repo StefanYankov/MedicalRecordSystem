@@ -6,6 +6,7 @@ import nbu.cscb869.data.models.Diagnosis;
 import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.models.Visit;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
@@ -19,15 +20,19 @@ import nbu.cscb869.services.services.contracts.DiagnosisService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +49,23 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Import(DiagnosisServiceImplIntegrationTests.AsyncTestConfig.class)
+@Import({DiagnosisServiceImplIntegrationTests.AsyncTestConfig.class, DiagnosisServiceImplIntegrationTests.TestConfig.class})
 class DiagnosisServiceImplIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
 
     @TestConfiguration
     static class AsyncTestConfig {
@@ -235,7 +255,7 @@ class DiagnosisServiceImplIntegrationTests {
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
     void getPatientsByDiagnosis_AsAdmin_ShouldReturnCorrectPatients_HappyPath() {
-        Visit visit = Visit.builder().patient(testPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).build();
+        Visit visit = Visit.builder().patient(testPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).status(VisitStatus.COMPLETED).build();
         visitRepository.save(visit);
         Page<nbu.cscb869.data.dto.PatientDiagnosisDTO> result = diagnosisService.getPatientsByDiagnosis(testDiagnosis.getId(), 0, 10);
         assertEquals(1, result.getTotalElements());
@@ -251,7 +271,7 @@ class DiagnosisServiceImplIntegrationTests {
     @Test
     @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
     void getMostFrequentDiagnoses_AsAdmin_ShouldReturnCorrectCount_HappyPath() {
-        Visit visit1 = Visit.builder().patient(testPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).build();
+        Visit visit1 = Visit.builder().patient(testPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).status(VisitStatus.COMPLETED).build();
         visitRepository.save(visit1);
 
         Patient anotherPatient = new Patient();
@@ -261,7 +281,7 @@ class DiagnosisServiceImplIntegrationTests {
         anotherPatient.setKeycloakId(TestDataUtils.generateKeycloakId());
         patientRepository.save(anotherPatient);
 
-        Visit visit2 = Visit.builder().patient(anotherPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).build();
+        Visit visit2 = Visit.builder().patient(anotherPatient).doctor(testDoctor).diagnosis(testDiagnosis).visitDate(LocalDate.now()).visitTime(LocalTime.now()).status(VisitStatus.COMPLETED).build();
         visitRepository.save(visit2);
 
         List<nbu.cscb869.data.dto.DiagnosisVisitCountDTO> result = diagnosisService.getMostFrequentDiagnoses();

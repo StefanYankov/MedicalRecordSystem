@@ -1,4 +1,6 @@
 spring:
+  main:
+    allow-bean-definition-overriding: true
   datasource:
     url: jdbc:tc:mysql:8.0:///test_db
     username: test
@@ -16,28 +18,46 @@ spring:
   mail:
     host: localhost
     port: 1025
+
+  # --- OAUTH2 CONFIGURATION FOR TESTS ---
+  # This section overrides the main configuration to prevent the test context
+  # from trying to connect to a live Keycloak instance for OIDC discovery.
+  # We are disabling it for both the client and the resource server by setting the issuer-uri to null.
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: # Set to null to disable OIDC discovery
+      resourceserver:
+        jwt:
+          issuer-uri: # Set to null to disable OIDC discovery
+
 testcontainers:
   mysql:
     database: test_db
     username: test
     password: test
+
 cloudinary:
   cloud-name: duntro9y8
   api-key: 258169897437321
   api-secret: sBXRhPipV3MS0xsQQMyLicXP4a4
+
 logging:
   level:
     org.springframework: DEBUG
     org.hibernate: DEBUG
     org.testcontainers: DEBUG
 
-# --- ADDED FOR INTEGRATION TESTS ---
+# The legacy keycloak block is no longer needed for this fix but is kept to avoid breaking other potential configurations.
 keycloak:
   auth-server-url: http://localhost:8080 # Dummy value
   realm: test-realm                     # Dummy value
   resource: test-client                 # Dummy value
   credentials:
     secret: test-secret                 # Dummy value
+
 app:
   mail:
     from: test@medical-system.com

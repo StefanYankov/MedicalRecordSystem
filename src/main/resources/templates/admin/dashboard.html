@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+<div th:fragment="content">
+    <h1 class="mb-4">Admin Dashboard</h1>
+
+    <!-- Summary Section -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Total Patients</h5>
+                    <p class="card-text display-4" th:text="${dashboard.totalPatients}">0</p>
+                    <a th:href="@{/admin/patients}" class="text-white">View Details &rarr;</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Total Doctors</h5>
+                    <p class="card-text display-4" th:text="${dashboard.totalDoctors}">0</p>
+                    <a th:href="@{/admin/doctors}" class="text-white">View Details &rarr;</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white" th:classappend="${dashboard.unapprovedDoctorsCount > 0 ? 'bg-warning' : 'bg-success'}">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Approvals</h5>
+                    <p class="card-text display-4" th:text="${dashboard.unapprovedDoctorsCount}">0</p>
+                    <a th:href="@{/admin/doctors/unapproved}" class="text-white">View Details &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Visits</h5>
+                    <p class="card-text h2" th:text="${dashboard.totalVisits}">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Diagnoses</h5>
+                    <p class="card-text h2" th:text="${dashboard.totalDiagnoses}">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sick Leaves</h5>
+                    <p class="card-text h2" th:text="${dashboard.totalSickLeaves}">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            Recent Visits
+        </div>
+        <div class="card-body">
+            <div th:if="${dashboard.recentVisits.isEmpty()}" class="alert alert-info">
+                No recent visits found.
+            </div>
+            <ul class="list-group list-group-flush" th:unless="${dashboard.recentVisits.isEmpty()}">
+                <li th:each="visit : ${dashboard.recentVisits}" class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Patient:</strong> <span th:text="${visit.patient.name}"></span> |
+                        <strong>Doctor:</strong> <span th:text="${visit.doctor.name}"></span>
+                    </div>
+                    <span class="badge bg-primary rounded-pill" th:text="${#temporals.format(visit.visitDate, 'dd-MMM-yyyy')}"></span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+</body>
+</html>

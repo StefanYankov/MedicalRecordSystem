@@ -104,11 +104,16 @@ public class SickLeaveServiceImpl implements SickLeaveService {
         validateIdNotNull(id, "delete");
         logger.debug("Deleting {} with ID: {}", ENTITY_NAME, id);
 
-        if (!sickLeaveRepository.existsById(id)) {
-            throw new EntityNotFoundException(ExceptionMessages.formatSickLeaveNotFoundById(id));
+        SickLeave sickLeave = sickLeaveRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSickLeaveNotFoundById(id)));
+
+        Visit visit = sickLeave.getVisit();
+        if (visit != null) {
+            visit.setSickLeave(null);
+            visitRepository.save(visit);
         }
 
-        sickLeaveRepository.deleteById(id);
+        sickLeaveRepository.delete(sickLeave);
         logger.info("Deleted {} with ID: {}", ENTITY_NAME, id);
     }
 
@@ -158,6 +163,13 @@ public class SickLeaveServiceImpl implements SickLeaveService {
         List<YearMonthSickLeaveCountDTO> result = sickLeaveRepository.findYearMonthWithMostSickLeaves();
         logger.info("Retrieved {} months with sick leave counts", result.size());
         return result;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long getTotalSickLeavesCount() {
+        logger.debug("Retrieving total count of sick leaves.");
+        return sickLeaveRepository.count();
     }
 
     private void validateDtoNotNull(Object dto, String operation) {

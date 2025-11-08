@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.*;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,10 @@ class VisitRepositoryIntegrationTests {
     @Autowired
     private SickLeaveRepository sickLeaveRepository;
 
+    private Doctor testDoctor;
+    private Patient testPatient;
+    private Diagnosis testDiagnosis;
+
     @BeforeEach
     void setUp() {
         sickLeaveRepository.deleteAll();
@@ -48,6 +53,13 @@ class VisitRepositoryIntegrationTests {
         patientRepository.deleteAll();
         doctorRepository.deleteAll();
         diagnosisRepository.deleteAll();
+
+        testDoctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Test");
+        testPatient = createPatient(TestDataUtils.generateValidEgn(), testDoctor, LocalDate.now());
+        testDiagnosis = createDiagnosis("Test Flu", "Test viral infection");
+        doctorRepository.save(testDoctor);
+        patientRepository.save(testPatient);
+        diagnosisRepository.save(testDiagnosis);
     }
 
     private Doctor createDoctor(String uniqueIdNumber, boolean isGeneralPractitioner, String name) {
@@ -55,6 +67,7 @@ class VisitRepositoryIntegrationTests {
                 .uniqueIdNumber(uniqueIdNumber)
                 .isGeneralPractitioner(isGeneralPractitioner)
                 .name(name)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
@@ -63,6 +76,7 @@ class VisitRepositoryIntegrationTests {
                 .egn(egn)
                 .generalPractitioner(generalPractitioner)
                 .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
@@ -73,13 +87,14 @@ class VisitRepositoryIntegrationTests {
                 .build();
     }
 
-    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, SickLeave sickLeave) {
+    private Visit createVisit(Patient patient, Doctor doctor, Diagnosis diagnosis, LocalDate visitDate, LocalTime visitTime, VisitStatus status, SickLeave sickLeave) {
         Visit visit = Visit.builder()
                 .patient(patient)
                 .doctor(doctor)
                 .diagnosis(diagnosis)
                 .visitDate(visitDate)
                 .visitTime(visitTime)
+                .status(status)
                 .build();
         if (sickLeave != null) {
             visit.setSickLeave(sickLeave);
@@ -105,13 +120,7 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void save_WithValidVisit_SavesSuccessfully_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         Visit saved = visitRepository.save(visit);
 
         Optional<Visit> found = visitRepository.findById(saved.getId());
@@ -119,17 +128,12 @@ class VisitRepositoryIntegrationTests {
         assertTrue(found.isPresent());
         assertEquals(LocalDate.now(), found.get().getVisitDate());
         assertEquals(LocalTime.of(10, 30), found.get().getVisitTime());
+        assertEquals(VisitStatus.COMPLETED, found.get().getStatus());
     }
 
     @Test
     void save_WithSickLeave_SavesSuccessfully_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Jane Smith");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         visit = visitRepository.save(visit);
         SickLeave sickLeave = createSickLeave(LocalDate.now(), 5, visit);
         sickLeave = sickLeaveRepository.save(sickLeave);
@@ -145,22 +149,14 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void save_WithTreatment_SavesSuccessfully_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         visit = visitRepository.save(visit);
         Treatment treatment = createTreatment("Antibiotic therapy", visit);
         treatment = treatmentRepository.save(treatment);
-        // Link bidirectional
         visit.setTreatment(treatment);
         treatment.setVisit(visit);
-        visitRepository.save(visit); // Persist link
+        visitRepository.save(visit);
 
-        // Reload to ensure relationship is loaded
         Optional<Visit> found = visitRepository.findById(visit.getId());
 
         assertTrue(found.isPresent());
@@ -170,19 +166,13 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByPatient_WithMultipleVisits_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
-        Page<Visit> result = visitRepository.findByPatient(patient, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatient(testPatient, PageRequest.of(0, 1));
 
         assertEquals(2, result.getTotalElements());
         assertEquals(1, result.getContent().size());
@@ -190,19 +180,13 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByDoctor_WithMultipleVisits_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Charlie Green");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
-        Page<Visit> result = visitRepository.findByDoctor(doctor, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDoctor(testDoctor, PageRequest.of(0, 1));
 
         assertEquals(2, result.getTotalElements());
         assertEquals(1, result.getContent().size());
@@ -210,15 +194,9 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByDateRange_WithMultipleVisits_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. David Black");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
@@ -230,19 +208,13 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByDoctorAndDateRange_WithMultipleVisits_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Eve White");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
-        Page<Visit> result = visitRepository.findByDoctorAndDateRange(doctor, LocalDate.now().minusDays(5), LocalDate.now(), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDoctorAndDateRange(testDoctor, LocalDate.now().minusDays(5), LocalDate.now(), PageRequest.of(0, 1));
 
         assertEquals(2, result.getTotalElements());
         assertEquals(1, result.getContent().size());
@@ -250,19 +222,13 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByDiagnosis_WithMultipleVisits_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Frank Gray");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
-        Page<Visit> result = visitRepository.findByDiagnosis(diagnosis, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByDiagnosis(testDiagnosis, PageRequest.of(0, 1));
 
         assertEquals(2, result.getTotalElements());
         assertEquals(1, result.getContent().size());
@@ -270,42 +236,30 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findMostFrequentDiagnoses_WithMultipleVisits_ReturnsList_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Grace Blue");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis1 = createDiagnosis("Flu", "Viral infection");
         Diagnosis diagnosis2 = createDiagnosis("Cold", "Common cold");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis1 = diagnosisRepository.save(diagnosis1);
-        diagnosis2 = diagnosisRepository.save(diagnosis2);
+        diagnosisRepository.save(diagnosis2);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis1, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis1, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null),
-                createVisit(patient, doctor, diagnosis2, LocalDate.now(), LocalTime.of(12, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, diagnosis2, LocalDate.now(), LocalTime.of(12, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
         List<DiagnosisVisitCountDTO> result = visitRepository.findMostFrequentDiagnoses();
 
         assertEquals(2, result.size());
-        assertEquals("Flu", result.getFirst().getDiagnosis().getName());
+        assertEquals("Test Flu", result.getFirst().getDiagnosis().getName());
         assertEquals(2L, result.getFirst().getVisitCount());
     }
 
     @Test
     void countVisitsByDoctor_WithMultipleVisits_ReturnsList_HappyPath() {
-        Doctor doctor1 = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Henry Red");
-        Doctor doctor2 = createDoctor(TestDataUtils.generateUniqueIdNumber(), false, "Dr. Ivy Purple");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor1, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Bronchitis", "Bronchial inflammation");
-        doctor1 = doctorRepository.save(doctor1);
-        doctor2 = doctorRepository.save(doctor2);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
+        Doctor doctor2 = createDoctor(TestDataUtils.generateUniqueIdNumber(), false, "Dr. Specialist");
+        doctorRepository.save(doctor2);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor1, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor1, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null),
-                createVisit(patient, doctor2, diagnosis, LocalDate.now(), LocalTime.of(12, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, doctor2, testDiagnosis, LocalDate.now(), LocalTime.of(12, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
@@ -317,51 +271,31 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByPatientOrDoctorFilter_WithEgn_ReturnsPaged_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. John Doe");
-        String egn = TestDataUtils.generateValidEgn(); // e.g., "2445112130"
-        Patient patient = createPatient(egn, doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         visitRepository.save(visit);
 
-        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(egn.substring(0, 4), PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(testPatient.getEgn().substring(0, 4), PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements(), "Should find one visit for the EGN prefix");
     }
 
     @Test
     void findByPatientOrDoctorFilter_WithDoctorUniqueId_ReturnsPaged_HappyPath() {
-        String uniqueId = TestDataUtils.generateUniqueIdNumber();
-        Doctor doctor = createDoctor(uniqueId, true, "Dr. Jane Smith");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         visitRepository.save(visit);
 
-        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(uniqueId, PageRequest.of(0, 1));
+        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(testDoctor.getUniqueIdNumber(), PageRequest.of(0, 1));
 
         assertEquals(1, result.getTotalElements());
-        assertEquals(uniqueId, result.getContent().getFirst().getDoctor().getUniqueIdNumber());
+        assertEquals(testDoctor.getUniqueIdNumber(), result.getContent().getFirst().getDoctor().getUniqueIdNumber());
     }
 
     @Test
     void findByDoctorAndDateTime_WithValidParams_ReturnsVisit_HappyPath() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Alice Brown");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
         visitRepository.save(visit);
 
-        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(doctor, LocalDate.now(), LocalTime.of(10, 30));
+        Optional<Visit> result = visitRepository.findByDoctorAndDateTime(testDoctor, LocalDate.now(), LocalTime.of(10, 30));
 
         assertTrue(result.isPresent());
         assertEquals(LocalDate.now(), result.get().getVisitDate());
@@ -369,103 +303,39 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void save_WithNullVisitDate_ThrowsException_ErrorCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Bob White");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, null, LocalTime.of(10, 30), null);
-
-        assertThrows(ConstraintViolationException.class, () -> {
-            visitRepository.save(visit);
-        });
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, null, LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
+        assertThrows(ConstraintViolationException.class, () -> visitRepository.save(visit));
     }
 
     @Test
     void save_WithNullVisitTime_ThrowsException_ErrorCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Charlie Green");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), null, null);
-
-        assertThrows(ConstraintViolationException.class, () -> {
-            visitRepository.save(visit);
-        });
-    }
-
-    @Test
-    void save_WithNullSickLeaveIssued_ThrowsException_ErrorCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. David Black");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
-
-        assertDoesNotThrow(() -> {
-            visitRepository.save(visit); // No exception expected since sickLeave is optional
-        });
-        assertFalse(visitRepository.findById(visit.getId()).get().isSickLeaveIssued());
+        Visit visit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), null, VisitStatus.COMPLETED, null);
+        assertThrows(ConstraintViolationException.class, () -> visitRepository.save(visit));
     }
 
     @Test
     void save_WithNullPatient_ThrowsException_ErrorCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Eve White");
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(null, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null);
-
-        assertThrows(ConstraintViolationException.class, () -> {
-            visitRepository.save(visit);
-        });
+        Visit visit = createVisit(null, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
+        assertThrows(ConstraintViolationException.class, () -> visitRepository.save(visit));
     }
 
     @Test
     void save_WithNullDoctor_ThrowsException_ErrorCase() {
-        // Create dummy doctor for patient, but null for visit
-        Doctor dummyDoctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dummy Doctor");
-        dummyDoctor = doctorRepository.save(dummyDoctor); // Persist for patient
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), dummyDoctor, LocalDate.now());
-        patient = patientRepository.save(patient); // Now patient saves without rollback
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        diagnosis = diagnosisRepository.save(diagnosis);
-        Visit visit = createVisit(patient, null, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null); // Null doctor
-
-        assertThrows(ConstraintViolationException.class, () -> {
-            visitRepository.save(visit); // Fails due to null doctor in Visit
-        });
+        Visit visit = createVisit(testPatient, null, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
+        assertThrows(ConstraintViolationException.class, () -> visitRepository.save(visit));
     }
 
     @Test
-    void save_WithNullDiagnosis_ThrowsException_ErrorCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Grace Blue");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        Visit visit = createVisit(patient, doctor, null, LocalDate.now(), LocalTime.of(10, 30), null);
-
-        assertThrows(ConstraintViolationException.class, () -> {
-            visitRepository.save(visit);
-        });
+    void save_WithNullDiagnosis_IsAllowed_HappyPath() {
+        Visit visit = createVisit(testPatient, testDoctor, null, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null);
+        assertDoesNotThrow(() -> visitRepository.save(visit));
     }
 
     @Test
     void findByDateRange_WithOverlappingRange_ReturnsCorrectCount_EdgeCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Henry Red");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Cold", "Common cold");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = List.of(
-                createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30), null),
-                createVisit(patient, doctor, diagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), null)
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30), VisitStatus.COMPLETED, null),
+                createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().minusDays(1), LocalTime.of(11, 0), VisitStatus.COMPLETED, null)
         );
         visitRepository.saveAll(visits);
 
@@ -477,21 +347,34 @@ class VisitRepositoryIntegrationTests {
 
     @Test
     void findByPatientOrDoctorFilter_WithLargeDataset_ReturnsPaged_EdgeCase() {
-        Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. Ivy Purple");
-        Patient patient = createPatient(TestDataUtils.generateValidEgn(), doctor, LocalDate.now());
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        doctor = doctorRepository.save(doctor);
-        patient = patientRepository.save(patient);
-        diagnosis = diagnosisRepository.save(diagnosis);
         List<Visit> visits = new java.util.ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            visits.add(createVisit(patient, doctor, diagnosis, LocalDate.now(), LocalTime.of(10, 30).plusMinutes(i), null));
+            visits.add(createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now(), LocalTime.of(10, 30).plusMinutes(i), VisitStatus.COMPLETED, null));
         }
         visitRepository.saveAll(visits);
 
-        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(patient.getEgn().substring(0, 4), PageRequest.of(0, 5));
+        Page<Visit> result = visitRepository.findByPatientOrDoctorFilter(testPatient.getEgn().substring(0, 4), PageRequest.of(0, 5));
 
         assertEquals(10, result.getTotalElements());
         assertEquals(5, result.getContent().size());
+    }
+
+    @Test
+    void findByDoctorAndStatusAndVisitDateBetween_ShouldReturnCorrectVisits_HappyPath() {
+        // Arrange
+        Visit scheduledVisit = createVisit(testPatient, testDoctor, null, LocalDate.now().plusDays(1), LocalTime.NOON, VisitStatus.SCHEDULED, null);
+        Visit completedVisit = createVisit(testPatient, testDoctor, testDiagnosis, LocalDate.now().plusDays(2), LocalTime.NOON, VisitStatus.COMPLETED, null);
+        visitRepository.saveAll(List.of(scheduledVisit, completedVisit));
+
+        LocalDate startDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now().plusDays(3);
+
+        // Act
+        Page<Visit> result = visitRepository.findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(
+                testDoctor, VisitStatus.SCHEDULED, startDate, endDate, PageRequest.of(0, 10));
+
+        // Assert
+        assertEquals(1, result.getTotalElements());
+        assertEquals(VisitStatus.SCHEDULED, result.getContent().get(0).getStatus());
     }
 }

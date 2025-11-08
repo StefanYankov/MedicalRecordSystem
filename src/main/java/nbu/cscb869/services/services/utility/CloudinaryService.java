@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service for handling image uploads and deletions using Cloudinary.
@@ -31,12 +32,12 @@ public class CloudinaryService {
     /**
      * Asynchronously uploads an image to Cloudinary and returns the secure URL.
      * @param file the image file to upload
-     * @return the secure URL of the uploaded image
+     * @return a CompletableFuture containing the secure URL of the uploaded image
      * @throws ImageProcessingException if the file is null, empty, exceeds 10MB, or is not an image type
      */
     @Async
     @Retryable(value = IOException.class, maxAttempts = 3, backoff = @org.springframework.retry.annotation.Backoff(delay = 1000))
-    public String uploadImage(MultipartFile file) {
+    public CompletableFuture<String> uploadImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ImageProcessingException(ErrorMessages.IMAGE_FILE_NULL_OR_EMPTY);
         }
@@ -54,7 +55,7 @@ public class CloudinaryService {
             ));
             String secureUrl = (String) uploadResult.get("secure_url");
             log.info("Image uploaded successfully: {}", secureUrl);
-            return secureUrl;
+            return CompletableFuture.completedFuture(secureUrl);
         } catch (IOException e) {
             log.error("Failed to upload image: {}", e.getMessage(), e);
             throw new ImageProcessingException(ErrorMessages.IMAGE_UPLOAD_FAILED, e.getMessage());

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Medical Record System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <div class="jumbotron">
+        <h1 class="display-4">Welcome to the Medical Record System</h1>
+        <p class="lead">This is the central hub for managing patient and doctor records.</p>
+        <hr class="my-4">
+        <p>Please use the navigation to access the required sections.</p>
+        
+        <!-- Example of role-based navigation -->
+        <div sec:authorize="hasRole('ADMIN')">
+            <a class="btn btn-primary btn-lg" th:href="@{/admin}" role="button">Go to Admin Dashboard</a>
+        </div>
+        <div sec:authorize="hasRole('PATIENT')">
+            <a class="btn btn-primary btn-lg" th:href="@{/profile}" role="button">View My Profile</a>
+        </div>
+        <div sec:authorize="hasRole('DOCTOR')">
+            <a class="btn btn-primary btn-lg" th:href="@{/schedule}" role="button">View My Schedule</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

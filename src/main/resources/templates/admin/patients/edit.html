@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Edit Patient</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Edit Patient</h1>
+        <hr/>
+        <div class="row">
+            <div class="col-md-8">
+                <form th:action="@{/admin/patients/edit/{id}(id=${patient.id})}" th:object="${patient}" method="post">
+                    <div th:replace="~{admin/patients/form :: form-fields}"></div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a th:href="@{/admin/patients}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Administrative Actions</div>
+                    <div class="card-body">
+                        <p><strong>Last Insurance Payment:</strong> <span th:text="${patient.lastInsurancePaymentDate} ? ${#temporals.format(patient.lastInsurancePaymentDate, 'dd-MMM-yyyy')} : 'N/A'"></span></p>
+                        <form th:action="@{/admin/patients/{id}/update-insurance(id=${patient.id})}" method="post" class="mb-3">
+                            <button type="submit" class="btn btn-info btn-block">Mark Insurance as Paid (Today)</button>
+                        </form>
+                        <hr>
+                        <form th:action="@{/admin/patients/{id}/update-insurance-manual(id=${patient.id})}" method="post">
+                            <div class="form-group">
+                                <label for="manualInsuranceDate">Set Specific Payment Date:</label>
+                                <input type="date" id="manualInsuranceDate" name="manualInsuranceDate" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-block">Set Manual Date</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

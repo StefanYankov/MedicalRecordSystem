@@ -1,6 +1,7 @@
 package nbu.cscb869.services.services.integrationtests;
 
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.*;
 import nbu.cscb869.data.utils.TestDataUtils;
 import nbu.cscb869.security.WithMockKeycloakUser;
@@ -13,15 +14,19 @@ import nbu.cscb869.services.services.contracts.TreatmentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,8 +43,23 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Import(TreatmentServiceImplIntegrationTests.AsyncTestConfig.class)
+@Import({TreatmentServiceImplIntegrationTests.AsyncTestConfig.class, TreatmentServiceImplIntegrationTests.TestConfig.class})
 class TreatmentServiceImplIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
 
     @TestConfiguration
     static class AsyncTestConfig {
@@ -106,6 +126,7 @@ class TreatmentServiceImplIntegrationTests {
         testVisit.setDiagnosis(diagnosis);
         testVisit.setVisitDate(LocalDate.now());
         testVisit.setVisitTime(LocalTime.now());
+        testVisit.setStatus(VisitStatus.COMPLETED);
         visitRepository.save(testVisit);
     }
 

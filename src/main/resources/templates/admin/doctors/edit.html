@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/admin_layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Edit Doctor</title>
+</head>
+<body>
+<div id="content">
+    <div class="container-fluid">
+        <h1 class="mt-4">Edit Doctor</h1>
+        <hr/>
+        <div class="row">
+            <div class="col-md-8">
+                <form th:action="@{/admin/doctors/edit/{id}(id=${doctor.id})}" th:object="${doctor}" method="post" enctype="multipart/form-data">
+                    <div th:replace="~{admin/doctors/form :: form-fields}"></div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a th:href="@{/admin/doctors}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Current Image</div>
+                    <div class="card-body text-center">
+                        <img th:if="${doctor.imageUrl != null}" th:src="${doctor.imageUrl}" alt="Current Profile Image" class="img-fluid img-thumbnail mb-3">
+                        <p th:if="${doctor.imageUrl == null}">No image uploaded.</p>
+                        <form th:if="${doctor.imageUrl != null}" th:action="@{/admin/doctors/{id}/delete-image(id=${doctor.id})}" method="post">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this image?')">Delete Image</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

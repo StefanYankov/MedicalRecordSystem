@@ -7,7 +7,6 @@ import nbu.cscb869.services.data.dtos.SpecialtyCreateDTO;
 import nbu.cscb869.services.data.dtos.SpecialtyUpdateDTO;
 import nbu.cscb869.services.data.dtos.SpecialtyViewDTO;
 import org.springframework.data.domain.Page;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -24,7 +23,6 @@ public interface SpecialtyService {
      * @return A view DTO of the newly created specialty.
      * @throws InvalidDTOException if the DTO is null or the specialty name already exists.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     SpecialtyViewDTO create(SpecialtyCreateDTO dto);
 
     /**
@@ -35,7 +33,6 @@ public interface SpecialtyService {
      * @throws InvalidDTOException if the DTO or its ID is null, or if the name is taken by another specialty.
      * @throws EntityNotFoundException if no specialty with the given ID is found.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     SpecialtyViewDTO update(SpecialtyUpdateDTO dto);
 
     /**
@@ -45,7 +42,6 @@ public interface SpecialtyService {
      * @throws EntityNotFoundException if no specialty with the given ID is found.
      * @throws EntityInUseException if the specialty is still assigned to one or more doctors.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     void delete(Long id);
 
     /**
@@ -55,7 +51,6 @@ public interface SpecialtyService {
      * @return A view DTO of the specialty.
      * @throws EntityNotFoundException if no specialty with the given ID is found.
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     SpecialtyViewDTO getById(Long id);
 
     /**
@@ -67,6 +62,5 @@ public interface SpecialtyService {
      * @param ascending Whether to sort in ascending order.
      * @return A CompletableFuture containing a page of specialty view DTOs.
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'PATIENT')")
     CompletableFuture<Page<SpecialtyViewDTO>> getAll(int page, int size, String orderBy, boolean ascending);
 }
