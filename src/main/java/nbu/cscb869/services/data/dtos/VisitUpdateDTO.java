@@ -40,7 +40,6 @@ public class VisitUpdateDTO {
 
     private VisitStatus status;
 
-    // FIX: Use UpdateDTOs to handle existing child entities
     private SickLeaveUpdateDTO sickLeave;
     private TreatmentUpdateDTO treatment;
 }

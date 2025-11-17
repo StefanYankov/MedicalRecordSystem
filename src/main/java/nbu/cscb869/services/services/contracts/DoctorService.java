@@ -8,11 +8,7 @@ import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.services.data.dtos.DoctorCreateDTO;
-import nbu.cscb869.services.data.dtos.DoctorUpdateDTO;
-import nbu.cscb869.services.data.dtos.DoctorViewDTO;
-import nbu.cscb869.services.data.dtos.PatientViewDTO;
-import nbu.cscb869.services.data.dtos.VisitViewDTO;
+import nbu.cscb869.services.data.dtos.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
@@ -209,4 +205,11 @@ public interface DoctorService {
      * @throws InvalidDoctorException if the doctor is already approved.
      */
     void approveDoctor(Long doctorId);
+
+    /**
+     * Retrieves a report of patient counts for each General Practitioner.
+     * This method returns a serialization-safe DTO.
+     * @return a list of {@link DoctorPatientCountReportDTO}.
+     */
+    List<DoctorPatientCountReportDTO> getPatientCountReport();
 }

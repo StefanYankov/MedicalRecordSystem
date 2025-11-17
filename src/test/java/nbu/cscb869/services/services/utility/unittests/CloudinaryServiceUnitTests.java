@@ -129,7 +129,7 @@ class CloudinaryServiceUnitTests {
 
     @Test
     void GetPublicIdFromUrl_ValidUrl_ReturnsPublicId_HappyPath() {
-        String url = "https://res.cloudinary.com/test/image.jpg";
+        String url = "http://res.cloudinary.com/duntro9y8/image/upload/v1699628746/medical_record/doctors/image.jpg";
         String expectedPublicId = "medical_record/doctors/image";
 
         String result = cloudinaryService.getPublicIdFromUrl(url);

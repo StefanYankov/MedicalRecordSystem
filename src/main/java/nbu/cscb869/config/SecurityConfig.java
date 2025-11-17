@@ -67,7 +67,13 @@ public class SecurityConfig {
         http
                 .addFilterAfter(new ProfileCompletionFilter(patientService, doctorService, roleHierarchy), BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/", "/welcome", "/logout-success", "/doctors", "/doctors/search", "/css/**", "/js/**", "/images/**", "/webjars/**", "/error").permitAll()
+                        .requestMatchers(
+                                "/", "/welcome", "/logout-success",
+                                "/doctors", "/doctors/search",
+                                "/css/**", "/js/**", "/images/**", "/webjars/**",
+                                "/error", "/favicon.ico", "/.well-known/**",
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
+                        ).permitAll()
                         .requestMatchers("/profile/complete", "/doctor/profile/complete").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -106,12 +112,9 @@ public class SecurityConfig {
                 }
             });
 
-            // Add original authorities to preserve OIDC user type and other scopes
             mappedAuthorities.addAll(authorities);
-
             logger.info("Authorities after initial extraction: {}", mappedAuthorities);
 
-            // Now, apply the hierarchy logic to determine the primary role
             Set<String> roles = mappedAuthorities.stream()
                     .map(GrantedAuthority::getAuthority)
                     .collect(Collectors.toSet());

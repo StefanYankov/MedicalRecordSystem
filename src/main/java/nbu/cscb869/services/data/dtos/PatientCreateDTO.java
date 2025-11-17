@@ -12,8 +12,6 @@ import java.time.LocalDate;
 
 @Data
 public class PatientCreateDTO {
-    // This field is for admin use, to link a patient to a keycloak user.
-    // For patient self-registration, this will be ignored as the ID is taken from the security context.
     private String keycloakId;
 
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)

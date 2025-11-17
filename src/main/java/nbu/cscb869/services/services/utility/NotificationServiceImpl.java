@@ -27,7 +27,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     /** {@inheritDoc} */
     @Override
-    @Async // Make this method asynchronous
+    @Async
     public void sendVisitConfirmation(VisitViewDTO visitViewDTO, String patientEmail) {
         try {
             if (patientEmail != null && !patientEmail.isBlank()) {

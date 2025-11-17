@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/doctor-layout :: layout(~{::title}, ~{::#content})}">
+<head>
+    <title>Edit Profile</title>
+</head>
+<body>
+<div id="content">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>Edit Your Profile</h2>
+        </div>
+        <hr/>
+
+        <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <form id="editProfileForm" th:action="@{/doctor/profile/edit}" th:object="${doctorUpdate}" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="name" th:field="*{name}" required readonly>
+                            <div class="input-group-append">
+                                <a th:href="${@environment.getProperty('spring.security.oauth2.client.provider.keycloak.issuer-uri') + '/account'}"
+                                   class="btn btn-outline-secondary" target="_blank">Update Personal Details</a>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Your name is managed by the central authentication system.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="uniqueIdNumber">Unique ID Number</label>
+                        <input type="text" class="form-control" id="uniqueIdNumber" th:field="*{uniqueIdNumber}" required readonly>
+                        <small class="form-text text-muted">Your Unique ID Number cannot be changed.</small>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="isGeneralPractitioner" th:field="*{isGeneralPractitioner}">
+                        <label class="form-check-label" for="isGeneralPractitioner">Are you a General Practitioner?</label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Specialties</label>
+                        <div class="row">
+                            <div class="col-5">
+                                <label for="availableSpecialties">Available</label>
+                                <select id="availableSpecialties" multiple class="form-control" style="height: 200px;">
+                                    <option th:each="spec : ${availableSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-2 d-flex flex-column justify-content-center align-items-center">
+                                <button type="button" id="addSpecialty" class="btn btn-secondary mb-2">&gt;</button>
+                                <button type="button" id="removeSpecialty" class="btn btn-secondary">&lt;</button>
+                            </div>
+                            <div class="col-5">
+                                <label for="specialties">Assigned</label>
+                                <select id="specialties" th:field="*{specialties}" multiple class="form-control" style="height: 200px;">
+                                    <option th:each="spec : ${assignedSpecialties}" th:value="${spec.name}" th:text="${spec.name}"></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a th:href="@{/doctor/dashboard}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Profile Image</div>
+                    <div class="card-body text-center">
+                        <img th:if="${doctorView.imageUrl != null}" th:src="${doctorView.imageUrl}" alt="Current Profile Image" class="img-fluid img-thumbnail mb-3">
+                        <p th:if="${doctorView.imageUrl == null}">No image uploaded.</p>
+                        <form th:if="${doctorView.imageUrl != null}" th:action="@{/doctor/profile/delete-image}" method="post" class="mb-3">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete your profile image?')">Delete Image</button>
+                        </form>
+                        <hr>
+                        <label for="imageFile">Upload New Image</label>
+                        <input type="file" class="form-control-file" id="imageFile" name="imageFile">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('addSpecialty').addEventListener('click', function() {
+            moveOptions('availableSpecialties', 'specialties');
+        });
+
+        document.getElementById('removeSpecialty').addEventListener('click', function() {
+            moveOptions('specialties', 'availableSpecialties');
+        });
+
+        function moveOptions(sourceId, destId) {
+            const source = document.getElementById(sourceId);
+            const dest = document.getElementById(destId);
+            Array.from(source.selectedOptions).forEach(option => {
+                dest.appendChild(option);
+            });
+        }
+
+        // Before submitting the form, select all options in the 'assigned' box
+        document.getElementById('editProfileForm').addEventListener('submit', function() {
+            const assigned = document.getElementById('specialties');
+            Array.from(assigned.options).forEach(option => {
+                option.selected = true;
+            });
+        });
+    </script>
+</div>
+</body>
+</html>

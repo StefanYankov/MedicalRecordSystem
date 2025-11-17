@@ -4,15 +4,25 @@ import nbu.cscb869.data.dto.DoctorPatientCountDTO;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.*;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +37,26 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Import(DoctorRepositoryIntegrationTests.TestConfig.class)
 class DoctorRepositoryIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @Autowired
     private DoctorRepository doctorRepository;
@@ -85,6 +114,7 @@ class DoctorRepositoryIntegrationTests {
                 .diagnosis(diagnosis)
                 .visitDate(visitDate)
                 .visitTime(visitTime)
+                .status(VisitStatus.COMPLETED) // FIX: Add default status
                 .build();
         if (sickLeave != null) {
             visit.setSickLeave(sickLeave);
@@ -379,4 +409,32 @@ class DoctorRepositoryIntegrationTests {
         assertEquals(5, result.getContent().size());
     }
 
+    @Test
+    void findByKeycloakIdWithSpecialties_WhenDoctorExists_ShouldReturnDoctorWithSpecialtiesEagerly() {
+        // ARRANGE
+        Specialty specialty1 = new Specialty();
+        specialty1.setName("Cardiology");
+        specialtyRepository.save(specialty1);
+
+        Specialty specialty2 = new Specialty();
+        specialty2.setName("Neurology");
+        specialtyRepository.save(specialty2);
+
+        String keycloakId = "test-keycloak-id";
+        Doctor doctor = new Doctor();
+        doctor.setKeycloakId(keycloakId);
+        doctor.setName("Dr. Eager");
+        doctor.setUniqueIdNumber(TestDataUtils.generateUniqueIdNumber());
+        doctor.setSpecialties(Set.of(specialty1, specialty2));
+        doctorRepository.saveAndFlush(doctor);
+
+        // ACT
+        Optional<Doctor> result = doctorRepository.findByKeycloakId(keycloakId);
+
+        // ASSERT
+        assertTrue(result.isPresent());
+        assertEquals(keycloakId, result.get().getKeycloakId());
+        assertEquals(2, result.get().getSpecialties().size());
+        assertTrue(result.get().getSpecialties().stream().anyMatch(s -> s.getName().equals("Cardiology")));
+    }
 }

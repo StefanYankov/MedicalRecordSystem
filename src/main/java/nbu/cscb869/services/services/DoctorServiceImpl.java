@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -79,7 +80,6 @@ public class DoctorServiceImpl implements DoctorService {
     /** {@inheritDoc} */
     @Override
     @Transactional
-    @Deprecated
     public DoctorViewDTO create(DoctorCreateDTO dto, MultipartFile image) {
         validateDtoNotNull(dto, "create");
         logger.debug("Creating {} with unique ID: {}", ENTITY_NAME, dto.getUniqueIdNumber());
@@ -102,7 +102,6 @@ public class DoctorServiceImpl implements DoctorService {
     /** {@inheritDoc} */
     @Override
     @Transactional
-    @Deprecated
     public DoctorViewDTO update(DoctorUpdateDTO dto, MultipartFile image) {
         if (dto == null) {
             logger.error("Cannot update {}: DTO is null", ENTITY_NAME);
@@ -122,20 +121,7 @@ public class DoctorServiceImpl implements DoctorService {
             doctor.setImageUrl(null);
         }
 
-        if (dto.getUniqueIdNumber() != null && !doctor.getUniqueIdNumber().equals(dto.getUniqueIdNumber())) {
-             if(doctorRepository.findByUniqueIdNumber(dto.getUniqueIdNumber()).isPresent()) {
-                throw new InvalidDoctorException(ExceptionMessages.formatDoctorUniqueIdExists(dto.getUniqueIdNumber()));
-             }
-             doctor.setUniqueIdNumber(dto.getUniqueIdNumber());
-        }
-
-        // Update only provided fields
-        if (dto.getName() != null) doctor.setName(dto.getName());
-        if (dto.getSpecialties() != null) {
-            doctor.getSpecialties().clear();
-            setSpecialtiesByNames(dto.getSpecialties(), doctor);
-        }
-        // The isApproved flag CANNOT be changed through this method.
+        modelMapper.map(dto, doctor);
 
         handleImageUpload(doctor, image, doctor.getUniqueIdNumber());
 
@@ -265,19 +251,15 @@ public class DoctorServiceImpl implements DoctorService {
     /** {@inheritDoc} */
     @Override
     public List<DoctorPatientCountDTO> getPatientCountByGeneralPractitioner() {
-        logger.debug("Retrieving patient count by General Practitioner");
-        List<DoctorPatientCountDTO> result = doctorRepository.findPatientCountByGeneralPractitioner();
-        logger.info("Retrieved {} General Practitioners with patient counts", result.size());
-        return result;
+        logger.debug("Retrieving patient count by General Practitioner for internal use.");
+        return doctorRepository.findPatientCountByGeneralPractitioner();
     }
 
     /** {@inheritDoc} */
     @Override
     public List<DoctorVisitCountDTO> getVisitCount() {
         logger.debug("Retrieving visit count by Doctor");
-        List<DoctorVisitCountDTO> result = doctorRepository.findVisitCountByDoctor();
-        logger.info("Retrieved {} Doctors with visit counts", result.size());
-        return result;
+        return doctorRepository.findVisitCountByDoctor();
     }
 
     @Override
@@ -369,6 +351,19 @@ public class DoctorServiceImpl implements DoctorService {
         logger.info("Successfully approved doctor with ID: {}.", doctorId);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public List<DoctorPatientCountReportDTO> getPatientCountReport() {
+        logger.debug("Retrieving patient count report for API.");
+        List<DoctorPatientCountDTO> resultsFromRepo = doctorRepository.findPatientCountByGeneralPractitioner();
+        return resultsFromRepo.stream()
+                .map(result -> {
+                    DoctorViewDTO doctorViewDTO = modelMapper.map(result.getDoctor(), DoctorViewDTO.class);
+                    return new DoctorPatientCountReportDTO(doctorViewDTO, result.getPatientCount());
+                })
+                .collect(Collectors.toList());
+    }
+
     private void validateDtoNotNull(Object dto, String operation) {
         if (dto == null) {
             logger.error("Cannot {} {}: DTO is null", operation, ENTITY_NAME);
@@ -412,14 +407,16 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     private void setSpecialtiesByNames(Set<String> specialtyNames, Doctor doctor) {
-        if (specialtyNames != null && !specialtyNames.isEmpty()) {
+        if (specialtyNames == null || specialtyNames.isEmpty()) {
+            if (doctor.getSpecialties() != null) {
+                doctor.getSpecialties().clear();
+            }
+        } else {
             Set<Specialty> specialties = specialtyNames.stream()
                     .map(name -> specialtyRepository.findByName(name)
                             .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatSpecialtyNotFoundByName(name))))
                     .collect(Collectors.toSet());
-            doctor.setSpecialties(specialties);
-        } else {
-            doctor.setSpecialties(Set.of());
+            doctor.setSpecialties(new HashSet<>(specialties));
         }
     }
 

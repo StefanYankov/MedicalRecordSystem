@@ -29,7 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @Service
 public class VisitServiceImpl implements VisitService {
@@ -74,10 +74,11 @@ public class VisitServiceImpl implements VisitService {
         return modelMapper.map(savedVisit, VisitViewDTO.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     @Transactional
     public VisitViewDTO scheduleNewVisitByPatient(VisitCreateDTO dto) {
-        logger.debug("Attempting to schedule a new {} for patient ID {} by a patient.", ENTITY_NAME, dto.getPatientId());
+        logger.warn("Insecure method scheduleNewVisitByPatient called. Consider using scheduleNewVisitForUser.");
         validateDtoNotNull(dto);
         Patient patient = findPatientById(dto.getPatientId());
         Doctor doctor = findDoctorById(dto.getDoctorId());
@@ -90,6 +91,28 @@ public class VisitServiceImpl implements VisitService {
 
         Visit savedVisit = visitRepository.save(visit);
         logger.info("Patient successfully scheduled {} with ID: {}", ENTITY_NAME, savedVisit.getId());
+        return modelMapper.map(savedVisit, VisitViewDTO.class);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public VisitViewDTO scheduleNewVisitForUser(String userKeycloakId, PatientVisitScheduleDTO dto) {
+        logger.debug("Attempting to schedule a new {} for user with Keycloak ID: {}", ENTITY_NAME, userKeycloakId);
+        validateDtoNotNull(dto);
+
+        Patient patient = patientRepository.findByKeycloakId(userKeycloakId)
+                .orElseThrow(() -> new EntityNotFoundException("Patient profile not found for current user."));
+        Doctor doctor = findDoctorById(dto.getDoctorId());
+
+        validateBusinessRules(patient, doctor, dto.getVisitDate(), dto.getVisitTime(), null);
+
+        Visit visit = new Visit();
+        mapVisitData(visit, dto.getVisitDate(), dto.getVisitTime(), patient, doctor, null);
+        visit.setStatus(VisitStatus.SCHEDULED);
+
+        Visit savedVisit = visitRepository.save(visit);
+        logger.info("User {} successfully scheduled {} with ID: {}", userKeycloakId, ENTITY_NAME, savedVisit.getId());
         return modelMapper.map(savedVisit, VisitViewDTO.class);
     }
 
@@ -123,20 +146,21 @@ public class VisitServiceImpl implements VisitService {
 
         Visit visit = findVisitById(visitId);
 
-        if (visit.getStatus() != VisitStatus.SCHEDULED) {
-            logger.error("Attempted to document a visit that was not in SCHEDULED state. Visit ID: {}, Status: {}", visitId, visit.getStatus());
-            throw new InvalidInputException(ExceptionMessages.VISIT_NOT_SCHEDULED);
-        }
-
         if (dto.getDiagnosisId() != null) {
             Diagnosis diagnosis = findDiagnosisById(dto.getDiagnosisId());
             visit.setDiagnosis(diagnosis);
-            logger.debug("Set diagnosis ID {} for visit ID {}", dto.getDiagnosisId(), visitId);
         }
 
         visit.setNotes(dto.getNotes());
+        if (dto.getStatus() != null) {
+            try {
+                visit.setStatus(VisitStatus.valueOf(dto.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new InvalidInputException("Invalid visit status provided: " + dto.getStatus());
+            }
+        }
+
         mapChildrenToVisit(visit, dto.getSickLeave(), dto.getTreatment());
-        visit.setStatus(VisitStatus.COMPLETED);
 
         Visit savedVisit = visitRepository.save(visit);
         logger.info("Successfully added documentation to {} with ID: {}", ENTITY_NAME, savedVisit.getId());
@@ -176,24 +200,15 @@ public class VisitServiceImpl implements VisitService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public VisitViewDTO getById(Long id) {
         validateIdNotNull(id);
-        logger.debug("Attempting to retrieve {} with ID: {}", ENTITY_NAME, id);
-        Visit visit = findVisitById(id);
+        logger.debug("Attempting to retrieve Visit with its children for ID: {}", id);
+        Visit visit = visitRepository.findByIdWithChildren(id)
+                .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatVisitNotFoundById(id)));
         authorizePatientAccess(visit.getPatient().getKeycloakId());
-        logger.info("Successfully retrieved {} with ID: {}", ENTITY_NAME, id);
-
-        VisitViewDTO visitViewDTO = modelMapper.map(visit, VisitViewDTO.class);
-
-        if (visit.getSickLeave() != null) {
-            visitViewDTO.setSickLeave(modelMapper.map(visit.getSickLeave(), SickLeaveViewDTO.class));
-        }
-
-        if (visit.getTreatment() != null) {
-            visitViewDTO.setTreatment(modelMapper.map(visit.getTreatment(), TreatmentViewDTO.class));
-        }
-
-        return visitViewDTO;
+        logger.info("Successfully retrieved Visit with ID: {}", id);
+        return modelMapper.map(visit, VisitViewDTO.class);
     }
 
     @Override
@@ -276,9 +291,15 @@ public class VisitServiceImpl implements VisitService {
     }
 
     @Override
-    public List<DoctorVisitCountDTO> getVisitCountByDoctor() {
+    public List<DoctorVisitCountReportDTO> getVisitCountByDoctor() {
         logger.debug("Retrieving visit count per doctor.");
-        return visitRepository.countVisitsByDoctor();
+        List<DoctorVisitCountDTO> resultsFromRepo = visitRepository.countVisitsByDoctor();
+        return resultsFromRepo.stream()
+                .map(result -> {
+                    DoctorViewDTO doctorViewDTO = modelMapper.map(result.getDoctor(), DoctorViewDTO.class);
+                    return new DoctorVisitCountReportDTO(doctorViewDTO, result.getVisitCount());
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -347,31 +368,41 @@ public class VisitServiceImpl implements VisitService {
     }
 
     private void mapChildrenToVisit(Visit visit, SickLeaveUpdateDTO sickLeaveDto, TreatmentUpdateDTO treatmentDto) {
-        visit.setTreatment(null);
-        if (treatmentDto != null) {
-            Treatment treatment = new Treatment();
+        // Handle Treatment
+        if (treatmentDto != null && treatmentDto.getDescription() != null && !treatmentDto.getDescription().isBlank()) {
+            Treatment treatment = visit.getTreatment();
+            if (treatment == null) {
+                treatment = new Treatment();
+                treatment.setVisit(visit);
+                visit.setTreatment(treatment);
+            }
             treatment.setDescription(treatmentDto.getDescription());
-            treatment.setVisit(visit);
+            treatment.getMedicines().clear();
             if (treatmentDto.getMedicines() != null) {
+                final Treatment finalTreatment = treatment;
                 treatmentDto.getMedicines().forEach(medDto -> {
                     Medicine medicine = new Medicine();
-                    medicine.setName(medDto.getName());
-                    medicine.setDosage(medDto.getDosage());
-                    medicine.setFrequency(medDto.getFrequency());
-                    medicine.setTreatment(treatment);
-                    treatment.getMedicines().add(medicine);
+                    modelMapper.map(medDto, medicine);
+                    medicine.setTreatment(finalTreatment);
+                    finalTreatment.getMedicines().add(medicine);
                 });
             }
-            visit.setTreatment(treatment);
+        } else {
+            visit.setTreatment(null);
         }
 
-        visit.setSickLeave(null);
-        if (sickLeaveDto != null) {
-            SickLeave sickLeave = new SickLeave();
+        // Handle Sick Leave
+        if (sickLeaveDto != null && sickLeaveDto.getStartDate() != null && sickLeaveDto.getDurationDays() != null && sickLeaveDto.getDurationDays() > 0) {
+            SickLeave sickLeave = visit.getSickLeave();
+            if (sickLeave == null) {
+                sickLeave = new SickLeave();
+                sickLeave.setVisit(visit);
+                visit.setSickLeave(sickLeave);
+            }
             sickLeave.setStartDate(sickLeaveDto.getStartDate());
-            sickLeave.setDurationDays(sickLeaveDto.getDurationDays());
-            sickLeave.setVisit(visit);
-            visit.setSickLeave(sickLeave);
+            sickLeave.setDurationDays(sickLeaveDto.getDurationDays().intValue());
+        } else {
+            visit.setSickLeave(null);
         }
     }
 

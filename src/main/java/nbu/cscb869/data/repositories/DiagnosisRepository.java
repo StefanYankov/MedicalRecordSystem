@@ -35,9 +35,9 @@ public interface DiagnosisRepository extends JpaRepository<Diagnosis, Long> {
      * Identifies the most frequently diagnosed conditions.
      * @return a list of DTOs with diagnoses and their visit counts, sorted by count descending
      */
-    @Query("SELECT new nbu.cscb869.data.dto.DiagnosisVisitCountDTO(d, COUNT(v)) " +
+    @Query("SELECT new nbu.cscb869.data.dto.DiagnosisVisitCountDTO(d.id, d.name, COUNT(v)) " +
             "FROM Diagnosis d JOIN Visit v ON v.diagnosis = d " +
-            "GROUP BY d ORDER BY COUNT(v) DESC")
+            "GROUP BY d.id, d.name ORDER BY COUNT(v) DESC")
     List<DiagnosisVisitCountDTO> findMostFrequentDiagnoses();
 
     /**

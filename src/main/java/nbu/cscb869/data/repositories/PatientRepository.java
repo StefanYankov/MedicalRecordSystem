@@ -58,4 +58,13 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
      * @return a page of {@link Patient} entities where EGN matches the filter
      */
     Page<Patient> findByEgnContaining(String filter, Pageable pageable);
+
+    /**
+     * Retrieves a paginated list of unique patients who have at least one visit with the specified diagnosis.
+     * @param diagnosisId The ID of the diagnosis to search for.
+     * @param pageable Pagination information.
+     * @return A Page of unique {@link Patient} entities.
+     */
+    @Query("SELECT DISTINCT v.patient FROM Visit v WHERE v.diagnosis.id = :diagnosisId")
+    Page<Patient> findByDiagnosis(@Param("diagnosisId") Long diagnosisId, Pageable pageable);
 }

@@ -3,6 +3,7 @@ package nbu.cscb869.services.services.unittests;
 import nbu.cscb869.common.exceptions.EntityNotFoundException;
 import nbu.cscb869.common.exceptions.InvalidDTOException;
 import nbu.cscb869.common.exceptions.InvalidInputException;
+import nbu.cscb869.common.exceptions.PatientInsuranceException;
 import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
@@ -70,48 +71,64 @@ class VisitServiceImplUnitTests {
     }
 
     @Nested
-    @DisplayName("Create Tests")
-    class CreateTests {
+    @DisplayName("Create and Schedule Tests")
+    class CreateAndScheduleTests {
         @Test
-        void create_WithoutSickLeaveOrTreatment_ShouldSucceed_HappyPath() {
+        void create_WithFullDetails_ShouldSucceed_HappyPath() {
             VisitCreateDTO dto = new VisitCreateDTO();
             dto.setPatientId(1L);
             dto.setDoctorId(2L);
+            dto.setDiagnosisId(3L);
             dto.setVisitDate(LocalDate.now());
             dto.setVisitTime(LocalTime.of(10, 0));
-            dto.setTreatment(null);
-            dto.setSickLeave(null);
-
-            when(patientRepository.findById(1L)).thenReturn(Optional.of(setupPatient(true)));
-            when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
-            when(visitRepository.save(any(Visit.class))).thenReturn(new Visit());
-
-            visitService.create(dto);
-
-            ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
-            verify(visitRepository).save(visitCaptor.capture());
-            assertNull(visitCaptor.getValue().getTreatment());
-            assertNull(visitCaptor.getValue().getSickLeave());
-        }
-
-        @Test
-        void create_WithSickLeave_ShouldSucceed_HappyPath() {
-            VisitCreateDTO dto = new VisitCreateDTO();
-            dto.setPatientId(1L);
-            dto.setDoctorId(2L);
-            dto.setVisitDate(LocalDate.now());
-            dto.setVisitTime(LocalTime.of(10, 0));
+            dto.setTreatment(new TreatmentCreateDTO());
             dto.setSickLeave(new SickLeaveCreateDTO());
 
             when(patientRepository.findById(1L)).thenReturn(Optional.of(setupPatient(true)));
             when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
+            when(diagnosisRepository.findById(3L)).thenReturn(Optional.of(new Diagnosis()));
             when(visitRepository.save(any(Visit.class))).thenReturn(new Visit());
 
             visitService.create(dto);
 
             ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
             verify(visitRepository).save(visitCaptor.capture());
+            assertNotNull(visitCaptor.getValue().getTreatment());
             assertNotNull(visitCaptor.getValue().getSickLeave());
+            assertEquals(VisitStatus.SCHEDULED, visitCaptor.getValue().getStatus());
+        }
+
+        @Test
+        void scheduleNewVisitByPatient_WithValidData_ShouldSucceed_HappyPath() {
+            VisitCreateDTO dto = new VisitCreateDTO();
+            dto.setPatientId(1L);
+            dto.setDoctorId(2L);
+            dto.setVisitDate(LocalDate.now());
+            dto.setVisitTime(LocalTime.of(10, 0));
+
+            when(patientRepository.findById(1L)).thenReturn(Optional.of(setupPatient(true)));
+            when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
+            when(visitRepository.save(any(Visit.class))).thenReturn(new Visit());
+
+            visitService.scheduleNewVisitByPatient(dto);
+
+            ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
+            verify(visitRepository).save(visitCaptor.capture());
+            assertEquals(VisitStatus.SCHEDULED, visitCaptor.getValue().getStatus());
+        }
+
+        @Test
+        void scheduleNewVisitByPatient_WithInvalidInsurance_ShouldThrowException_ErrorCase() {
+            VisitCreateDTO dto = new VisitCreateDTO();
+            dto.setPatientId(1L);
+            dto.setDoctorId(2L);
+            dto.setVisitDate(LocalDate.now());
+            dto.setVisitTime(LocalTime.of(10, 0));
+
+            when(patientRepository.findById(1L)).thenReturn(Optional.of(setupPatient(false))); // Invalid insurance
+            when(doctorRepository.findById(2L)).thenReturn(Optional.of(new Doctor()));
+
+            assertThrows(PatientInsuranceException.class, () -> visitService.scheduleNewVisitByPatient(dto));
         }
 
         @Test
@@ -139,8 +156,8 @@ class VisitServiceImplUnitTests {
     }
 
     @Nested
-    @DisplayName("Update Tests")
-    class UpdateTests {
+    @DisplayName("Update and Document Tests")
+    class UpdateAndDocumentTests {
         @Test
         void update_WithValidData_ShouldSucceed_HappyPath() {
             VisitUpdateDTO dto = new VisitUpdateDTO();
@@ -165,6 +182,38 @@ class VisitServiceImplUnitTests {
         }
 
         @Test
+        void documentVisit_WithScheduledVisit_ShouldSucceed_HappyPath() {
+            VisitDocumentationDTO dto = new VisitDocumentationDTO();
+            dto.setDiagnosisId(1L);
+            dto.setNotes("Patient is recovering well.");
+
+            Visit visit = new Visit();
+            visit.setStatus(VisitStatus.SCHEDULED); // Correct initial state
+
+            when(visitRepository.findById(1L)).thenReturn(Optional.of(visit));
+            when(diagnosisRepository.findById(1L)).thenReturn(Optional.of(new Diagnosis()));
+            when(visitRepository.save(any(Visit.class))).thenReturn(new Visit());
+
+            visitService.documentVisit(1L, dto);
+
+            ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
+            verify(visitRepository).save(visitCaptor.capture());
+            assertEquals(VisitStatus.COMPLETED, visitCaptor.getValue().getStatus());
+            assertEquals("Patient is recovering well.", visitCaptor.getValue().getNotes());
+        }
+
+        @Test
+        void documentVisit_WithNonScheduledVisit_ShouldThrowException_ErrorCase() {
+            VisitDocumentationDTO dto = new VisitDocumentationDTO();
+            Visit visit = new Visit();
+            visit.setStatus(VisitStatus.COMPLETED); // Incorrect initial state
+
+            when(visitRepository.findById(1L)).thenReturn(Optional.of(visit));
+
+            assertThrows(InvalidInputException.class, () -> visitService.documentVisit(1L, dto));
+        }
+
+        @Test
         void update_WithNullId_ShouldThrowInvalidDTOException_ErrorCase() {
             assertThrows(InvalidDTOException.class, () -> visitService.update(new VisitUpdateDTO()));
         }
@@ -179,13 +228,45 @@ class VisitServiceImplUnitTests {
     }
 
     @Nested
-    @DisplayName("Delete Tests")
-    class DeleteTests {
+    @DisplayName("Delete and Cancel Tests")
+    class DeleteAndCancelTests {
         @Test
         void delete_WithExistingId_ShouldSucceed_HappyPath() {
             when(visitRepository.existsById(1L)).thenReturn(true);
             visitService.delete(1L);
             verify(visitRepository).deleteById(1L);
+        }
+
+        @Test
+        void cancelVisit_WithScheduledVisit_ShouldSucceed_HappyPath() {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken("patient-owner-id", "pass", List.of(new SimpleGrantedAuthority("ROLE_PATIENT")))
+            );
+            Visit visit = new Visit();
+            visit.setPatient(setupPatient(true));
+            visit.setStatus(VisitStatus.SCHEDULED);
+
+            when(visitRepository.findById(1L)).thenReturn(Optional.of(visit));
+
+            visitService.cancelVisit(1L);
+
+            ArgumentCaptor<Visit> visitCaptor = ArgumentCaptor.forClass(Visit.class);
+            verify(visitRepository).save(visitCaptor.capture());
+            assertEquals(VisitStatus.CANCELLED_BY_PATIENT, visitCaptor.getValue().getStatus());
+        }
+
+        @Test
+        void cancelVisit_WithNonScheduledVisit_ShouldThrowException_ErrorCase() {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken("patient-owner-id", "pass", List.of(new SimpleGrantedAuthority("ROLE_PATIENT")))
+            );
+            Visit visit = new Visit();
+            visit.setPatient(setupPatient(true));
+            visit.setStatus(VisitStatus.COMPLETED); // Incorrect state
+
+            when(visitRepository.findById(1L)).thenReturn(Optional.of(visit));
+
+            assertThrows(InvalidInputException.class, () -> visitService.cancelVisit(1L));
         }
 
         @Test
@@ -196,8 +277,8 @@ class VisitServiceImplUnitTests {
     }
 
     @Nested
-    @DisplayName("GetById Tests")
-    class GetByIdTests {
+    @DisplayName("GetById and Authorization Tests")
+    class GetByIdAndAuthorizationTests {
         @Test
         void getById_AsPatientOwner_ShouldSucceed_HappyPath() {
             SecurityContextHolder.getContext().setAuthentication(
@@ -277,6 +358,18 @@ class VisitServiceImplUnitTests {
 
             verify(visitRepository, times(1))
                     .findByDoctorAndStatusAndVisitDateBetweenOrderByVisitDateAscVisitTimeAsc(eq(doctor), eq(status), eq(startDate), eq(endDate), any(Pageable.class));
+        }
+
+        @Test
+        void getMostFrequentDiagnoses_ShouldCallRepository_HappyPath() {
+            visitService.getMostFrequentDiagnoses();
+            verify(visitRepository, times(1)).findMostFrequentDiagnoses();
+        }
+
+        @Test
+        void getMostFrequentSickLeaveMonth_ShouldCallRepository_HappyPath() {
+            visitService.getMostFrequentSickLeaveMonth();
+            verify(visitRepository, times(1)).findMostFrequentSickLeaveMonth();
         }
     }
 

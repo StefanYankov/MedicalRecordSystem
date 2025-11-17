@@ -1,5 +1,6 @@
 package nbu.cscb869.web.controllers;
 
+import nbu.cscb869.common.exceptions.InvalidInputException;
 import nbu.cscb869.common.validation.ValidationConfig;
 import nbu.cscb869.config.WebConstants;
 import nbu.cscb869.data.models.enums.VisitStatus;
@@ -20,6 +21,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -87,19 +89,25 @@ public class VisitSchedulingController {
 
     @PostMapping("/schedule")
     @PreAuthorize("hasRole('PATIENT')")
-    public String processScheduleVisit(@ModelAttribute("visitData") VisitCreateDTO visitCreateDTO, @AuthenticationPrincipal OidcUser principal) {
+    public String processScheduleVisit(@ModelAttribute("visitData") VisitCreateDTO visitCreateDTO, @AuthenticationPrincipal OidcUser principal, RedirectAttributes redirectAttributes) {
         logger.debug("POST /visits/schedule: Processing visit scheduling request for doctor ID {}", visitCreateDTO.getDoctorId());
-        PatientViewDTO patient = patientService.getByKeycloakId(principal.getSubject());
-        logger.debug("Identified patient {} (ID: {}) from security context.", patient.getName(), patient.getId());
+        try {
+            PatientViewDTO patient = patientService.getByKeycloakId(principal.getSubject());
+            logger.debug("Identified patient {} (ID: {}) from security context.", patient.getName(), patient.getId());
 
-        visitCreateDTO.setPatientId(patient.getId());
-        logger.debug("Attempting to schedule visit for patient ID {} with doctor ID {} on {} at {}",
-                visitCreateDTO.getPatientId(), visitCreateDTO.getDoctorId(), visitCreateDTO.getVisitDate(), visitCreateDTO.getVisitTime());
+            visitCreateDTO.setPatientId(patient.getId());
+            logger.debug("Attempting to schedule visit for patient ID {} with doctor ID {} on {} at {}",
+                    visitCreateDTO.getPatientId(), visitCreateDTO.getDoctorId(), visitCreateDTO.getVisitDate(), visitCreateDTO.getVisitTime());
 
-        VisitViewDTO scheduledVisit = visitService.scheduleNewVisitByPatient(visitCreateDTO);
-        logger.info("Successfully scheduled visit with ID {}. Redirecting to details page.", scheduledVisit.getId());
+            VisitViewDTO scheduledVisit = visitService.scheduleNewVisitByPatient(visitCreateDTO);
+            logger.info("Successfully scheduled visit with ID {}. Redirecting to details page.", scheduledVisit.getId());
 
-        return "redirect:/visits/" + scheduledVisit.getId();
+            return "redirect:/visits/" + scheduledVisit.getId();
+        } catch (InvalidInputException e) {
+            logger.warn("Failed to schedule visit due to invalid input: {}", e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/visits/schedule/" + visitCreateDTO.getDoctorId();
+        }
     }
 
     @GetMapping("/{id}")

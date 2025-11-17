@@ -25,6 +25,16 @@ import java.util.Optional;
 public interface VisitRepository extends JpaRepository<Visit, Long> {
 
     /**
+     * Retrieves a single Visit by its ID, eagerly fetching all its child relationships
+     * to avoid lazy loading issues.
+     *
+     * @param id The ID of the visit.
+     * @return An Optional containing the fully initialized Visit entity.
+     */
+    @Query("SELECT v FROM Visit v LEFT JOIN FETCH v.treatment t LEFT JOIN FETCH t.medicines LEFT JOIN FETCH v.sickLeave WHERE v.id = :id")
+    Optional<Visit> findByIdWithChildren(@Param("id") Long id);
+
+    /**
      * Retrieves a page of visits for a specific patient.
      * @param patient the patient whose visits are to be retrieved
      * @param pageable pagination information
@@ -110,8 +120,8 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
      * Retrieves a list of diagnoses with their visit counts, sorted by count descending.
      * @return a list of DTOs with diagnosis and visit count
      */
-    @Query("SELECT new nbu.cscb869.data.dto.DiagnosisVisitCountDTO(v.diagnosis, COUNT(v)) " +
-            "FROM Visit v GROUP BY v.diagnosis ORDER BY COUNT(v) DESC")
+    @Query("SELECT new nbu.cscb869.data.dto.DiagnosisVisitCountDTO(v.diagnosis.id, v.diagnosis.name, COUNT(v)) " +
+            "FROM Visit v GROUP BY v.diagnosis.id, v.diagnosis.name ORDER BY COUNT(v) DESC")
     List<DiagnosisVisitCountDTO> findMostFrequentDiagnoses();
 
     /**

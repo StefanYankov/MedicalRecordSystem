@@ -6,6 +6,7 @@ import nbu.cscb869.common.exceptions.ImageProcessingException;
 import nbu.cscb869.common.validation.ErrorMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Service for handling image uploads and deletions using Cloudinary.
@@ -22,6 +25,8 @@ import java.util.concurrent.CompletableFuture;
 public class CloudinaryService {
 
     private static final Logger log = LoggerFactory.getLogger(CloudinaryService.class);
+    private static final Pattern CLOUDINARY_URL_PATTERN = Pattern.compile(".*/upload/(?:v\\d+/)?(.*?)(\\.\\w+)$");
+
 
     private final Cloudinary cloudinary;
 
@@ -36,7 +41,7 @@ public class CloudinaryService {
      * @throws ImageProcessingException if the file is null, empty, exceeds 10MB, or is not an image type
      */
     @Async
-    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @org.springframework.retry.annotation.Backoff(delay = 1000))
+    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public CompletableFuture<String> uploadImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ImageProcessingException(ErrorMessages.IMAGE_FILE_NULL_OR_EMPTY);
@@ -67,7 +72,7 @@ public class CloudinaryService {
      * @param publicId the public ID of the image to delete
      * @throws ImageProcessingException if deletion fails
      */
-    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @org.springframework.retry.annotation.Backoff(delay = 1000))
+    @Retryable(value = IOException.class, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public void deleteImage(String publicId) {
         if (publicId == null || publicId.isEmpty()) {
             return;
@@ -91,12 +96,10 @@ public class CloudinaryService {
         if (url == null || url.isEmpty()) {
             return null;
         }
-        String[] parts = url.split("/");
-        String fileName = parts[parts.length - 1];
-        int dotIndex = fileName.lastIndexOf(".");
-        if (dotIndex <= 0 || dotIndex >= fileName.length() - 1) {
-            return null;
+        Matcher matcher = CLOUDINARY_URL_PATTERN.matcher(url);
+        if (matcher.matches()) {
+            return matcher.group(1);
         }
-        return "medical_record/doctors/" + fileName.substring(0, dotIndex);
+        return null;
     }
 }

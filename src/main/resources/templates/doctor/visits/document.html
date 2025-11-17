@@ -17,15 +17,17 @@
     <form th:action="@{/doctor/visits/{id}/document(id=${visit.id})}" th:object="${visitDocumentationDTO}" method="post">
         <input type="hidden" th:field="*{visitId}" />
 
-        <!-- Visit Details (Read-only) -->
+        <!-- Visit Details -->
         <div class="card mb-4">
             <div class="card-header">Visit Information</div>
             <div class="card-body">
                 <p><strong>Patient:</strong> <span th:text="${visit.patient.name}"></span> (EGN: <span th:text="${visit.patient.egn}"></span>)</p>
-                <p><strong>Doctor:</strong> <span th:text="${visit.doctor.name}"></span></p>
-                <p><strong>Date:</strong> <span th:text="${visit.visitDate}"></span></p>
-                <p><strong>Time:</strong> <span th:text="${visit.visitTime}"></span></p>
-                <p><strong>Status:</strong> <span th:text="${visit.status}"></span></p>
+                <div class="form-group">
+                    <label for="status">Visit Status</label>
+                    <select id="status" th:field="*{status}" class="form-control">
+                        <option th:each="stat : ${statuses}" th:value="${stat.name()}" th:text="${stat.name()}"></option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -35,16 +37,14 @@
             <div class="card-body">
                 <div class="form-group">
                     <label for="diagnosis">Select Diagnosis:</label>
-                    <select id="diagnosis" th:field="*{diagnosisId}" class="form-control" th:classappend="${#fields.hasErrors('diagnosisId')} ? 'is-invalid' : ''">
+                    <select id="diagnosis" th:field="*{diagnosisId}" class="form-control">
                         <option value="">-- Select a Diagnosis --</option>
                         <option th:each="diag : ${allDiagnoses}" th:value="${diag.id}" th:text="${diag.name}"></option>
                     </select>
-                    <div class="invalid-feedback" th:if="${#fields.hasErrors('diagnosisId')}" th:errors="*{diagnosisId}"></div>
                 </div>
                 <div class="form-group mt-3">
                     <label for="notes">Notes:</label>
-                    <textarea id="notes" th:field="*{notes}" class="form-control" rows="5" th:classappend="${#fields.hasErrors('notes')} ? 'is-invalid' : ''"></textarea>
-                    <div class="invalid-feedback" th:if="${#fields.hasErrors('notes')}" th:errors="*{notes}"></div>
+                    <textarea id="notes" th:field="*{notes}" class="form-control" rows="5"></textarea>
                 </div>
             </div>
         </div>
@@ -53,25 +53,22 @@
         <div class="card mb-4">
             <div class="card-header">Treatment</div>
             <div class="card-body">
+                <input type="hidden" th:field="*{treatment.id}" />
                 <div class="form-group">
                     <label for="treatmentDescription">Instructions:</label>
-                    <textarea id="treatmentDescription" th:field="*{treatment.description}" class="form-control" rows="3" th:classappend="${#fields.hasErrors('treatment.description')} ? 'is-invalid' : ''"></textarea>
-                    <div class="invalid-feedback" th:if="${#fields.hasErrors('treatment.description')}" th:errors="*{treatment.description}"></div>
+                    <textarea id="treatmentDescription" th:field="*{treatment.description}" class="form-control" rows="3"></textarea>
                 </div>
 
                 <h6 class="mt-4">Medicines:</h6>
                 <div id="medicinesContainer">
                     <div th:each="medicine, stat : *{treatment.medicines}" class="input-group mb-2">
                         <input type="hidden" th:field="*{treatment.medicines[__${stat.index}__].id}" />
-                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].name}" class="form-control" placeholder="Medicine Name" th:classappend="${#fields.hasErrors('treatment.medicines[__${stat.index}__].name')} ? 'is-invalid' : ''" />
-                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].dosage}" class="form-control" placeholder="Dosage" th:classappend="${#fields.hasErrors('treatment.medicines[__${stat.index}__].dosage')} ? 'is-invalid' : ''" />
-                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].frequency}" class="form-control" placeholder="Frequency" th:classappend="${#fields.hasErrors('treatment.medicines[__${stat.index}__].frequency')} ? 'is-invalid' : ''" />
+                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].name}" class="form-control" placeholder="Medicine Name" />
+                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].dosage}" class="form-control" placeholder="Dosage" />
+                        <input type="text" th:field="*{treatment.medicines[__${stat.index}__].frequency}" class="form-control" placeholder="Frequency" />
                         <div class="input-group-append">
                             <button type="button" class="btn btn-danger remove-medicine">Remove</button>
                         </div>
-                        <div class="invalid-feedback" th:if="${#fields.hasErrors('treatment.medicines[__${stat.index}__].name')}" th:errors="*{treatment.medicines[__${stat.index}__].name}"></div>
-                        <div class="invalid-feedback" th:if="${#fields.hasErrors('treatment.medicines[__${stat.index}__].dosage')}" th:errors="*{treatment.medicines[__${stat.index}__].dosage}"></div>
-                        <div class="invalid-feedback" th:if="${#fields.hasErrors('treatment.medicines[__${stat.index}__].frequency')}" th:errors="*{treatment.medicines[__${stat.index}__].frequency}"></div>
                     </div>
                 </div>
                 <button type="button" id="addMedicine" class="btn btn-secondary mt-2">Add Medicine</button>
@@ -82,28 +79,27 @@
         <div class="card mb-4">
             <div class="card-header">Sick Leave</div>
             <div class="card-body">
+                <input type="hidden" th:field="*{sickLeave.id}" />
                 <div class="form-check mb-3">
-                    <input type="checkbox" id="issueSickLeave" class="form-check-input" th:checked="${visitDocumentationDTO.sickLeave != null}" />
-                    <label class="form-check-label" for="issueSickLeave">Issue Sick Leave</label>
+                    <input type="checkbox" id="issueSickLeave" class="form-check-input" th:checked="*{sickLeave != null}" onchange="document.getElementById('sickLeaveFields').style.display = this.checked ? 'block' : 'none'" />
+                    <label class="form-check-label" for="issueSickLeave">Issue or Update Sick Leave</label>
                 </div>
 
-                <div id="sickLeaveFields" th:style="${visitDocumentationDTO.sickLeave != null} ? 'display: block;' : 'display: none;'">
+                <div id="sickLeaveFields" th:style="*{sickLeave != null} ? 'display: block;' : 'display: none;'">
                     <div class="form-group">
                         <label for="sickLeaveStartDate">Start Date:</label>
-                        <input type="date" id="sickLeaveStartDate" th:field="*{sickLeave.startDate}" class="form-control" th:classappend="${#fields.hasErrors('sickLeave.startDate')} ? 'is-invalid' : ''" />
-                        <div class="invalid-feedback" th:if="${#fields.hasErrors('sickLeave.startDate')}" th:errors="*{sickLeave.startDate}"></div>
+                        <input type="date" id="sickLeaveStartDate" th:value="*{sickLeave.startDate != null ? #temporals.format(sickLeave.startDate, 'yyyy-MM-dd') : ''}" name="sickLeave.startDate" class="form-control" />
                     </div>
                     <div class="form-group mt-3">
                         <label for="sickLeaveDurationDays">Duration (days):</label>
-                        <input type="number" id="sickLeaveDurationDays" th:field="*{sickLeave.durationDays}" class="form-control" th:classappend="${#fields.hasErrors('sickLeave.durationDays')} ? 'is-invalid' : ''" />
-                        <div class="invalid-feedback" th:if="${#fields.hasErrors('sickLeave.durationDays')}" th:errors="*{sickLeave.durationDays}"></div>
+                        <input type="number" id="sickLeaveDurationDays" th:field="*{sickLeave.durationDays}" class="form-control" />
                     </div>
                 </div>
             </div>
         </div>
 
         <button type="submit" class="btn btn-primary">Save Documentation</button>
-        <a th:href="@{/doctor/patients/{id}/history(id=${visit.patient.id})}" class="btn btn-secondary">Cancel</a>
+        <a th:href="@{/doctor/dashboard}" class="btn btn-secondary">Cancel</a>
     </form>
 
     <script>
@@ -113,7 +109,6 @@
 
             issueSickLeaveCheckbox.addEventListener('change', function () {
                 sickLeaveFields.style.display = this.checked ? 'block' : 'none';
-                // Clear fields if unchecked to avoid submitting empty data
                 if (!this.checked) {
                     document.getElementById('sickLeaveStartDate').value = '';
                     document.getElementById('sickLeaveDurationDays').value = '';
@@ -122,7 +117,7 @@
 
             const addMedicineButton = document.getElementById('addMedicine');
             const medicinesContainer = document.getElementById('medicinesContainer');
-            let medicineIndex = medicinesContainer.children.length; // Start index from existing medicines
+            let medicineIndex = medicinesContainer.children.length;
 
             addMedicineButton.addEventListener('click', function () {
                 const newMedicineDiv = document.createElement('div');
@@ -142,7 +137,6 @@
             medicinesContainer.addEventListener('click', function (event) {
                 if (event.target.classList.contains('remove-medicine')) {
                     event.target.closest('.input-group').remove();
-                    // Re-index medicines after removal (important for Spring binding)
                     Array.from(medicinesContainer.children).forEach((child, index) => {
                         child.querySelectorAll('input').forEach(input => {
                             const nameAttr = input.getAttribute('name');

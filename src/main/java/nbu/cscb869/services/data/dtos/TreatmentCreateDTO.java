@@ -21,6 +21,6 @@ public class TreatmentCreateDTO {
     @NotNull(message = ErrorMessages.VISIT_ID_NOT_NULL)
     private Long visitId;
 
-    @Valid // Ensures nested validation is triggered
+    @Valid
     private List<MedicineCreateDTO> medicines;
 }

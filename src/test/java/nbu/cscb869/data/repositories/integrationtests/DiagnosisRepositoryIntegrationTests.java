@@ -3,6 +3,7 @@ package nbu.cscb869.data.repositories.integrationtests;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
 import nbu.cscb869.data.dto.PatientDiagnosisDTO;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.DiagnosisRepository;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
@@ -10,11 +11,20 @@ import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +38,26 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Import(DiagnosisRepositoryIntegrationTests.TestConfig.class)
 class DiagnosisRepositoryIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @Autowired
     private DiagnosisRepository diagnosisRepository;
@@ -59,14 +88,17 @@ class DiagnosisRepositoryIntegrationTests {
                 .uniqueIdNumber(uniqueIdNumber)
                 .isGeneralPractitioner(isGeneralPractitioner)
                 .name(name)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
     private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
         return Patient.builder()
                 .egn(egn)
+                .name("Test Patient")
                 .generalPractitioner(generalPractitioner)
                 .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
@@ -77,6 +109,7 @@ class DiagnosisRepositoryIntegrationTests {
                 .diagnosis(diagnosis)
                 .visitDate(visitDate)
                 .visitTime(visitTime)
+                .status(VisitStatus.COMPLETED) // FIX: Add default status
                 .build();
         if (sickLeave != null) {
             visit.setSickLeave(sickLeave);
@@ -109,7 +142,7 @@ class DiagnosisRepositoryIntegrationTests {
     // Edge Case: Maximum name length
     @Test
     void save_WithMaximumNameLength_SavesSuccessfully_EdgeCase() {
-        String maxName = "A".repeat(100); // Assuming ValidationConfig.NAME_MAX_LENGTH = 100
+        String maxName = "A".repeat(100);
         Diagnosis diagnosis = createDiagnosis(maxName, "Description");
         Diagnosis saved = diagnosisRepository.save(diagnosis);
 
@@ -237,7 +270,7 @@ class DiagnosisRepositoryIntegrationTests {
         List<DiagnosisVisitCountDTO> frequent = diagnosisRepository.findMostFrequentDiagnoses();
 
         assertEquals(2, frequent.size());
-        assertEquals("Asthma", frequent.getFirst().getDiagnosis().getName());
+        assertEquals("Asthma", frequent.getFirst().getDiagnosisName());
         assertEquals(2, frequent.getFirst().getVisitCount());
     }
 

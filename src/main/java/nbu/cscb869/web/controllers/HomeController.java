@@ -32,6 +32,9 @@ public class HomeController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
             logger.info("User '{}' has authorities: {}", authentication.getName(), authentication.getAuthorities());
+            if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"))) {
+                return "redirect:/doctor/dashboard";
+            }
         }
 
         // Build Keycloak registration URL

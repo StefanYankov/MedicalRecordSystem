@@ -14,3 +14,5 @@ spring:
 logging:
   level:
     nbu.cscb869.config: DEBUG
+    nbu.cscb869.web.controllers.doctor: DEBUG
+    nbu.cscb869.services: DEBUG

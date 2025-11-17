@@ -11,7 +11,7 @@
         <hr/>
         <div class="row">
             <div class="col-md-8">
-                <form th:action="@{/admin/doctors/edit/{id}(id=${doctor.id})}" th:object="${doctor}" method="post" enctype="multipart/form-data">
+                <form id="editDoctorForm" th:action="@{/admin/doctors/edit/{id}(id=${doctor.id})}" th:object="${doctor}" method="post" enctype="multipart/form-data">
                     <div th:replace="~{admin/doctors/form :: form-fields}"></div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                     <a th:href="@{/admin/doctors}" class="btn btn-secondary">Cancel</a>

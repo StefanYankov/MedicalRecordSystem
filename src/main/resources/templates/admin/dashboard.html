@@ -41,26 +41,29 @@
     <!-- Other Metrics -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-secondary">
                 <div class="card-body">
                     <h5 class="card-title">Total Visits</h5>
-                    <p class="card-text h2" th:text="${dashboard.totalVisits}">0</p>
+                    <p class="card-text display-4" th:text="${dashboard.totalVisits}">0</p>
+                    <a th:href="@{/admin/visits}" class="text-white">View Details &rarr;</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-dark">
                 <div class="card-body">
                     <h5 class="card-title">Total Diagnoses</h5>
-                    <p class="card-text h2" th:text="${dashboard.totalDiagnoses}">0</p>
+                    <p class="card-text display-4" th:text="${dashboard.totalDiagnoses}">0</p>
+                    <a th:href="@{/admin/diagnoses}" class="text-white">View Details &rarr;</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card">
+            <div class="card text-white bg-danger">
                 <div class="card-body">
                     <h5 class="card-title">Total Sick Leaves</h5>
-                    <p class="card-text h2" th:text="${dashboard.totalSickLeaves}">0</p>
+                    <p class="card-text display-4" th:text="${dashboard.totalSickLeaves}">0</p>
+                    <a th:href="@{/admin/sick-leaves}" class="text-white">View Details &rarr;</a>
                 </div>
             </div>
         </div>

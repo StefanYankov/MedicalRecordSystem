@@ -1,4 +1,3 @@
-// nbu.cscb869.data.repositories.integrationtests/PatientRepositoryIntegrationTests.java
 package nbu.cscb869.data.repositories.integrationtests;
 
 import nbu.cscb869.data.dto.DoctorPatientCountDTO;
@@ -9,11 +8,20 @@ import nbu.cscb869.data.repositories.PatientRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +34,26 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Import(PatientRepositoryIntegrationTests.TestConfig.class)
 class PatientRepositoryIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @Autowired
     private PatientRepository patientRepository;
@@ -44,14 +71,17 @@ class PatientRepositoryIntegrationTests {
                 .uniqueIdNumber(uniqueIdNumber)
                 .isGeneralPractitioner(isGeneralPractitioner)
                 .name(name)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
     private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
         return Patient.builder()
                 .egn(egn)
+                .name("Test Patient")
                 .generalPractitioner(generalPractitioner)
                 .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 

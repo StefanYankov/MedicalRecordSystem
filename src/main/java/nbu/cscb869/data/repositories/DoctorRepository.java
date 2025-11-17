@@ -9,6 +9,7 @@ import nbu.cscb869.data.models.Specialty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -19,10 +20,11 @@ import java.util.Optional;
 
 public interface DoctorRepository extends JpaRepository<Doctor, Long>, JpaSpecificationExecutor<Doctor> {
     /**
-     * Finds a Doctor by their unique Keycloak ID.
+     * Finds a Doctor by their unique Keycloak ID, eagerly fetching specialties.
      * @param keycloakId the user's unique Keycloak ID (sub)
-     * @return an Optional containing the Doctor if found, otherwise empty.
+     * @return an Optional containing the Doctor with initialized specialties if found.
      */
+    @EntityGraph(attributePaths = "specialties")
     Optional<Doctor> findByKeycloakId(String keycloakId);
 
     /**

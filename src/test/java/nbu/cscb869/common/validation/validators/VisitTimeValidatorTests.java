@@ -11,6 +11,8 @@ import java.time.LocalTime;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class VisitTimeValidatorTests {
@@ -19,9 +21,16 @@ public class VisitTimeValidatorTests {
     @Mock
     private ConstraintValidatorContext context;
 
+    @Mock
+    private ConstraintValidatorContext.ConstraintViolationBuilder builder;
+
     @BeforeEach
     void setUp() {
         validator = new VisitTimeValidator();
+    }
+
+    private void setupMockForInvalid() {
+        when(context.buildConstraintViolationWithTemplate(anyString())).thenReturn(builder);
     }
 
     // Happy Path
@@ -51,12 +60,14 @@ public class VisitTimeValidatorTests {
 
     @Test
     void IsValid_BeforeStartTime_ReturnsFalse() {
+        setupMockForInvalid();
         LocalTime time = LocalTime.of(8, 59);
         assertFalse(validator.isValid(time, context));
     }
 
     @Test
     void IsValid_AfterEndTime_ReturnsFalse() {
+        setupMockForInvalid();
         LocalTime time = LocalTime.of(17, 1);
         assertFalse(validator.isValid(time, context));
     }
@@ -70,6 +81,7 @@ public class VisitTimeValidatorTests {
     // Edge Cases
     @Test
     void IsValid_Midnight_ReturnsFalse() {
+        setupMockForInvalid();
         LocalTime time = LocalTime.of(0, 0);
         assertFalse(validator.isValid(time, context));
     }

@@ -1,4 +1,4 @@
-package nbu.cscb869.web.controllers;
+package nbu.cscb869.web.controllers.doctor;
 
 import jakarta.validation.Valid;
 import nbu.cscb869.services.data.dtos.VisitDocumentationDTO;
@@ -32,7 +32,6 @@ public class VisitDocumentationController {
     public String showDocumentVisitForm(@PathVariable("id") Long id, Model model) throws ExecutionException, InterruptedException {
         VisitViewDTO visit = visitService.getById(id);
         
-        // Prepare the DTO that will be used for form submission
         VisitDocumentationDTO documentationDTO = new VisitDocumentationDTO();
         documentationDTO.setVisitId(id);
 
@@ -49,7 +48,6 @@ public class VisitDocumentationController {
                               @Valid @ModelAttribute("documentation") VisitDocumentationDTO documentationDTO, 
                               BindingResult bindingResult, Model model) throws ExecutionException, InterruptedException {
         if (bindingResult.hasErrors()) {
-            // If validation fails, repopulate the necessary data and return to the form
             VisitViewDTO visit = visitService.getById(id);
             model.addAttribute("visit", visit);
             model.addAttribute("allDiagnoses", diagnosisService.getAll(0, 100, "name", true, null).get().getContent());

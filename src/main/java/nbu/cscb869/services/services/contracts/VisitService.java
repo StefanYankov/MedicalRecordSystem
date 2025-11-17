@@ -4,13 +4,9 @@ import nbu.cscb869.common.exceptions.EntityNotFoundException;
 import nbu.cscb869.common.exceptions.InvalidDTOException;
 import nbu.cscb869.common.exceptions.InvalidInputException;
 import nbu.cscb869.data.dto.DiagnosisVisitCountDTO;
-import nbu.cscb869.data.dto.DoctorVisitCountDTO;
 import nbu.cscb869.data.dto.MonthSickLeaveCountDTO;
 import nbu.cscb869.data.models.enums.VisitStatus;
-import nbu.cscb869.services.data.dtos.VisitCreateDTO;
-import nbu.cscb869.services.data.dtos.VisitDocumentationDTO;
-import nbu.cscb869.services.data.dtos.VisitUpdateDTO;
-import nbu.cscb869.services.data.dtos.VisitViewDTO;
+import nbu.cscb869.services.data.dtos.*;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -38,12 +34,20 @@ public interface VisitService {
 
     /**
      * Schedules a new visit for the currently authenticated patient.
-     * This method is the secure entry point for patients.
      * @param dto The DTO containing the scheduling request details (doctor, date, time).
      * @return The newly scheduled visit's view DTO.
      */
     @PreAuthorize("hasRole('PATIENT')")
     VisitViewDTO scheduleNewVisitByPatient(VisitCreateDTO dto);
+
+    /**
+     * Schedules a new visit for the specified user, identified by their Keycloak ID.
+     * This is the secure method for patient self-scheduling.
+     * @param userKeycloakId The Keycloak ID of the patient scheduling the visit.
+     * @param dto The DTO containing the scheduling details (doctor, date, time).
+     * @return The newly scheduled visit's view DTO.
+     */
+    VisitViewDTO scheduleNewVisitForUser(String userKeycloakId, PatientVisitScheduleDTO dto);
 
     /**
      * Updates an existing visit, validating scheduling and patient insurance status.
@@ -164,7 +168,7 @@ public interface VisitService {
      * @return a list of DTOs with doctors and their visit counts.
      */
     @PreAuthorize("hasRole('ADMIN')")
-    List<DoctorVisitCountDTO> getVisitCountByDoctor();
+    List<DoctorVisitCountReportDTO> getVisitCountByDoctor();
 
     /**
      * Retrieves the most frequent diagnoses based on visit counts.

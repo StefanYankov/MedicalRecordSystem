@@ -189,27 +189,20 @@ class VisitRepositoryUnitTests {
 
     @Test
     void findMostFrequentDiagnoses_WithData_ReturnsList_HappyPath() {
-        Diagnosis diagnosis = createDiagnosis("Flu", "Viral infection");
-        DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder()
-                .diagnosis(diagnosis)
-                .visitCount(1L)
-                .build();
+        DiagnosisVisitCountDTO dto = new DiagnosisVisitCountDTO(1L, "Flu", 1L);
         when(visitRepository.findMostFrequentDiagnoses()).thenReturn(List.of(dto));
 
         List<DiagnosisVisitCountDTO> result = visitRepository.findMostFrequentDiagnoses();
 
         assertEquals(1, result.size());
-        assertEquals("Flu", result.getFirst().getDiagnosis().getName());
+        assertEquals("Flu", result.getFirst().getDiagnosisName());
         verify(visitRepository).findMostFrequentDiagnoses();
     }
 
     @Test
     void countVisitsByDoctor_WithData_ReturnsList_HappyPath() {
         Doctor doctor = createDoctor(TestDataUtils.generateUniqueIdNumber(), true, "Dr. David Black");
-        DoctorVisitCountDTO dto = DoctorVisitCountDTO.builder()
-                .doctor(doctor)
-                .visitCount(1L)
-                .build();
+        DoctorVisitCountDTO dto = new DoctorVisitCountDTO(doctor, 1);
         when(visitRepository.countVisitsByDoctor()).thenReturn(List.of(dto));
 
         List<DoctorVisitCountDTO> result = visitRepository.countVisitsByDoctor();
@@ -405,5 +398,4 @@ class VisitRepositoryUnitTests {
         assertEquals(patient1.getEgn(), result.get().getPatient().getEgn());
         verify(visitRepository).findByDoctorAndDateTime(eq(doctor), eq(LocalDate.now()), eq(LocalTime.of(10, 30)));
     }
-
 }

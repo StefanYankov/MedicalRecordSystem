@@ -102,15 +102,15 @@ class DiagnosisServiceImplUnitTests {
 
         when(diagnosisRepository.findById(1L)).thenReturn(Optional.of(existingDiagnosis));
         when(diagnosisRepository.findByName("Influenza")).thenReturn(Optional.empty());
-        // Simulate the void map method updating the existingDiagnosis object
+        // Mock the map from DTO to existing entity
         doAnswer(invocation -> {
             DiagnosisUpdateDTO source = invocation.getArgument(0);
             Diagnosis destination = invocation.getArgument(1);
             destination.setName(source.getName());
             destination.setDescription(source.getDescription());
-            return null; // Void method, so return null
+            return null;
         }).when(modelMapper).map(any(DiagnosisUpdateDTO.class), eq(existingDiagnosis));
-
+        
         when(diagnosisRepository.save(existingDiagnosis)).thenReturn(existingDiagnosis);
         when(modelMapper.map(existingDiagnosis, DiagnosisViewDTO.class)).thenReturn(viewDTO);
 
@@ -386,7 +386,7 @@ class DiagnosisServiceImplUnitTests {
     @Test
     void getMostFrequentDiagnoses_ShouldReturnList_HappyPath() {
         // ARRANGE
-        List<DiagnosisVisitCountDTO> dtoList = Collections.singletonList(DiagnosisVisitCountDTO.builder().build());
+        List<DiagnosisVisitCountDTO> dtoList = Collections.singletonList(new DiagnosisVisitCountDTO(1L, "Flu", 10L));
         when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(dtoList);
 
         // ACT

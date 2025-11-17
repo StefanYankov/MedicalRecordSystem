@@ -164,4 +164,14 @@ public interface PatientService {
      * @return true if the patient is associated with the doctor, false otherwise.
      */
     boolean isPatientAssociatedWithDoctor(Long patientId, Long doctorId);
+
+    /**
+     * Retrieves a paginated list of patients who have been diagnosed with a specific diagnosis.
+     *
+     * @param diagnosisId The ID of the diagnosis.
+     * @param pageable    Pagination information.
+     * @return A Page of {@link PatientViewDTO} objects.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    Page<PatientViewDTO> findByDiagnosis(Long diagnosisId, Pageable pageable);
 }

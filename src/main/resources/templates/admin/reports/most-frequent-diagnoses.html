@@ -28,7 +28,7 @@
                         </thead>
                         <tbody>
                         <tr th:each="diag : ${diagnoses}">
-                            <td th:text="${diag.diagnosis.name}"></td>
+                            <td th:text="${diag.diagnosisName}"></td>
                             <td th:text="${diag.visitCount}"></td>
                         </tr>
                         </tbody>

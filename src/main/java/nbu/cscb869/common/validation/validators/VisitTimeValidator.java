@@ -13,7 +13,7 @@ public class VisitTimeValidator implements ConstraintValidator<ValidVisitTime, L
     @Override
     public boolean isValid(LocalTime visitTime, ConstraintValidatorContext context) {
         if (visitTime == null) {
-            return true; // Let @NotNull handle this case
+            return false;
         }
 
         // Check for working hours and build a dynamic message if invalid

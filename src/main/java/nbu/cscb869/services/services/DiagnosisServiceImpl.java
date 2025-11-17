@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public DiagnosisViewDTO create(final DiagnosisCreateDTO dto) {
         if (dto == null) {
             logger.error("Cannot create {}: DTO is null", ENTITY_NAME);
@@ -66,6 +68,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public DiagnosisViewDTO update(final DiagnosisUpdateDTO dto) {
         if (dto == null || dto.getId() == null) {
             logger.error("Cannot update {}: DTO or ID is null", ENTITY_NAME);
@@ -92,6 +95,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(final Long id) {
         if (id == null) {
             logger.error("Cannot delete {}: ID is null", ENTITY_NAME);
@@ -112,6 +116,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public DiagnosisViewDTO getById(final Long id) {
         if (id == null) {
             logger.error("Cannot retrieve {}: ID is null", ENTITY_NAME);
@@ -126,6 +131,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public DiagnosisViewDTO getByName(final String name) {
         if (name == null || name.isBlank()) {
             logger.error("Cannot retrieve {}: name is null or empty", ENTITY_NAME);
@@ -141,6 +147,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
     /** {@inheritDoc} */
     @Override
     @Async
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public CompletableFuture<Page<DiagnosisViewDTO>> getAll(final int page, final int size, final String orderBy, final boolean ascending, final String filter) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             logger.error("Invalid pagination: page={}, size={}", page, size);
@@ -160,6 +167,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public Page<PatientDiagnosisDTO> getPatientsByDiagnosis(final Long diagnosisId, final int page, final int size) {
         if (diagnosisId == null) {
             throw new InvalidDTOException(ExceptionMessages.formatInvalidFieldNull("Diagnosis ID"));
@@ -173,12 +181,14 @@ public class DiagnosisServiceImpl implements DiagnosisService {
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public List<DiagnosisVisitCountDTO> getMostFrequentDiagnoses() {
         return diagnosisRepository.findMostFrequentDiagnoses();
     }
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public long getTotalDiagnosesCount() {
         logger.debug("Retrieving total count of diagnoses.");
         return diagnosisRepository.count();

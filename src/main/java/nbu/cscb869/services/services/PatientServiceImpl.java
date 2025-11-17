@@ -21,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static nbu.cscb869.config.WebConstants.MAX_PAGE_SIZE;
@@ -236,34 +236,21 @@ public class PatientServiceImpl implements PatientService {
     @Async
     public CompletableFuture<Page<PatientViewDTO>> getAll(int page, int size, String orderBy, boolean ascending, String filter) {
         validatePagination(page, size, "getAll");
-        Sort sort = Sort.by(ascending ? Sort.Direction.ASC : Sort.Direction.DESC, orderBy);
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Patient> patients = (filter == null || filter.trim().isEmpty())
-                ? patientRepository.findAll(pageable)
-                : patientRepository.findByEgnContaining(filter.trim(), pageable);
-        return CompletableFuture.completedFuture(patients.map(p -> modelMapper.map(p, PatientViewDTO.class)));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(ascending ? Sort.Direction.ASC : Sort.Direction.DESC, orderBy));
+        return CompletableFuture.completedFuture(findPatients(pageable, filter));
     }
 
     /** {@inheritDoc} */
     @Override
     public Page<PatientViewDTO> findAll(Pageable pageable, String keyword) {
-        try {
-            // Extract sort and order from Pageable
-            String orderBy = "id"; // Default sort property
-            boolean ascending = true;
-            if (pageable.getSort().isSorted()) {
-                Sort.Order order = pageable.getSort().iterator().next();
-                orderBy = order.getProperty();
-                ascending = order.getDirection().isAscending();
-            }
+        return findPatients(pageable, keyword);
+    }
 
-            // Call the existing getAll method and block for the result
-            return getAll(pageable.getPageNumber(), pageable.getPageSize(), orderBy, ascending, keyword).get();
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Failed to retrieve all patients with keyword '{}': {}", keyword, e.getMessage());
-            Thread.currentThread().interrupt(); // Restore the interrupted status
-            throw new RuntimeException("Error retrieving patients", e);
-        }
+    private Page<PatientViewDTO> findPatients(Pageable pageable, String filter) {
+        Page<Patient> patients = (filter == null || filter.trim().isEmpty())
+                ? patientRepository.findAll(pageable)
+                : patientRepository.findByEgnContaining(filter.trim(), pageable);
+        return patients.map(p -> modelMapper.map(p, PatientViewDTO.class));
     }
 
     /** {@inheritDoc} */
@@ -339,6 +326,15 @@ public class PatientServiceImpl implements PatientService {
         return visitRepository.existsByPatientIdAndDoctorId(patientId, doctorId);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Page<PatientViewDTO> findByDiagnosis(Long diagnosisId, Pageable pageable) {
+        validateIdNotNull(diagnosisId, "findByDiagnosis");
+        logger.debug("Retrieving patients for diagnosis ID: {}", diagnosisId);
+        return patientRepository.findByDiagnosis(diagnosisId, pageable)
+                .map(patient -> modelMapper.map(patient, PatientViewDTO.class));
+    }
+
     private Patient findPatientById(Long id) {
         return patientRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(ExceptionMessages.formatPatientNotFoundById(id)));
@@ -350,7 +346,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     private void authorizePatientAccess(String patientKeycloakId) {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null) {
             logger.warn("Authorization attempt with null authentication object.");
             throw new AccessDeniedException(ExceptionMessages.AUTHENTICATION_REQUIRED);
@@ -359,18 +355,14 @@ public class PatientServiceImpl implements PatientService {
         // Check if the user is a DOCTOR or ADMIN - they have broader access
         if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR") || a.getAuthority().equals("ROLE_ADMIN"))) {
             logger.debug("Access granted for DOCTOR or ADMIN role. Skipping patient-specific authorization.");
-            return; // Doctors and Admins can view patient records
+            return;
         }
 
         // For PATIENT role, ensure they are accessing their own records
         if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PATIENT"))) {
-            if (!(authentication.getPrincipal() instanceof OidcUser)) {
-                logger.error("Authenticated principal is not OidcUser for patient role.");
-                throw new AccessDeniedException(ExceptionMessages.INVALID_PRINCIPAL_TYPE);
-            }
-            var oidcUser = (OidcUser) authentication.getPrincipal();
-            if (!oidcUser.getSubject().equals(patientKeycloakId)) {
-                logger.warn("Access denied for patient {} trying to access records of patient {}", oidcUser.getSubject(), patientKeycloakId);
+            String currentUserId = authentication.getName();
+            if (!currentUserId.equals(patientKeycloakId)) {
+                logger.warn("Access denied for patient {} trying to access records of patient {}", currentUserId, patientKeycloakId);
                 throw new AccessDeniedException(ExceptionMessages.PATIENT_ACCESS_DENIED);
             }
         } else {

@@ -14,10 +14,12 @@ import nbu.cscb869.services.services.contracts.TreatmentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -60,6 +62,9 @@ class TreatmentServiceImplIntegrationTests {
             return Mockito.mock(JwtDecoder.class);
         }
     }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @TestConfiguration
     static class AsyncTestConfig {
@@ -111,6 +116,7 @@ class TreatmentServiceImplIntegrationTests {
             newPatient.setEgn(TestDataUtils.generateValidEgn());
             newPatient.setName("Patient Owner");
             newPatient.setGeneralPractitioner(doctor);
+            newPatient.setLastInsurancePaymentDate(LocalDate.now()); // FIX: Add lastInsurancePaymentDate
             return patientRepository.save(newPatient);
         });
 
@@ -126,7 +132,7 @@ class TreatmentServiceImplIntegrationTests {
         testVisit.setDiagnosis(diagnosis);
         testVisit.setVisitDate(LocalDate.now());
         testVisit.setVisitTime(LocalTime.now());
-        testVisit.setStatus(VisitStatus.COMPLETED);
+        testVisit.setStatus(VisitStatus.COMPLETED); // FIX: Add status
         visitRepository.save(testVisit);
     }
 

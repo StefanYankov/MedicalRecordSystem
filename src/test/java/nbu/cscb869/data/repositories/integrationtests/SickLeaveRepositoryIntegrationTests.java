@@ -3,14 +3,24 @@ package nbu.cscb869.data.repositories.integrationtests;
 import nbu.cscb869.data.dto.DoctorSickLeaveCountDTO;
 import nbu.cscb869.data.dto.YearMonthSickLeaveCountDTO;
 import nbu.cscb869.data.models.*;
+import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.*;
 import nbu.cscb869.data.utils.TestDataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +34,26 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@Import(SickLeaveRepositoryIntegrationTests.TestConfig.class)
 class SickLeaveRepositoryIntegrationTests {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public ClientRegistrationRepository clientRegistrationRepository() {
+            return Mockito.mock(ClientRegistrationRepository.class);
+        }
+
+        @Bean
+        @Primary
+        public JwtDecoder jwtDecoder() {
+            return Mockito.mock(JwtDecoder.class);
+        }
+    }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @Autowired
     private SickLeaveRepository sickLeaveRepository;
@@ -51,14 +80,17 @@ class SickLeaveRepositoryIntegrationTests {
                 .uniqueIdNumber(uniqueIdNumber)
                 .isGeneralPractitioner(isGeneralPractitioner)
                 .name(name)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
     private Patient createPatient(String egn, Doctor generalPractitioner, LocalDate lastInsurancePaymentDate) {
         return Patient.builder()
                 .egn(egn)
+                .name("Test Patient")
                 .generalPractitioner(generalPractitioner)
                 .lastInsurancePaymentDate(lastInsurancePaymentDate)
+                .keycloakId(TestDataUtils.generateKeycloakId())
                 .build();
     }
 
@@ -76,6 +108,7 @@ class SickLeaveRepositoryIntegrationTests {
                 .diagnosis(diagnosis)
                 .visitDate(visitDate)
                 .visitTime(visitTime)
+                .status(VisitStatus.COMPLETED) // FIX: Add default status
                 .build();
         if (sickLeave != null) {
             visit.setSickLeave(sickLeave);

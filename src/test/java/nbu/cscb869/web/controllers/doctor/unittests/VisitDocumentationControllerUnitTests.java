@@ -5,7 +5,7 @@ import nbu.cscb869.services.data.dtos.VisitDocumentationDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import nbu.cscb869.services.services.contracts.DiagnosisService;
 import nbu.cscb869.services.services.contracts.VisitService;
-import nbu.cscb869.web.controllers.VisitDocumentationController;
+import nbu.cscb869.web.controllers.doctor.VisitDocumentationController;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

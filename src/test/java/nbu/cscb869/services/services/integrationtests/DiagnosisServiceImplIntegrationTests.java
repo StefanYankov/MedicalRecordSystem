@@ -20,10 +20,12 @@ import nbu.cscb869.services.services.contracts.DiagnosisService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.admin.client.Keycloak;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -66,6 +68,9 @@ class DiagnosisServiceImplIntegrationTests {
             return Mockito.mock(JwtDecoder.class);
         }
     }
+
+    @MockBean
+    private Keycloak keycloak;
 
     @TestConfiguration
     static class AsyncTestConfig {
@@ -239,7 +244,7 @@ class DiagnosisServiceImplIntegrationTests {
 
         // ASSERT
         assertEquals(1, result.getTotalElements());
-        assertEquals("Allergy", result.getContent().get(0).getName());
+        assertEquals("Allergy", result.getContent().getFirst().getName());
     }
 
     @Test
@@ -259,7 +264,7 @@ class DiagnosisServiceImplIntegrationTests {
         visitRepository.save(visit);
         Page<nbu.cscb869.data.dto.PatientDiagnosisDTO> result = diagnosisService.getPatientsByDiagnosis(testDiagnosis.getId(), 0, 10);
         assertEquals(1, result.getTotalElements());
-        assertEquals(testPatient.getName(), result.getContent().get(0).getPatient().getName());
+        assertEquals(testPatient.getName(), result.getContent().getFirst().getPatient().getName());
     }
 
     @Test
@@ -287,7 +292,7 @@ class DiagnosisServiceImplIntegrationTests {
         List<nbu.cscb869.data.dto.DiagnosisVisitCountDTO> result = diagnosisService.getMostFrequentDiagnoses();
         assertFalse(result.isEmpty());
         assertEquals(1, result.size());
-        assertEquals("Flu", result.get(0).getDiagnosis().getName());
-        assertEquals(2, result.get(0).getVisitCount());
+        assertEquals("Flu", result.getFirst().getDiagnosisName());
+        assertEquals(2, result.getFirst().getVisitCount());
     }
 }

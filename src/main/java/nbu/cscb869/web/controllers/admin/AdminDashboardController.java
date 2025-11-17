@@ -16,6 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for handling the main administrative dashboard and landing page.
+ * This controller aggregates data from various services to provide a high-level overview
+ * of the system's state for administrators. All endpoints within this controller
+ * are secured and require the user to have the 'ADMIN' role.
+ */
 @Controller
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
@@ -29,6 +35,15 @@ public class AdminDashboardController {
     private final DiagnosisService diagnosisService;
     private final SickLeaveService sickLeaveService;
 
+    /**
+     * Constructs the controller with all necessary services for data aggregation.
+     *
+     * @param patientService   Service for patient-related data.
+     * @param doctorService    Service for doctor-related data.
+     * @param visitService     Service for visit-related data.
+     * @param diagnosisService Service for diagnosis-related data.
+     * @param sickLeaveService Service for sick leave-related data.
+     */
     public AdminDashboardController(PatientService patientService, DoctorService doctorService, VisitService visitService, DiagnosisService diagnosisService, SickLeaveService sickLeaveService) {
         this.patientService = patientService;
         this.doctorService = doctorService;
@@ -37,12 +52,28 @@ public class AdminDashboardController {
         this.sickLeaveService = sickLeaveService;
     }
 
+    /**
+     * Displays the main administrative landing page.
+     * This serves as the entry point to the admin section.
+     *
+     * @return The logical name of the admin landing view.
+     */
     @GetMapping
     public String adminLandingPage() {
         logger.info("GET /admin: Displaying admin landing page.");
         return "admin/landing";
     }
 
+    /**
+     * Gathers system-wide metrics and displays the main administrative dashboard.
+     * This method fetches counts for total patients, doctors, visits, etc., and also
+     * retrieves a list of recent visits and unapproved doctors to be displayed.
+     *
+     * @param model The Spring UI model to which the dashboard data will be added.
+     * @return The logical name of the admin dashboard view.
+     * @throws ExecutionException   If an error occurs during asynchronous data fetching.
+     * @throws InterruptedException If a thread is interrupted during asynchronous data fetching.
+     */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) throws ExecutionException, InterruptedException {
         logger.info("GET /admin/dashboard: Displaying admin dashboard with metrics.");

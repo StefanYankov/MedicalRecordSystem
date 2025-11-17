@@ -8,7 +8,6 @@ import nbu.cscb869.data.models.Doctor;
 import nbu.cscb869.data.models.Patient;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.PatientRepository;
-import nbu.cscb869.data.repositories.VisitRepository;
 import nbu.cscb869.data.utils.TestDataUtils;
 import nbu.cscb869.services.data.dtos.PatientCreateDTO;
 import nbu.cscb869.services.data.dtos.PatientUpdateDTO;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,9 +27,7 @@ import org.mockito.quality.Strictness;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -60,9 +56,6 @@ class PatientServiceImplUnitTests {
 
     @Mock
     private DoctorRepository doctorRepository;
-
-    @Mock
-    private VisitRepository visitRepository;
 
     @Mock
     private ModelMapper modelMapper;
@@ -355,15 +348,14 @@ class PatientServiceImplUnitTests {
             LocalDate originalInsuranceDate = LocalDate.now().minusMonths(10);
 
             Patient existingPatient = setupPatient(patientId, originalKeycloakId, originalEgn, originalName, originalGpId, true, originalInsuranceDate);
-            Doctor originalGp = existingPatient.getGeneralPractitioner();
 
             PatientUpdateDTO dto = new PatientUpdateDTO();
             dto.setId(patientId);
             dto.setName("Admin Updated Patient");
-            dto.setEgn(TestDataUtils.generateValidEgn()); // Change EGN
-            dto.setGeneralPractitionerId(11L); // Change GP
-            dto.setKeycloakId("new-keycloak-id"); // Change Keycloak ID
-            dto.setLastInsurancePaymentDate(LocalDate.now().minusMonths(2)); // Change insurance date
+            dto.setEgn(TestDataUtils.generateValidEgn());
+            dto.setGeneralPractitionerId(11L);
+            dto.setKeycloakId("new-keycloak-id");
+            dto.setLastInsurancePaymentDate(LocalDate.now().minusMonths(2));
 
             Doctor newGp = setupDoctor(11L, true);
 
@@ -406,7 +398,6 @@ class PatientServiceImplUnitTests {
             LocalDate originalInsuranceDate = LocalDate.now().minusMonths(10);
 
             Patient existingPatient = setupPatient(patientId, originalKeycloakId, originalEgn, originalName, originalGpId, true, originalInsuranceDate);
-            Doctor originalGp = existingPatient.getGeneralPractitioner();
 
             PatientUpdateDTO dto = new PatientUpdateDTO();
             dto.setId(patientId);
@@ -575,18 +566,22 @@ class PatientServiceImplUnitTests {
         @Test
         @DisplayName("getById_AsPatientOwner_ShouldSucceed_HappyPath")
         void getById_AsPatientOwner_ShouldSucceed_HappyPath() {
+            // ARRANGE
+            String keycloakId = "patient-owner-id";
             when(authentication.getPrincipal()).thenReturn(oidcUser);
-            when(oidcUser.getSubject()).thenReturn("patient-owner-id");
+            when(oidcUser.getSubject()).thenReturn(keycloakId);
+            when(authentication.getName()).thenReturn(keycloakId);
             doReturn(Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT"))).when(authentication).getAuthorities();
 
             long patientId = 1L;
-            Patient patient = setupPatient(patientId, "patient-owner-id", TestDataUtils.generateValidEgn(), "Owner", 1L, true, LocalDate.now());
+            Patient patient = setupPatient(patientId, keycloakId, TestDataUtils.generateValidEgn(), "Owner", 1L, true, LocalDate.now());
             PatientViewDTO viewDTO = new PatientViewDTO();
             viewDTO.setId(patientId);
 
             when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
             when(modelMapper.map(patient, PatientViewDTO.class)).thenReturn(viewDTO);
 
+            // ACT & ASSERT
             assertDoesNotThrow(() -> patientService.getById(patientId));
             verify(modelMapper).map(patient, PatientViewDTO.class);
         }
@@ -594,16 +589,20 @@ class PatientServiceImplUnitTests {
         @Test
         @DisplayName("getById_AsOtherPatient_ShouldThrowAccessDeniedException_ErrorCase")
         void getById_AsOtherPatient_ShouldThrowAccessDeniedException_ErrorCase() {
+            // ARRANGE
+            String otherPatientId = "other-patient-id";
             when(authentication.getPrincipal()).thenReturn(oidcUser);
-            when(oidcUser.getSubject()).thenReturn("other-patient-id");
+            when(oidcUser.getSubject()).thenReturn(otherPatientId);
+            when(authentication.getName()).thenReturn(otherPatientId);
             doReturn(Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT"))).when(authentication).getAuthorities();
 
-            long patientId = 1L;
-            Patient patient = setupPatient(patientId, "patient-owner-id", TestDataUtils.generateValidEgn(), "Owner", 1L, true, LocalDate.now()); // Belongs to patient-owner-id
+            long patientIdToAccess = 1L;
+            Patient patientToAccess = setupPatient(patientIdToAccess, "patient-owner-id", TestDataUtils.generateValidEgn(), "Owner", 1L, true, LocalDate.now());
 
-            when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+            when(patientRepository.findById(patientIdToAccess)).thenReturn(Optional.of(patientToAccess));
 
-            assertThrows(AccessDeniedException.class, () -> patientService.getById(patientId));
+            // ACT & ASSERT
+            assertThrows(AccessDeniedException.class, () -> patientService.getById(patientIdToAccess));
         }
 
         @Test
@@ -636,19 +635,24 @@ class PatientServiceImplUnitTests {
         @Test
         @DisplayName("getByEgn_WithValidEgn_ShouldReturnPatientViewDTO_HappyPath")
         void getByEgn_WithValidEgn_ShouldReturnPatientViewDTO_HappyPath() {
+            // ARRANGE
+            String keycloakId = "keycloak-id";
             String egn = TestDataUtils.generateValidEgn();
-            Patient patient = setupPatient(1L, "keycloak-id", egn, "Test Patient", 1L, true, LocalDate.now());
+            Patient patient = setupPatient(1L, keycloakId, egn, "Test Patient", 1L, true, LocalDate.now());
             PatientViewDTO viewDTO = new PatientViewDTO();
             viewDTO.setEgn(egn);
 
             when(patientRepository.findByEgn(egn)).thenReturn(Optional.of(patient));
             when(modelMapper.map(patient, PatientViewDTO.class)).thenReturn(viewDTO);
             when(authentication.getPrincipal()).thenReturn(oidcUser);
-            when(oidcUser.getSubject()).thenReturn("keycloak-id");
+            when(oidcUser.getSubject()).thenReturn(keycloakId);
+            when(authentication.getName()).thenReturn(keycloakId); // FIX: Add this missing mock
             doReturn(Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT"))).when(authentication).getAuthorities();
 
+            // ACT
             PatientViewDTO result = patientService.getByEgn(egn);
 
+            // ASSERT
             assertNotNull(result);
             assertEquals(egn, result.getEgn());
             verify(patientRepository).findByEgn(egn);

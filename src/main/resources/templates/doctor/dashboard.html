@@ -23,7 +23,7 @@
                     <td th:text="${visit.patient.name}"></td>
                     <td th:text="${visit.status}"></td>
                     <td>
-                        <a th:href="@{/doctor/visits/{id}(id=${visit.id})}" class="btn btn-primary btn-sm">Details</a>
+                        <a th:href="@{/doctor/visits/{id}/document(id=${visit.id})}" class="btn btn-primary btn-sm">Edit/Document</a>
                     </td>
                 </tr>
             </tbody>

@@ -60,7 +60,7 @@
         }
 
         // Before submitting the form, select all options in the 'assigned' box
-        document.querySelector('form').addEventListener('submit', function() {
+        document.getElementById('editDoctorForm').addEventListener('submit', function() {
             const assigned = document.getElementById('specialties');
             Array.from(assigned.options).forEach(option => {
                 option.selected = true;

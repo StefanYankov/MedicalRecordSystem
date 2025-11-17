@@ -43,7 +43,7 @@ public class Visit extends BaseEntity {
     private Doctor doctor;
 
     @ManyToOne
-    @JoinColumn(name = "diagnosis_id") // Made nullable for wellness check-ups
+    @JoinColumn(name = "diagnosis_id")
     private Diagnosis diagnosis;
 
     @OneToOne(mappedBy = "visit", cascade = CascadeType.ALL, optional = true)
@@ -56,7 +56,7 @@ public class Visit extends BaseEntity {
     @Column(name = "status", nullable = false)
     private VisitStatus status;
 
-    @Lob // Use @Lob for potentially long text fields
+    @Lob
     @Column(name = "notes")
     private String notes;
 

@@ -11,6 +11,7 @@ import nbu.cscb869.services.services.contracts.DoctorService;
 import nbu.cscb869.services.services.contracts.PatientService;
 import nbu.cscb869.services.services.contracts.VisitService;
 import nbu.cscb869.web.viewmodels.MedicalHistoryVisitViewModel;
+import nbu.cscb869.web.viewmodels.SickLeaveHistoryViewModel;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import nbu.cscb869.data.models.Doctor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/profile")
@@ -122,5 +127,40 @@ public class PatientProfileController {
 
         model.addAttribute("visitPage", viewModelPage);
         return "medical-history";
+    }
+
+    @GetMapping("/sick-leaves")
+    @PreAuthorize("hasRole('PATIENT')")
+    public String sickLeaveHistory(Model model, @AuthenticationPrincipal OidcUser principal) {
+        logger.info("GET /profile/sick-leaves: Displaying sick leave history for user {}.", principal.getName());
+        PatientViewDTO patient = patientService.getByKeycloakId(principal.getSubject());
+
+        List<VisitViewDTO> allVisits = new ArrayList<>();
+        Page<VisitViewDTO> visitPage;
+        int currentPage = 0;
+        do {
+            visitPage = visitService.getVisitsByPatient(patient.getId(), currentPage, WebConstants.MAX_PAGE_SIZE);
+            allVisits.addAll(visitPage.getContent());
+            currentPage++;
+        } while (!visitPage.isLast());
+
+        List<SickLeaveHistoryViewModel> sickLeaves = allVisits.stream()
+                .filter(visit -> visit.getSickLeave() != null)
+                .map(visit -> {
+                    SickLeaveHistoryViewModel vm = new SickLeaveHistoryViewModel();
+                    vm.setStartDate(visit.getSickLeave().getStartDate());
+                    vm.setDurationDays(visit.getSickLeave().getDurationDays());
+                    if (visit.getDoctor() != null) {
+                        vm.setDoctorName(visit.getDoctor().getName());
+                    }
+                    if (visit.getDiagnosis() != null) {
+                        vm.setDiagnosisName(visit.getDiagnosis().getName());
+                    }
+                    return vm;
+                })
+                .collect(Collectors.toList());
+
+        model.addAttribute("sickLeaves", sickLeaves);
+        return "profile/sick-leaves";
     }
 }

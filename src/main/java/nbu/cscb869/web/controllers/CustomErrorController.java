@@ -30,11 +30,13 @@ public class CustomErrorController implements ErrorController {
     @RequestMapping("/error")
     public String handleError(HttpServletRequest request, WebRequest webRequest, Model model) {
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
-        String layout = "layouts/main-layout"; // Default layout
+        Object exception = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+        String requestUri = (String) request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
+
+        String layout = "layouts/main-layout";
         String errorTitle = "Error";
         String errorMessage = "An unexpected error has occurred.";
 
-        // Determine layout based on user role
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
             if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
@@ -46,29 +48,31 @@ public class CustomErrorController implements ErrorController {
             }
         }
 
+        int statusCode = 500;
         if (status != null) {
-            int statusCode = Integer.parseInt(status.toString());
+            statusCode = Integer.parseInt(status.toString());
             HttpStatus httpStatus = HttpStatus.valueOf(statusCode);
             model.addAttribute("statusCode", statusCode);
             model.addAttribute("error", httpStatus.getReasonPhrase());
 
-            switch (statusCode) {
-                case 403:
+            errorMessage = switch (statusCode) {
+                case 403 -> {
                     errorTitle = "Access Denied";
-                    errorMessage = "You do not have permission to access this page.";
-                    break;
-                case 404:
+                    yield "You do not have permission to access this page.";
+                }
+                case 404 -> {
                     errorTitle = "Page Not Found";
-                    errorMessage = "The page you are looking for does not exist.";
-                    break;
-                case 500:
+                    yield "The page you are looking for does not exist.";
+                }
+                case 500 -> {
                     errorTitle = "Internal Server Error";
-                    errorMessage = "An unexpected error occurred on our end. Please try again later.";
-                    break;
-                default:
+                    yield "An unexpected error occurred on our end. Please try again later.";
+                }
+                default -> {
                     errorTitle = "Something Went Wrong";
-                    errorMessage = "An unexpected error has occurred.";
-            }
+                    yield "An unexpected error has occurred.";
+                }
+            };
         }
 
         // Add stack trace for development
@@ -77,13 +81,13 @@ public class CustomErrorController implements ErrorController {
             model.addAttribute("stackTrace", errorDetails.get("trace"));
         }
 
-
         model.addAttribute("layout", layout);
         model.addAttribute("errorTitle", errorTitle);
         model.addAttribute("errorMessage", errorMessage);
 
-        logger.error("Handling error: Status Code {}, Layout: {}", status, layout);
+        logger.error("CustomErrorController handled error: URI [{}], Status [{}], Exception [{}]",
+                requestUri, statusCode, (exception != null ? exception.getClass().getName() : "N/A"));
 
-        return "error"; // Renders templates/error.html
+        return "error";
     }
 }

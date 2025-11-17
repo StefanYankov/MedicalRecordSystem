@@ -18,6 +18,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Controller for administrative management of medical diagnoses.
+ * Provides full CRUD (Create, Read, Update, Delete) functionality for {@link nbu.cscb869.data.models.Diagnosis} entities.
+ * All endpoints are secured and require the user to have the 'ADMIN' role.
+ */
 @Controller
 @RequestMapping("/admin/diagnoses")
 @PreAuthorize("hasRole('ADMIN')")
@@ -27,11 +32,28 @@ public class AdminDiagnosisController {
     private final DiagnosisService diagnosisService;
     private final ModelMapper modelMapper;
 
+    /**
+     * Constructs the controller with the necessary services.
+     *
+     * @param diagnosisService The service for diagnosis-related operations.
+     * @param modelMapper      The ModelMapper instance for DTO-entity conversion.
+     */
     public AdminDiagnosisController(DiagnosisService diagnosisService, ModelMapper modelMapper) {
         this.diagnosisService = diagnosisService;
         this.modelMapper = modelMapper;
     }
 
+    /**
+     * Displays a paginated and filterable list of all diagnoses.
+     *
+     * @param model  The Spring UI model.
+     * @param page   The requested page number.
+     * @param size   The number of items per page.
+     * @param filter An optional string to filter diagnoses by name.
+     * @return The logical name of the diagnosis list view.
+     * @throws ExecutionException   If an error occurs during asynchronous data fetching.
+     * @throws InterruptedException If a thread is interrupted during asynchronous data fetching.
+     */
     @GetMapping
     public String listDiagnoses(Model model,
                                 @RequestParam(defaultValue = "0") int page,
@@ -44,6 +66,12 @@ public class AdminDiagnosisController {
         return "admin/diagnoses/list";
     }
 
+    /**
+     * Displays the form for creating a new diagnosis.
+     *
+     * @param model The Spring UI model.
+     * @return The logical name of the diagnosis creation view.
+     */
     @GetMapping("/create")
     public String showCreateDiagnosisForm(Model model) {
         logger.info("GET /admin/diagnoses/create: Admin request to show create form for diagnosis.");
@@ -54,6 +82,15 @@ public class AdminDiagnosisController {
         return "admin/diagnoses/create";
     }
 
+    /**
+     * Processes the submission of the new diagnosis form.
+     * On success, redirects to the diagnosis list. On validation error, returns to the form with errors.
+     *
+     * @param diagnosisCreateDTO The DTO containing the form data.
+     * @param bindingResult      The result of the validation.
+     * @param redirectAttributes Attributes for passing messages across redirects.
+     * @return A redirect string to the appropriate view.
+     */
     @PostMapping("/create")
     public String createDiagnosis(@Valid @ModelAttribute("diagnosis") DiagnosisCreateDTO diagnosisCreateDTO, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
         logger.info("POST /admin/diagnoses/create: Admin request to create new diagnosis.");
@@ -77,6 +114,13 @@ public class AdminDiagnosisController {
         return "redirect:/admin/diagnoses";
     }
 
+    /**
+     * Displays the form for editing an existing diagnosis.
+     *
+     * @param id    The ID of the diagnosis to edit.
+     * @param model The Spring UI model.
+     * @return The logical name of the diagnosis edit view.
+     */
     @GetMapping("/edit/{id}")
     public String showEditDiagnosisForm(@PathVariable("id") Long id, Model model) {
         logger.info("GET /admin/diagnoses/edit/{}: Admin request to show edit form for diagnosis ID: {}", id, id);
@@ -88,6 +132,15 @@ public class AdminDiagnosisController {
         return "admin/diagnoses/edit";
     }
 
+    /**
+     * Processes the submission of the diagnosis edit form.
+     *
+     * @param id                 The ID of the diagnosis being edited.
+     * @param diagnosisUpdateDTO The DTO containing the updated form data.
+     * @param bindingResult      The result of the validation.
+     * @param redirectAttributes Attributes for passing messages across redirects.
+     * @return A redirect string to the appropriate view.
+     */
     @PostMapping("/edit/{id}")
     public String editDiagnosis(@PathVariable("id") Long id, @Valid @ModelAttribute("diagnosis") DiagnosisUpdateDTO diagnosisUpdateDTO, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
         logger.info("POST /admin/diagnoses/edit/{}: Admin request to update diagnosis ID: {}", id, id);
@@ -112,6 +165,13 @@ public class AdminDiagnosisController {
         return "redirect:/admin/diagnoses";
     }
 
+    /**
+     * Displays a confirmation page before deleting a diagnosis.
+     *
+     * @param id    The ID of the diagnosis to be deleted.
+     * @param model The Spring UI model.
+     * @return The logical name of the delete confirmation view.
+     */
     @GetMapping("/delete/{id}")
     public String showDeleteConfirmation(@PathVariable("id") Long id, Model model) {
         logger.info("GET /admin/diagnoses/delete/{}: Admin request to show delete confirmation for diagnosis ID: {}", id, id);
@@ -119,6 +179,13 @@ public class AdminDiagnosisController {
         return "admin/diagnoses/delete-confirm";
     }
 
+    /**
+     * Processes the confirmed deletion of a diagnosis.
+     *
+     * @param id                 The ID of the diagnosis to delete.
+     * @param redirectAttributes Attributes for passing messages across redirects.
+     * @return A redirect string to the diagnosis list view.
+     */
     @PostMapping("/delete/{id}")
     public String deleteDiagnosisConfirmed(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         logger.info("POST /admin/diagnoses/delete/{}: Admin request to confirm deletion of diagnosis ID: {}", id, id);

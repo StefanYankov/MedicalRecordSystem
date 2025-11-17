@@ -5,6 +5,7 @@ import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.services.data.dtos.DoctorViewDTO;
 import nbu.cscb869.services.services.contracts.DoctorService;
 import nbu.cscb869.services.services.contracts.VisitService;
+import nbu.cscb869.web.controllers.GlobalExceptionHandler;
 import nbu.cscb869.web.controllers.doctor.DoctorDashboardController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,7 @@ class DoctorScheduleControllerUnitTests {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(doctorDashboardController)
                 .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 

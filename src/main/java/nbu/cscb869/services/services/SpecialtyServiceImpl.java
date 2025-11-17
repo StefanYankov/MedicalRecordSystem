@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public SpecialtyViewDTO create(SpecialtyCreateDTO dto) {
         validateDtoNotNull(dto, "create");
         logger.debug("Creating {} with name: {}", ENTITY_NAME, dto.getName());
@@ -64,6 +66,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public SpecialtyViewDTO update(SpecialtyUpdateDTO dto) {
         validateDtoNotNull(dto, "update");
         validateIdNotNull(dto.getId(), "update");
@@ -88,6 +91,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     /** {@inheritDoc} */
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(Long id) {
         validateIdNotNull(id, "delete");
         logger.debug("Deleting {} with ID: {}", ENTITY_NAME, id);
@@ -104,6 +108,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     /** {@inheritDoc} */
     @Override
+    @PreAuthorize("permitAll()")
     public SpecialtyViewDTO getById(Long id) {
         return modelMapper.map(getSpecialtyEntityById(id), SpecialtyViewDTO.class);
     }
@@ -124,6 +129,7 @@ public class SpecialtyServiceImpl implements SpecialtyService {
     /** {@inheritDoc} */
     @Override
     @Async
+    @PreAuthorize("permitAll()")
     public CompletableFuture<Page<SpecialtyViewDTO>> getAll(int page, int size, String orderBy, boolean ascending) {
         validatePagination(page, size, "getAll");
         logger.debug("Retrieving all {}: page={}, size={}, orderBy={}, ascending={}", ENTITY_NAME, page, size, orderBy, ascending);

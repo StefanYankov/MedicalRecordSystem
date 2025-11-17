@@ -565,6 +565,7 @@ class PatientServiceImplIntegrationTests {
             // Manually set security context to provide a mocked OidcUser
             OidcUser mockOidcUser = mock(OidcUser.class);
             when(mockOidcUser.getSubject()).thenReturn(patientOwner.getKeycloakId()); // Use dynamically generated Keycloak ID
+            when(mockOidcUser.getName()).thenReturn(patientOwner.getKeycloakId()); // FIX: Add missing mock for getName()
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(mockOidcUser, "password", Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT")))
             );
@@ -581,6 +582,7 @@ class PatientServiceImplIntegrationTests {
             // Manually set security context to provide a mocked OidcUser for the 'other' patient
             OidcUser mockOidcUser = mock(OidcUser.class);
             when(mockOidcUser.getSubject()).thenReturn("other-patient-id"); // Keycloak ID for the user performing the action
+            when(mockOidcUser.getName()).thenReturn("other-patient-id"); // FIX: Add missing mock for getName()
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(mockOidcUser, "password", Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT")))
             );
@@ -649,6 +651,7 @@ class PatientServiceImplIntegrationTests {
             // Manually set security context to provide a mocked OidcUser
             OidcUser mockOidcUser = mock(OidcUser.class);
             when(mockOidcUser.getSubject()).thenReturn(patientOwner.getKeycloakId()); // Keycloak ID for the user performing the action
+            when(mockOidcUser.getName()).thenReturn(patientOwner.getKeycloakId()); // FIX: Add missing mock for getName()
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(mockOidcUser, "password", Collections.singletonList(new SimpleGrantedAuthority("ROLE_PATIENT")))
             );

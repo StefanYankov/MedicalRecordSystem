@@ -1,8 +1,9 @@
 package nbu.cscb869.config;
 
 import nbu.cscb869.data.models.*;
-import nbu.cscb869.services.data.dtos.*;
+import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.SpecialtyRepository;
+import nbu.cscb869.services.data.dtos.*;
 import nbu.cscb869.web.viewmodels.DoctorEditViewModel;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.modelmapper.Converter;
@@ -21,10 +22,12 @@ import java.util.stream.Collectors;
 public class ModelMapperConfig {
 
     private final SpecialtyRepository specialtyRepository;
+    private final DoctorRepository doctorRepository;
 
     @Autowired
-    public ModelMapperConfig(SpecialtyRepository specialtyRepository) {
+    public ModelMapperConfig(SpecialtyRepository specialtyRepository, DoctorRepository doctorRepository) {
         this.specialtyRepository = specialtyRepository;
+        this.doctorRepository = doctorRepository;
     }
 
     @Bean
@@ -42,7 +45,7 @@ public class ModelMapperConfig {
 
         Converter<Set<String>, Set<Specialty>> namesToSpecialtiesConverter = context -> {
             Set<String> source = context.getSource();
-            if (source == null) return new HashSet<>();
+            if (source == null) return null;
             return source.stream()
                     .map(name -> specialtyRepository.findByName(name)
                             .orElseGet(() -> {
@@ -55,12 +58,49 @@ public class ModelMapperConfig {
 
         Converter<Set<Specialty>, Set<String>> specialtiesToNamesConverter = context -> {
             Set<Specialty> source = context.getSource();
-            if (source == null) {
-                return Collections.emptySet();
-            }
+            if (source == null) return Collections.emptySet();
             return source.stream()
                     .map(Specialty::getName)
                     .collect(Collectors.toSet());
+        };
+
+        Converter<Long, Doctor> gpIdToDoctorConverter = context -> {
+            Long gpId = context.getSource();
+            if (gpId == null) return null;
+            return doctorRepository.findById(gpId).orElse(null);
+        };
+
+        Converter<DoctorUpdateDTO, Doctor> doctorUpdateConverter = context -> {
+            DoctorUpdateDTO source = context.getSource();
+            Doctor destination = context.getDestination();
+
+            if (source.getName() != null) destination.setName(source.getName());
+            if (source.getUniqueIdNumber() != null) destination.setUniqueIdNumber(source.getUniqueIdNumber());
+            if (source.getIsGeneralPractitioner() != null) destination.setGeneralPractitioner(source.getIsGeneralPractitioner());
+            if (source.getIsApproved() != null) destination.setApproved(source.getIsApproved());
+            if (source.getSpecialties() != null) {
+                Set<Specialty> specialties = source.getSpecialties().stream()
+                        .map(name -> specialtyRepository.findByName(name).orElse(null))
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toSet());
+                destination.setSpecialties(specialties);
+            }
+            return destination;
+        };
+
+        Converter<PatientUpdateDTO, Patient> patientUpdateConverter = context -> {
+            PatientUpdateDTO source = context.getSource();
+            Patient destination = context.getDestination();
+
+            if (source.getName() != null) destination.setName(source.getName());
+            if (source.getEgn() != null) destination.setEgn(source.getEgn());
+            if (source.getKeycloakId() != null) destination.setKeycloakId(source.getKeycloakId());
+            if (source.getLastInsurancePaymentDate() != null) destination.setLastInsurancePaymentDate(source.getLastInsurancePaymentDate());
+            if (source.getGeneralPractitionerId() != null) {
+                Doctor gp = doctorRepository.findById(source.getGeneralPractitionerId()).orElse(null);
+                destination.setGeneralPractitioner(gp);
+            }
+            return destination;
         };
 
         Converter<VisitViewDTO, VisitUpdateDTO> visitViewToUpdateConverter = context -> {
@@ -83,6 +123,77 @@ public class ModelMapperConfig {
             return destination;
         };
 
+        Converter<SickLeave, SickLeaveViewDTO> sickLeaveToViewConverter = context -> {
+            SickLeave source = context.getSource();
+            SickLeaveViewDTO destination = new SickLeaveViewDTO();
+            destination.setId(source.getId());
+            destination.setStartDate(source.getStartDate());
+            destination.setDurationDays(source.getDurationDays());
+            if (source.getVisit() != null) {
+                destination.setVisitId(source.getVisit().getId());
+            }
+            return destination;
+        };
+
+        Converter<Treatment, TreatmentViewDTO> treatmentToViewConverter = context -> {
+            Treatment source = context.getSource();
+            if (source == null) return null;
+            TreatmentViewDTO destination = new TreatmentViewDTO();
+            destination.setId(source.getId());
+            destination.setDescription(source.getDescription());
+            if (source.getVisit() != null) {
+                destination.setVisitId(source.getVisit().getId());
+            }
+            if (source.getMedicines() != null) {
+                destination.setMedicines(source.getMedicines().stream()
+                        .map(med -> mapper.map(med, MedicineViewDTO.class))
+                        .collect(Collectors.toList()));
+            }
+            return destination;
+        };
+        
+        Converter<TreatmentViewDTO, TreatmentUpdateDTO> treatmentViewToUpdateConverter = context -> {
+            TreatmentViewDTO source = context.getSource();
+            if (source == null) return null;
+            TreatmentUpdateDTO destination = new TreatmentUpdateDTO();
+            destination.setId(source.getId());
+            destination.setDescription(source.getDescription());
+            if (source.getMedicines() != null) {
+                destination.setMedicines(source.getMedicines().stream()
+                        .map(med -> mapper.map(med, MedicineUpdateDTO.class))
+                        .collect(Collectors.toList()));
+            }
+            return destination;
+        };
+
+        Converter<Medicine, MedicineViewDTO> medicineToViewConverter = context -> {
+            Medicine source = context.getSource();
+            MedicineViewDTO destination = new MedicineViewDTO();
+            destination.setId(source.getId());
+            destination.setName(source.getName());
+            destination.setDosage(source.getDosage());
+            destination.setFrequency(source.getFrequency());
+            if (source.getTreatment() != null) {
+                destination.setTreatmentId(source.getTreatment().getId());
+            }
+            return destination;
+        };
+
+        Converter<Patient, PatientViewDTO> patientToViewConverter = context -> {
+            Patient source = context.getSource();
+            PatientViewDTO destination = new PatientViewDTO();
+            destination.setId(source.getId());
+            destination.setName(source.getName());
+            destination.setEgn(source.getEgn());
+            destination.setKeycloakId(source.getKeycloakId());
+            destination.setLastInsurancePaymentDate(source.getLastInsurancePaymentDate());
+            if (source.getGeneralPractitioner() != null) {
+                destination.setGeneralPractitionerId(source.getGeneralPractitioner().getId());
+                destination.setGeneralPractitionerName(source.getGeneralPractitioner().getName());
+            }
+            return destination;
+        };
+
         // --- TypeMaps ---
 
         // Doctor Mappings
@@ -99,39 +210,32 @@ public class ModelMapperConfig {
                 .addMappings(m -> m.using(namesToSpecialtiesConverter).map(DoctorCreateDTO::getSpecialties, Doctor::setSpecialties));
 
         mapper.createTypeMap(DoctorUpdateDTO.class, Doctor.class)
-                .addMappings(m -> {
-                    m.skip(Doctor::setId);
-                    m.using(namesToSpecialtiesConverter).map(DoctorUpdateDTO::getSpecialties, Doctor::setSpecialties);
-                });
+                .setConverter(doctorUpdateConverter)
+                .addMappings(m -> m.skip(Doctor::setId));
+
 
         // Patient Mappings
-        mapper.createTypeMap(Patient.class, PatientViewDTO.class)
-                .addMappings(m -> {
-                    // ModelMapper with STRICT matching should handle direct field mappings by convention.
-                    // Explicitly map only derived fields.
-                    m.map(src -> src.getGeneralPractitioner().getId(), PatientViewDTO::setGeneralPractitionerId);
-                    m.map(src -> src.getGeneralPractitioner().getName(), PatientViewDTO::setGeneralPractitionerName);
-                });
+        mapper.createTypeMap(Patient.class, PatientViewDTO.class).setConverter(patientToViewConverter);
 
         mapper.createTypeMap(PatientCreateDTO.class, Patient.class)
-                .addMappings(m -> m.skip(Patient::setId));
+                .addMappings(m -> {
+                    m.skip(Patient::setId);
+                    m.using(gpIdToDoctorConverter).map(PatientCreateDTO::getGeneralPractitionerId, Patient::setGeneralPractitioner);
+                });
 
         mapper.createTypeMap(PatientUpdateDTO.class, Patient.class)
+                .setConverter(patientUpdateConverter)
                 .addMappings(m -> m.skip(Patient::setId));
 
-        // Visit Mappings
+
+        // Visit, Treatment, Medicine, SickLeave Mappings
+        mapper.createTypeMap(Visit.class, VisitViewDTO.class);
         mapper.createTypeMap(VisitViewDTO.class, VisitUpdateDTO.class).setConverter(visitViewToUpdateConverter);
-
-        // Treatment and Medicine Mappings
-        mapper.createTypeMap(Treatment.class, TreatmentViewDTO.class)
-                .addMappings(m -> m.map(src -> src.getVisit().getId(), TreatmentViewDTO::setVisitId));
-
-        mapper.createTypeMap(Medicine.class, MedicineViewDTO.class)
-                .addMappings(m -> m.map(src -> src.getTreatment().getId(), MedicineViewDTO::setTreatmentId));
-
-        // SickLeave Mappings
-        mapper.createTypeMap(SickLeave.class, SickLeaveViewDTO.class)
-                .addMappings(m -> m.map(src -> src.getVisit().getId(), SickLeaveViewDTO::setVisitId));
+        mapper.createTypeMap(Treatment.class, TreatmentViewDTO.class).setConverter(treatmentToViewConverter);
+        mapper.createTypeMap(TreatmentViewDTO.class, TreatmentUpdateDTO.class).setConverter(treatmentViewToUpdateConverter);
+        mapper.createTypeMap(Medicine.class, MedicineViewDTO.class).setConverter(medicineToViewConverter);
+        mapper.createTypeMap(SickLeave.class, SickLeaveViewDTO.class).setConverter(sickLeaveToViewConverter);
+        mapper.createTypeMap(MedicineViewDTO.class, MedicineUpdateDTO.class);
 
         return mapper;
     }

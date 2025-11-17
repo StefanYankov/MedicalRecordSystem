@@ -7,8 +7,6 @@ spring:
     password: nbuDBp4ss
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    # This is now considered a best practice. It prevents the N+1 query problem
-    # that can occur when lazy-loaded collections are accessed during view rendering.
     open-in-view: false
     hibernate:
       ddl-auto: update

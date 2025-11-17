@@ -12,7 +12,7 @@ import nbu.cscb869.common.validation.ValidationConfig;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MedicineUpdateDTO {
-    private Long id; // Can be null for new medicines added during an update
+    private Long id;
 
     @NotBlank(message = ErrorMessages.NAME_NOT_BLANK)
     @Size(max = ValidationConfig.NAME_MAX_LENGTH, message = ErrorMessages.NAME_SIZE)

@@ -1,9 +1,7 @@
 package nbu.cscb869.web.controllers.admin.unittests;
 
 import nbu.cscb869.data.dto.*;
-import nbu.cscb869.data.models.Diagnosis;
 import nbu.cscb869.data.models.Doctor;
-import nbu.cscb869.services.data.dtos.DoctorViewDTO;
 import nbu.cscb869.services.data.dtos.PatientViewDTO;
 import nbu.cscb869.services.data.dtos.VisitViewDTO;
 import nbu.cscb869.services.services.contracts.DiagnosisService;
@@ -27,7 +25,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDate;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -107,9 +104,7 @@ class AdminReportsControllerUnitTests {
     class MostFrequentDiagnosesTests {
         @Test
         void getMostFrequentDiagnoses_ShouldReturnData_HappyPath() throws Exception {
-            Diagnosis diagnosis = new Diagnosis();
-            diagnosis.setName("Flu");
-            DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder().diagnosis(diagnosis).visitCount(10L).build();
+            DiagnosisVisitCountDTO dto = new DiagnosisVisitCountDTO(1L, "Flu", 10L);
             when(visitService.getMostFrequentDiagnoses()).thenReturn(Collections.singletonList(dto));
 
             mockMvc.perform(get("/admin/reports/most-frequent-diagnoses"))
@@ -163,7 +158,7 @@ class AdminReportsControllerUnitTests {
         void getPatientCountByGp_ShouldReturnData_HappyPath() throws Exception {
             Doctor doctor = new Doctor();
             doctor.setName("Dr. Feelgood");
-            DoctorPatientCountDTO dto = DoctorPatientCountDTO.builder().doctor(doctor).patientCount(5L).build();
+            DoctorPatientCountDTO dto = new DoctorPatientCountDTO(doctor, 5L);
             when(doctorService.getPatientCountByGeneralPractitioner()).thenReturn(Collections.singletonList(dto));
 
             mockMvc.perform(get("/admin/reports/patient-count-by-gp"))
@@ -180,7 +175,7 @@ class AdminReportsControllerUnitTests {
         void getVisitCountByDoctor_ShouldReturnData_HappyPath() throws Exception {
             Doctor doctor = new Doctor();
             doctor.setName("Dr. Who");
-            DoctorVisitCountDTO dto = DoctorVisitCountDTO.builder().doctor(doctor).visitCount(10L).build();
+            DoctorVisitCountDTO dto = new DoctorVisitCountDTO(doctor, 10L);
             when(doctorService.getVisitCount()).thenReturn(Collections.singletonList(dto));
 
             mockMvc.perform(get("/admin/reports/visit-count-by-doctor"))
@@ -247,7 +242,7 @@ class AdminReportsControllerUnitTests {
         void getDoctorsWithMostSickLeaves_ShouldReturnData_HappyPath() throws Exception {
             Doctor doctor = new Doctor();
             doctor.setName("Dr. House");
-            DoctorSickLeaveCountDTO dto = DoctorSickLeaveCountDTO.builder().doctor(doctor).sickLeaveCount(20L).build();
+            DoctorSickLeaveCountDTO dto = new DoctorSickLeaveCountDTO(doctor, 20L);
             when(doctorService.getDoctorsWithMostSickLeaves()).thenReturn(Collections.singletonList(dto));
 
             mockMvc.perform(get("/admin/reports/doctors-with-most-sick-leaves"))

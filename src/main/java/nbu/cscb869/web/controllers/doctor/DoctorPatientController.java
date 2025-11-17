@@ -81,40 +81,34 @@ public class DoctorPatientController {
     public String showPatientHistory(@PathVariable final Long id, final Model model) {
         logger.info("GET /doctor/patients/{}/history: Displaying medical history for patient with ID {}", id, id);
 
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String keycloakId = authentication.getName(); // Use getName() for robustness
-            DoctorViewDTO currentDoctor = doctorService.getByKeycloakId(keycloakId);
-            model.addAttribute("loggedInDoctorId", currentDoctor.getId());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String keycloakId = authentication.getName(); // Use getName() for robustness
+        DoctorViewDTO currentDoctor = doctorService.getByKeycloakId(keycloakId);
+        model.addAttribute("loggedInDoctorId", currentDoctor.getId());
 
-            final PatientViewDTO patient = patientService.getById(id);
-            final List<VisitViewDTO> visits = visitService.getVisitsByPatient(id, 0, 100).getContent();
+        final PatientViewDTO patient = patientService.getById(id);
+        final List<VisitViewDTO> visits = visitService.getVisitsByPatient(id, 0, 100).getContent();
 
-            PatientHistoryViewModel patientHistoryViewModel = new PatientHistoryViewModel();
-            patientHistoryViewModel.setId(patient.getId());
-            patientHistoryViewModel.setName(patient.getName());
-            patientHistoryViewModel.setEgn(patient.getEgn());
-            patientHistoryViewModel.setLastInsurancePaymentDate(patient.getLastInsurancePaymentDate());
+        PatientHistoryViewModel patientHistoryViewModel = new PatientHistoryViewModel();
+        patientHistoryViewModel.setId(patient.getId());
+        patientHistoryViewModel.setName(patient.getName());
+        patientHistoryViewModel.setEgn(patient.getEgn());
+        patientHistoryViewModel.setLastInsurancePaymentDate(patient.getLastInsurancePaymentDate());
 
-            if (patient.getGeneralPractitionerId() != null) {
-                try {
-                    DoctorViewDTO gpDoctor = doctorService.getById(patient.getGeneralPractitionerId());
-                    patientHistoryViewModel.setGeneralPractitioner(gpDoctor);
-                } catch (EntityNotFoundException e) {
-                    logger.error("General practitioner with ID {} not found for patient {}.", patient.getGeneralPractitionerId(), patient.getId(), e);
-                    // Optionally handle this error, e.g., set a default or null GP
-                }
+        if (patient.getGeneralPractitionerId() != null) {
+            try {
+                DoctorViewDTO gpDoctor = doctorService.getById(patient.getGeneralPractitionerId());
+                patientHistoryViewModel.setGeneralPractitioner(gpDoctor);
+            } catch (EntityNotFoundException e) {
+                logger.error("General practitioner with ID {} not found for patient {}.", patient.getGeneralPractitionerId(), patient.getId(), e);
+                // Optionally handle this error, e.g., set a default or null GP
             }
-
-            patientHistoryViewModel.setVisits(visits);
-
-            model.addAttribute("patient", patientHistoryViewModel);
-
-            return "doctor/patients/history";
-        } catch (EntityNotFoundException e) {
-            logger.error("Patient not found: {}", e.getMessage(), e);
-            model.addAttribute("errorMessage", e.getMessage());
-            return "error/404";
         }
+
+        patientHistoryViewModel.setVisits(visits);
+
+        model.addAttribute("patient", patientHistoryViewModel);
+
+        return "doctor/patients/history";
     }
 }

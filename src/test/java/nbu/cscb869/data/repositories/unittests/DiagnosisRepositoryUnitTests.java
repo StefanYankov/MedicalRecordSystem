@@ -128,14 +128,13 @@ class DiagnosisRepositoryUnitTests {
 
     @Test
     void findMostFrequentDiagnoses_WithData_ReturnsSortedList_HappyPath() {
-        Diagnosis d = Diagnosis.builder().name("Flu").build();
-        DiagnosisVisitCountDTO dto = DiagnosisVisitCountDTO.builder().diagnosis(d).visitCount(1L).build();
+        DiagnosisVisitCountDTO dto = new DiagnosisVisitCountDTO(1L, "Flu", 1L);
         when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(List.of(dto));
 
         List<DiagnosisVisitCountDTO> result = diagnosisRepository.findMostFrequentDiagnoses();
 
         assertEquals(1, result.size());
-        assertEquals("Flu", result.getFirst().getDiagnosis().getName());
+        assertEquals("Flu", result.getFirst().getDiagnosisName());
         verify(diagnosisRepository).findMostFrequentDiagnoses();
     }
 
@@ -151,9 +150,8 @@ class DiagnosisRepositoryUnitTests {
 
     @Test
     void findMostFrequentDiagnoses_MaxCount_EdgeCase() {
-        Diagnosis d = Diagnosis.builder().name("Flu").build();
         List<DiagnosisVisitCountDTO> largeList = IntStream.range(0, 100)
-                .mapToObj(i -> DiagnosisVisitCountDTO.builder().diagnosis(d).visitCount(i).build())
+                .mapToObj(i -> new DiagnosisVisitCountDTO((long) i, "Diagnosis " + i, i))
                 .collect(Collectors.toList());
         when(diagnosisRepository.findMostFrequentDiagnoses()).thenReturn(largeList);
 

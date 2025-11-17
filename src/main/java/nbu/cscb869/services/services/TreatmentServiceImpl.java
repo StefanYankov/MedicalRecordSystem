@@ -73,7 +73,7 @@ public class TreatmentServiceImpl implements TreatmentService {
                 medicine.setName(medDto.getName());
                 medicine.setDosage(medDto.getDosage());
                 medicine.setFrequency(medDto.getFrequency());
-                medicine.setTreatment(treatment); // Link medicine to the treatment
+                medicine.setTreatment(treatment);
                 treatment.getMedicines().add(medicine);
             });
         }

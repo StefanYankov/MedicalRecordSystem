@@ -5,6 +5,7 @@ import nbu.cscb869.data.models.*;
 import nbu.cscb869.data.models.enums.VisitStatus;
 import nbu.cscb869.data.repositories.DoctorRepository;
 import nbu.cscb869.data.repositories.SpecialtyRepository;
+import nbu.cscb869.data.utils.TestDataUtils;
 import nbu.cscb869.services.data.dtos.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +39,7 @@ class ModelMapperConfigUnitTests {
 
     @BeforeEach
     void setUp() {
-        ModelMapperConfig modelMapperConfig = new ModelMapperConfig(specialtyRepository);
+        ModelMapperConfig modelMapperConfig = new ModelMapperConfig(specialtyRepository, doctorRepository);
         modelMapper = modelMapperConfig.modelMapper();
     }
 
@@ -185,7 +186,7 @@ class ModelMapperConfigUnitTests {
         void mapDoctorUpdateDTOToDoctor_PartialUpdateGeneralPractitionerStatus_ShouldUpdateOnlyStatus_EdgeCase() {
             // ARRANGE
             DoctorUpdateDTO dto = new DoctorUpdateDTO();
-            dto.setGeneralPractitioner(false);
+            dto.setIsGeneralPractitioner(false);
 
             Doctor existingDoctor = new Doctor();
             existingDoctor.setId(1L);
@@ -221,8 +222,9 @@ class ModelMapperConfigUnitTests {
             // ARRANGE
             Patient patient = new Patient();
             patient.setId(1L);
+
             patient.setName("John Doe");
-            patient.setEgn("1234567890");
+            patient.setEgn(TestDataUtils.generateValidEgn());
             patient.setKeycloakId("kc-patient-1");
             patient.setLastInsurancePaymentDate(LocalDate.of(2023, 1, 15));
             patient.setGeneralPractitioner(mockGp);
@@ -312,7 +314,7 @@ class ModelMapperConfigUnitTests {
             dto.setName("New Patient");
             dto.setEgn("0987654321");
             dto.setKeycloakId("kc-new-patient");
-            dto.setGeneralPractitionerId(99L); // Non-existent GP ID
+            dto.setGeneralPractitionerId(99L);
             dto.setLastInsurancePaymentDate(LocalDate.of(2023, 2, 1));
 
             when(doctorRepository.findById(99L)).thenReturn(Optional.empty());
@@ -350,28 +352,6 @@ class ModelMapperConfigUnitTests {
             assertEquals(dto.getKeycloakId(), existingPatient.getKeycloakId());
             assertEquals(dto.getGeneralPractitionerId(), existingPatient.getGeneralPractitioner().getId());
             assertEquals(dto.getLastInsurancePaymentDate(), existingPatient.getLastInsurancePaymentDate());
-        }
-
-        @Test
-        void mapPatientUpdateDTOToPatient_WithNullGeneralPractitionerId_ShouldMapCorrectly_EdgeCase() {
-            // ARRANGE
-            PatientUpdateDTO dto = new PatientUpdateDTO();
-            dto.setId(1L);
-            dto.setName("Updated Patient");
-            dto.setEgn("0987654322");
-            dto.setKeycloakId("kc-updated-patient");
-            dto.setGeneralPractitionerId(null);
-            dto.setLastInsurancePaymentDate(LocalDate.of(2023, 3, 1));
-
-            Patient existingPatient = new Patient();
-            existingPatient.setId(100L);
-            existingPatient.setGeneralPractitioner(mockGp); // Existing GP
-
-            // ACT
-            modelMapper.map(dto, existingPatient);
-
-            // ASSERT
-            assertNull(existingPatient.getGeneralPractitioner());
         }
 
         @Test
@@ -648,15 +628,15 @@ class ModelMapperConfigUnitTests {
 
             // ASSERT
             assertEquals("Updated Name Only", existingDoctor.getName());
-            assertEquals("ORIGINAL_UID", existingDoctor.getUniqueIdNumber());
-            assertTrue(existingDoctor.isGeneralPractitioner());
+            assertEquals("ORIGINAL_UID", existingDoctor.getUniqueIdNumber()); // Should remain unchanged
+            assertTrue(existingDoctor.isGeneralPractitioner()); // Should remain unchanged
         }
 
         @Test
         void mapDoctorUpdateDTOToDoctor_PartialUpdateGeneralPractitionerStatus_ShouldUpdateOnlyStatus_EdgeCase() {
             // ARRANGE
             DoctorUpdateDTO dto = new DoctorUpdateDTO();
-            dto.setGeneralPractitioner(false);
+            dto.setIsGeneralPractitioner(false);
 
             Doctor existingDoctor = new Doctor();
             existingDoctor.setId(1L);

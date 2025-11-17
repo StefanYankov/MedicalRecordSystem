@@ -19,6 +19,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,13 +34,15 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Transactional
-@Import(VisitServiceImplIntegrationTests.TestConfig.class)
+@Import({VisitServiceImplIntegrationTests.AsyncTestConfig.class, VisitServiceImplIntegrationTests.TestConfig.class})
 class VisitServiceImplIntegrationTests {
 
     @TestConfiguration
@@ -60,6 +63,14 @@ class VisitServiceImplIntegrationTests {
     @MockBean
     private Keycloak keycloak;
 
+    @TestConfiguration
+    static class AsyncTestConfig {
+        @Bean(name = "taskExecutor")
+        public Executor taskExecutor() {
+            return new SyncTaskExecutor();
+        }
+    }
+
     @Autowired
     private VisitService visitService;
 
@@ -71,6 +82,8 @@ class VisitServiceImplIntegrationTests {
     private PatientRepository patientRepository;
     @Autowired
     private DiagnosisRepository diagnosisRepository;
+    @Autowired
+    private SickLeaveRepository sickLeaveRepository;
 
     private Doctor testDoctor;
     private Patient testPatient;
@@ -258,7 +271,7 @@ class VisitServiceImplIntegrationTests {
 
             assertFalse(result.isEmpty());
             assertEquals(1, result.getFirst().getVisitCount());
-            assertEquals(testDoctor.getName(), result.get(0).getDoctor().getName());
+            assertEquals(testDoctor.getName(), result.getFirst().getDoctor().getName());
         }
 
         @Test
@@ -270,7 +283,7 @@ class VisitServiceImplIntegrationTests {
 
             assertFalse(result.isEmpty());
             assertEquals(1, result.size());
-            assertEquals(testDiagnosis.getName(), result.get(0).getDiagnosis().getName());
+            assertEquals(testDiagnosis.getName(), result.getFirst().getDiagnosisName());
         }
 
         @Test
@@ -302,7 +315,83 @@ class VisitServiceImplIntegrationTests {
                     0, 10);
 
             assertEquals(1, result.getTotalElements());
-            assertEquals(VisitStatus.SCHEDULED, result.getContent().get(0).getStatus());
+            assertEquals(VisitStatus.SCHEDULED, result.getContent().getFirst().getStatus());
+        }
+    }
+
+    @Nested
+    @DisplayName("Additional Service Flow Tests")
+    class AdditionalServiceFlowsTests {
+        @Test
+        @WithMockKeycloakUser(authorities = "ROLE_PATIENT")
+        void scheduleNewVisitByPatient_WithValidInsurance_ShouldCreateVisit_HappyPath() {
+            // ARRANGE
+            VisitCreateDTO dto = new VisitCreateDTO();
+            dto.setPatientId(testPatient.getId());
+            dto.setDoctorId(testDoctor.getId());
+            dto.setVisitDate(LocalDate.now().plusDays(2));
+            dto.setVisitTime(LocalTime.of(11, 30));
+
+            // ACT
+            visitService.scheduleNewVisitByPatient(dto);
+
+            // ASSERT
+            List<Visit> visits = visitRepository.findAll();
+            assertThat(visits).hasSize(1);
+            assertThat(visits.get(0).getStatus()).isEqualTo(VisitStatus.SCHEDULED);
+        }
+
+        @Test
+        @WithMockKeycloakUser(authorities = "ROLE_DOCTOR")
+        void documentVisit_WithValidData_ShouldUpdateAndCompleteVisit_HappyPath() {
+            // ARRANGE
+            Visit visit = visitRepository.save(Visit.builder().visitDate(LocalDate.now()).visitTime(LocalTime.now()).patient(testPatient).doctor(testDoctor).status(VisitStatus.SCHEDULED).build());
+            VisitDocumentationDTO dto = new VisitDocumentationDTO();
+            dto.setDiagnosisId(testDiagnosis.getId());
+            dto.setNotes("Integration test notes.");
+
+            // ACT
+            visitService.documentVisit(visit.getId(), dto);
+
+            // ASSERT
+            Visit updatedVisit = visitRepository.findById(visit.getId()).get();
+            assertThat(updatedVisit.getStatus()).isEqualTo(VisitStatus.COMPLETED);
+            assertThat(updatedVisit.getNotes()).isEqualTo("Integration test notes.");
+            assertThat(updatedVisit.getDiagnosis().getId()).isEqualTo(testDiagnosis.getId());
+        }
+
+        @Test
+        @WithMockKeycloakUser(keycloakId = "patient-owner-id", authorities = "ROLE_PATIENT")
+        void cancelVisit_ByPatientOwner_ShouldUpdateStatusToCancelled_HappyPath() {
+            // ARRANGE
+            Visit visit = visitRepository.save(Visit.builder().visitDate(LocalDate.now().plusDays(5)).visitTime(LocalTime.now()).patient(testPatient).doctor(testDoctor).status(VisitStatus.SCHEDULED).build());
+
+            // ACT
+            visitService.cancelVisit(visit.getId());
+
+            // ASSERT
+            Visit cancelledVisit = visitRepository.findById(visit.getId()).get();
+            assertThat(cancelledVisit.getStatus()).isEqualTo(VisitStatus.CANCELLED_BY_PATIENT);
+        }
+
+        @Test
+        @WithMockKeycloakUser(authorities = "ROLE_ADMIN")
+        void getMostFrequentSickLeaveMonth_WhenDataExists_ShouldReturnCorrectMonth_HappyPath() {
+            // ARRANGE
+            Visit visit = visitRepository.save(Visit.builder().visitDate(LocalDate.now()).visitTime(LocalTime.now()).patient(testPatient).doctor(testDoctor).status(VisitStatus.COMPLETED).build());
+            SickLeave sickLeave = new SickLeave();
+            sickLeave.setVisit(visit);
+            sickLeave.setStartDate(LocalDate.of(2025, 10, 15)); // October
+            sickLeave.setDurationDays(5);
+            sickLeaveRepository.save(sickLeave);
+
+            // ACT
+            var result = visitService.getMostFrequentSickLeaveMonth();
+
+            // ASSERT
+            assertFalse(result.isEmpty());
+            assertEquals(10, result.getFirst().getMonth()); // Check for October
+            assertEquals(1, result.getFirst().getSickLeaveCount());
         }
     }
 }
