@@ -24,8 +24,6 @@ The **Medical Record System** is a Java-based web application developed as a fin
 - [Usage](#usage)
 - [Utility Scripts](#utility-scripts)
 - [Deployment to Azure](#deployment-to-azure)
-- [Tests](#tests)
-- [Logging](#logging)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -237,57 +235,27 @@ The deployment is automated using **GitHub Actions**. Pushing code to the `main`
 
 ---
 
-## Dependencies
-
-- **SLF4J**: For logging.
-- **Logback**: As the logging implementation.
-
----
-
-
-## Tests
-
-### Unit testing
-
-The project includes extensive unit tests using JUnit 5 and Mockito, covering the service layer, and serialization functionality. To run the tests:
-
-   ```bash
-   ./gradlew test
-   ```
-
-### Unit tests Code coverage
-
-![tests-code-coverage.PNG](tests-code-coverage.PNG)
-
----
-
-## Logging
-
-Logging is implemented using SLF4J with Logback. Logs are output to the console by default and can be customized via the ``logback.xml`` file located in ``src/main/resources``.
-
----
-
 ## Contributing
 
-As this is a university course project contribuiting is generally not required.
+As this is a university course project contributing is generally not required.
 
 ---
 
 ## License
 
-The project is licensed under MIT License. See the **[LICENSE](https://github.com/StefanYankov/PrintHouseManagementSystem/blob/master/LICENSE)** file for details.
+The project is licensed under MIT License. See the **[LICENSE](https://github.com/StefanYankov/MedicalRecordSystem/blob/main/LICENSE)** file for details.
 
 ---
 
 ## Acknowledgments
 
-- This project was developed as part of the **CITB408 Java Programming** course at [New Bulgarian University](https://nbu.bg/).
+- This project was developed as part of the **CSCB869 Java Web Services** course at [New Bulgarian University](https://nbu.bg/).
 - Special thanks to the course instructor for creating the project requirements.
 
 ---
 
 ## Repository
 
-GitHub Repository: [https://github.com/StefanYankov/PrintHouseManagementSystem/](https://github.com/StefanYankov/PrintHouseManagementSystem/)
+GitHub Repository: [https://github.com/StefanYankov/MedicalRecordSystem](https://github.com/StefanYankov/MedicalRecordSystem)
 
 ---
