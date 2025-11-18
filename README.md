@@ -1,5 +1,12 @@
 # Medical Record System
 
+## Overview
+
+This project is the **final project** for the university course:  
+**[CSCB869 Java Web Services - Autumn Semester 2022/2023](https://ecatalog.nbu.bg/default.asp?V_Year=2022&YSem=7&Spec_ID=1593&Mod_ID=&PageShow=coursepresent&P_Menu=courses_part2&Fac_ID=3&M_PHD=&P_ID=832&TabIndex=&K_ID=13033&K_TypeID=10&l=1)**.
+
+## Project Introduction
+
 The **Medical Record System** is a Java-based web application developed as a final project for the **CSCB869 Java Web Services** course at the **New Bulgarian University**. It provides a centralized platform for managing patient medical records, including illness history, doctor visits, diagnoses, treatments, and sick leaves. The system supports various user roles (Patient, Doctor, and Admin) with distinct access levels and features, secured by Keycloak and OAuth2.
 
 ## Table of Contents
@@ -17,6 +24,12 @@ The **Medical Record System** is a Java-based web application developed as a fin
 - [Usage](#usage)
 - [Utility Scripts](#utility-scripts)
 - [Deployment to Azure](#deployment-to-azure)
+- [Tests](#tests)
+- [Logging](#logging)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Repository](#repository)
 
 ## Project Goal
 
@@ -221,3 +234,60 @@ The application is deployed to Microsoft Azure using Azure App Service, a Platfo
 
 **Deployment Process:**
 The deployment is automated using **GitHub Actions**. Pushing code to the `main` branch triggers a CI/CD pipeline that builds the application and deploys it directly to the Azure App Service.
+
+---
+
+## Dependencies
+
+- **SLF4J**: For logging.
+- **Logback**: As the logging implementation.
+
+---
+
+
+## Tests
+
+### Unit testing
+
+The project includes extensive unit tests using JUnit 5 and Mockito, covering the service layer, and serialization functionality. To run the tests:
+
+   ```bash
+   ./gradlew test
+   ```
+
+### Unit tests Code coverage
+
+![tests-code-coverage.PNG](tests-code-coverage.PNG)
+
+---
+
+## Logging
+
+Logging is implemented using SLF4J with Logback. Logs are output to the console by default and can be customized via the ``logback.xml`` file located in ``src/main/resources``.
+
+---
+
+## Contributing
+
+As this is a university course project contribuiting is generally not required.
+
+---
+
+## License
+
+The project is licensed under MIT License. See the **[LICENSE](https://github.com/StefanYankov/PrintHouseManagementSystem/blob/master/LICENSE)** file for details.
+
+---
+
+## Acknowledgments
+
+- This project was developed as part of the **CITB408 Java Programming** course at [New Bulgarian University](https://nbu.bg/).
+- Special thanks to the course instructor for creating the project requirements.
+
+---
+
+## Repository
+
+GitHub Repository: [https://github.com/StefanYankov/PrintHouseManagementSystem/](https://github.com/StefanYankov/PrintHouseManagementSystem/)
+
+---
