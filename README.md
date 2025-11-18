@@ -1,3 +1,198 @@
-MedicalRecordSystem for CSCB869 course at NBU
+# Medical Record System
 
-https://egn.bg/egn/generator for random EGN generation
+The **Medical Record System** is a Java-based web application developed as a final project for the **CSCB869 Java Web Services** course at the **New Bulgarian University**. It provides a centralized platform for managing patient medical records, including illness history, doctor visits, diagnoses, treatments, and sick leaves. The system supports various user roles (Patient, Doctor, and Admin) with distinct access levels and features, secured by Keycloak and OAuth2.
+
+## Table of Contents
+
+- [Project Goal](#project-goal)
+- [Live Demo](#live-demo)
+- [API Documentation (Swagger UI)](#api-documentation-swagger-ui)
+- [Features](#features)
+- [Architecture & Technologies](#architecture--technologies)
+- [User Roles](#user-roles)
+- [MVC User Stories](#mvc-user-stories)
+- [API User Stories](#api-user-stories)
+- [Installation & Setup](#installation--setup)
+- [Keycloak Setup Details](#keycloak-setup-details)
+- [Usage](#usage)
+- [Deployment to Azure](#deployment-to-azure)
+
+## Project Goal
+
+The project's main goal is to create a comprehensive system for managing patient medical records. This includes tracking the history of illnesses for each patient, the doctors who have examined them, the treatments applied, and any sick leave issued. The system provides distinct functionalities for patients, doctors, and administrators, ensuring data is both accessible and secure based on the user's role.
+
+## Live Demo
+
+The Medical Record System application is deployed and accessible live on Microsoft Azure.
+
+**Application URL:** [Placeholder - Will be updated with your Azure App Service URL]
+**Swagger UI URL:** [Placeholder - Will be updated with your Azure App Service URL]/swagger-ui.html
+
+**Note:** For authentication on the live demo, Keycloak is running alongside the application in Azure. You will be redirected to the Keycloak login page when accessing secured parts of the application or attempting to authorize in Swagger UI.
+
+## API Documentation (Swagger UI)
+
+The application's RESTful API is fully documented using OpenAPI 3.0 and Swagger UI. This provides an interactive interface to explore, understand, and test all available API endpoints directly from your browser.
+
+**Accessing Swagger UI:**
+*   **Local Development:** `http://localhost:8080/swagger-ui.html`
+*   **Live Deployment:** [Placeholder - Will be updated with your Azure App Service URL]/swagger-ui.html
+
+**How to Use:**
+1.  **Authentication:** Click the green "Authorize" button at the top right of the Swagger UI page.
+2.  **Get Token:** Obtain a valid JWT access token from your Keycloak instance (e.g., using Postman as described in `showcase.md`).
+3.  **Paste Token:** Paste the copied access token into the "Value" field of the authorization dialog and click "Authorize".
+4.  **Explore & Test:** Expand any API group (e.g., "Patient API"), select an endpoint, click "Try it out", fill in parameters, and click "Execute" to send live requests to the API.
+
+For a detailed step-by-step guide on using Swagger UI, refer to `swagger-showcase.md`.
+
+## Features
+
+-   **Role-Based Access Control**: Secure access for Patients, Doctors, and Admins using Keycloak and Spring Security.
+-   **Patient Profile Management**: Patients can complete their profile by providing their EGN and selecting a General Practitioner.
+-   **Doctor Profile Management**: Doctors can complete and edit their professional profile, including specialties, GP status, and a profile image.
+-   **Admin Dashboard**: A central hub for administrators to view system statistics and manage all data.
+-   **Visit Scheduling & Documentation**: Patients can schedule visits with doctors, and doctors can document visit details, including diagnoses, treatments, and sick leave.
+-   **Medical History**: Both patients and doctors can view a patient's complete medical history.
+-   **Comprehensive Reporting**: Admins can generate various reports on diagnoses, doctor activity, patient distribution, and sick leave trends.
+-   **Full CRUD Operations**: Admins have full control over all core entities (Doctors, Patients, Diagnoses, Visits, etc.).
+-   **RESTful API**: A comprehensive API for programmatic access to all system functionalities, documented with OpenAPI.
+
+## Architecture & Technologies
+
+The application is built using a layered architecture to ensure a clean separation of concerns.
+
+-   **Backend**: **Spring Boot 3**
+-   **Security**: **Spring Security 6**, **Keycloak**, **OAuth2 & OIDC**
+-   **Database**: **JPA (Hibernate)** with **MySQL**
+-   **Frontend**: **Thymeleaf**, **Bootstrap**, **AdminLTE** (for admin panel)
+-   **Build Tool**: **Gradle**
+-   **API Documentation**: **OpenAPI 3.0 (springdoc)**
+-   **Image Storage**: **Cloudinary**
+-   **Development Email Server**: **Mailhog**
+-   **Testing**: **JUnit 5**, **Mockito**, **Testcontainers**
+
+## User Roles
+
+-   **Patient**: Can view their own medical history, schedule, and cancel appointments.
+-   **Doctor**: Can view any patient's history, document visits they have conducted, and manage their own profile.
+-   **Admin**: Has full access to view and manage all data in the system and view aggregated reports.
+
+## MVC User Stories
+
+### Persona: Unauthenticated User / Visitor
+
+*   **As an unauthenticated user, I want to view the homepage (`/`)** so that I can see general information and available medical specialties.
+*   **As an unauthenticated user, I want to search for doctors by specialty (`/doctors/search`)** so that I can find doctors relevant to my needs.
+*   **As an unauthenticated user, I want to register for a new account** so that I can become a patient or doctor in the system.
+*   **As an unauthenticated user, I want to log in** so that I can access my personalized features.
+
+### Persona: Patient
+
+*   **As a patient, upon first login, I want to complete my profile (`/profile/complete`)** by providing my EGN and selecting my General Practitioner.
+*   **As a patient, I want to view my personal dashboard (`/profile/dashboard`)** so that I can see my upcoming visits.
+*   **As a patient, I want to view my medical history (`/profile/history`)** so that I can see all my past visits, diagnoses, and treatments.
+*   **As a patient, I want to schedule a visit with a specific doctor (`/visits/schedule/{doctorId}`)** so that I can book an appointment.
+*   **As a patient, I want to cancel my scheduled visit (`/visits/{id}/cancel`)** so that I can manage my appointments.
+*   **As a patient, I want to view the details of a specific visit (`/visits/{id}`)** so that I can review its information.
+
+### Persona: Doctor
+
+*   **As a doctor, upon first login, I want to complete my professional profile (`/doctor/profile/complete`)** by providing my Unique ID Number and specialties.
+*   **As a doctor, I want to view my personal dashboard (`/doctor/dashboard`)** so that I can see my scheduled visits.
+*   **As a doctor, I want to view a list of all patients (`/doctor/patients`)** so that I can access their records.
+*   **As a doctor, I want to view a patient's medical history (`/doctor/patients/{id}/history`)** so that I can review their past health information.
+*   **As a doctor, I want to document a specific visit (`/doctor/visits/{visitId}/document`)** by adding diagnoses, treatments, and sick leave details.
+*   **As a doctor, I want to edit my own profile (`/doctor/profile/edit`)** to update my personal and professional details, including image and specialties.
+
+### Persona: Admin
+
+*   **As an admin, I want to view the admin dashboard (`/admin/dashboard`)** so that I can see key system metrics and unapproved doctors.
+*   **As an admin, I want to manage all core data**, including performing **Create, Read, Update, and Delete (CRUD)** operations on Doctors, Patients, Diagnoses, Visits, Sick Leaves, and Specialties.
+*   **As an admin, I want to approve newly registered doctors** to grant them full system access.
+*   **As an admin, I want to access a comprehensive reporting section (`/admin/reports`)** to gain insights into patient diagnoses, doctor activity, and sick leave trends.
+
+---
+
+## API Documentation (Swagger UI)
+
+The application's RESTful API is documented using OpenAPI 3.0. An interactive Swagger UI is available for exploring and testing the endpoints.
+
+-   **Swagger UI URL (Local):** `http://localhost:8080/swagger-ui.html`
+
+To test secured endpoints, use the "Authorize" button and provide a valid JWT token from Keycloak for the desired user role.
+
+---
+
+## Installation & Setup
+
+1.  **Prerequisites**:
+    *   Java 21+
+    *   Docker Desktop
+    *   Gradle
+    *   **Azure Account (for deployment, if applicable)**
+
+2.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/StefanYankov/MedicalRecordSystem
+    ```
+
+3.  **Environment Variables (`.env` file)**:
+    Create a `.env` file in the project root with the following variables. These are crucial for local development and are also configured as Application Settings in Azure App Service for deployment.
+    ```
+    KEYCLOAK_CLIENT_SECRET=your_keycloak_client_secret
+    SENDGRID_API_KEY=your_sendgrid_api_key
+    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+    CLOUDINARY_API_KEY=your_cloudinary_api_key
+    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+    ```
+    *(Note: For local development, you can find a dummy `KEYCLOAK_CLIENT_SECRET` in the `keycloak/medical-system-realm.json` file under the `clients` section for `medical-record-system`.)*
+
+4.  **Run Infrastructure (Docker Compose)**:
+    The required services (Keycloak, MySQL, Mailhog) are defined in the `docker-compose.yml` file.
+    ```bash
+    docker-compose up -d
+    ```
+
+5.  **Configure Keycloak Realm**:
+    *   Navigate to the Keycloak admin console at `http://localhost:8081`.
+    *   Import the realm configuration file located at `/keycloak/medical-system-realm.json`. This will set up the `medical-system` realm, clients, and roles.
+    *   **Important for Swagger UI (Local):** For the `medical-record-system` client, ensure `http://localhost:8080/swagger-ui/oauth2-redirect.html` is added to the "Valid Redirect URIs" list (or use `http://localhost:8080/*` for local development).
+
+6.  **Build and Run the Application**:
+    The application uses `application.yml` as its base configuration, with `application-dev.yml` overriding development-specific settings.
+    ```bash
+    ./gradlew bootRun
+    ```
+    The application will be available at `http://localhost:8080`.
+
+## Keycloak Setup Details
+
+The project uses Keycloak for authentication and authorization. The `keycloak/medical-system-realm.json` file contains the full configuration for the `medical-system` realm, including:
+
+*   **Realm Name:** `medical-system`
+*   **Client ID:** `medical-record-system`
+*   **Roles:** `ADMIN`, `DOCTOR`, `PATIENT` (assigned as client roles to the `medical-record-system` client).
+*   **Default User:** The realm does not come with default users. You will need to create users (e.g., `admin`, `doctor_user`, `patient_user`) in the Keycloak admin console and assign them the respective client roles.
+
+**Admin Console:** `http://localhost:8081` (default credentials: `admin`/`admin`)
+
+## Usage
+
+-   **Homepage**: `http://localhost:8080`
+-   **Admin Panel**: `http://localhost:8080/admin`
+-   **Doctor Dashboard**: `http://localhost:8080/doctor/dashboard`
+-   **Patient Dashboard**: `http://localhost:8080/profile/dashboard`
+-   **Mailhog UI**: `http://localhost:8025` (to view captured emails)
+
+## Deployment to Azure
+
+The application is deployed to Microsoft Azure using Azure App Service, a Platform-as-a-Service (PaaS) offering. This provides a managed environment for running the Spring Boot application without the need for Docker containers or virtual machine management.
+
+**Key Azure Services Used:**
+*   **Azure App Service:** Hosts the Spring Boot application.
+*   **Azure Database for MySQL (Flexible Server):** Provides the managed MySQL database.
+*   **Keycloak (Deployed to Azure):** For authentication and authorization in the live environment.
+
+**Deployment Process:**
+The deployment is automated using **GitHub Actions**. Pushing code to the `main` branch triggers a CI/CD pipeline that builds the application and deploys it directly to the Azure App Service.
