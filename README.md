@@ -15,6 +15,7 @@ The **Medical Record System** is a Java-based web application developed as a fin
 - [Installation & Setup](#installation--setup)
 - [Keycloak Setup Details](#keycloak-setup-details)
 - [Usage](#usage)
+- [Utility Scripts](#utility-scripts)
 - [Deployment to Azure](#deployment-to-azure)
 
 ## Project Goal
@@ -30,21 +31,6 @@ The Medical Record System application is deployed and accessible live on Microso
 
 **Note:** For authentication on the live demo, Keycloak is running alongside the application in Azure. You will be redirected to the Keycloak login page when accessing secured parts of the application or attempting to authorize in Swagger UI.
 
-## API Documentation (Swagger UI)
-
-The application's RESTful API is fully documented using OpenAPI 3.0 and Swagger UI. This provides an interactive interface to explore, understand, and test all available API endpoints directly from your browser.
-
-**Accessing Swagger UI:**
-*   **Local Development:** `http://localhost:8080/swagger-ui.html`
-*   **Live Deployment:** [Placeholder - Will be updated with your Azure App Service URL]/swagger-ui.html
-
-**How to Use:**
-1.  **Authentication:** Click the green "Authorize" button at the top right of the Swagger UI page.
-2.  **Get Token:** Obtain a valid JWT access token from your Keycloak instance (e.g., using Postman as described in `showcase.md`).
-3.  **Paste Token:** Paste the copied access token into the "Value" field of the authorization dialog and click "Authorize".
-4.  **Explore & Test:** Expand any API group (e.g., "Patient API"), select an endpoint, click "Try it out", fill in parameters, and click "Execute" to send live requests to the API.
-
-For a detailed step-by-step guide on using Swagger UI, refer to `swagger-showcase.md`.
 
 ## Features
 
@@ -166,6 +152,8 @@ To test secured endpoints, use the "Authorize" button and provide a valid JWT to
     ```
     The application will be available at `http://localhost:8080`.
 
+**Note on Local Development:** For information on resetting your local database or handling potential startup timing issues with Keycloak, please see the [Utility Scripts](#utility-scripts) section.
+
 ## Keycloak Setup Details
 
 The project uses Keycloak for authentication and authorization. The `keycloak/medical-system-realm.json` file contains the full configuration for the `medical-system` realm, including:
@@ -184,6 +172,43 @@ The project uses Keycloak for authentication and authorization. The `keycloak/me
 -   **Doctor Dashboard**: `http://localhost:8080/doctor/dashboard`
 -   **Patient Dashboard**: `http://localhost:8080/profile/dashboard`
 -   **Mailhog UI**: `http://localhost:8025` (to view captured emails)
+
+## Utility Scripts
+
+This project includes utility scripts to help with common development tasks.
+
+### `database_truncate.sql`
+
+This SQL script is used to completely wipe all data from the application's tables while keeping the table structures intact. It is useful for resetting your local database to a clean state without having to drop and recreate the entire database.
+
+**Usage:**
+
+You can execute this script using a MySQL client of your choice (e.g., MySQL Workbench, DBeaver, or the command line) connected to your local `medical_db` database.
+
+### `wait-for-it.sh`
+
+This is a simple shell script that waits for a specific host and port to become available before executing a command.
+
+**Purpose in this Project:**
+
+In the `docker-compose.yml` file, the main application (`medical-record-system`) depends on Keycloak. However, Keycloak can sometimes take a significant amount of time to start up. The `depends_on` condition `service_started` only waits for the container to start, not for the Keycloak application *inside* the container to be fully ready to accept connections.
+
+If the Spring Boot application starts faster than Keycloak, it will fail at startup when it tries to connect to Keycloak for its OIDC configuration. The `wait-for-it.sh` script solves this "race condition".
+
+**How it would be used (Example `docker-compose.yml` modification):**
+
+To use the script, you would modify the `command` for the `medical-record-system` service in your `docker-compose.yml` like this:
+
+```yaml
+# In docker-compose.yml
+services:
+  # ... other services
+  medical-record-system:
+    # ... other properties
+    command: ["./wait-for-it.sh", "keycloak:8080", "--", "java", "-jar", "app.jar"]
+```
+
+This command tells the application container: "Before you run the `java -jar app.jar` command, first run the `wait-for-it.sh` script and wait until the service named `keycloak` is reachable on port `8080`."
 
 ## Deployment to Azure
 
