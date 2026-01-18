@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **Project Status: Archived** > This repository contains the final project for the CSCB869 Java Web Services course (Autumn Semester 2022/2023). It is no longer maintained, and no further updates, bug fixes, or support will be provided.
+
+---
 # Medical Record System
 
 ## Overview
@@ -18,7 +22,6 @@ The **Medical Record System** is a Java-based web application developed as a fin
 - [Architecture & Technologies](#architecture--technologies)
 - [User Roles](#user-roles)
 - [MVC User Stories](#mvc-user-stories)
-- [API User Stories](#api-user-stories)
 - [Installation & Setup](#installation--setup)
 - [Keycloak Setup Details](#keycloak-setup-details)
 - [Usage](#usage)
@@ -35,13 +38,7 @@ The project's main goal is to create a comprehensive system for managing patient
 
 ## Live Demo
 
-The Medical Record System application is deployed and accessible live on Microsoft Azure.
-
-**Application URL:** [Placeholder - Will be updated with your Azure App Service URL]
-**Swagger UI URL:** [Placeholder - Will be updated with your Azure App Service URL]/swagger-ui.html
-
-**Note:** For authentication on the live demo, Keycloak is running alongside the application in Azure. You will be redirected to the Keycloak login page when accessing secured parts of the application or attempting to authorize in Swagger UI.
-
+Live Demo: The live deployment for this project has been decommissioned following the completion of the course. To run the project, please refer to the Installation & Setup section.
 
 ## Features
 
